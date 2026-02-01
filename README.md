@@ -47,6 +47,11 @@ clawvault handoff --working-on "task1" --next "task2"  # Before context death
 clawvault recap                                          # On session start
 ```
 
+**Tip:** Set `CLAWVAULT_PATH` environment variable to skip directory walk:
+```bash
+echo 'export CLAWVAULT_PATH="$HOME/memory"' >> ~/.bashrc
+```
+
 ## Search: qmd vs memory_search
 
 **Use `qmd` (or `clawvault search`) — not `memory_search`**

@@ -23,16 +23,28 @@ import {
 const program = new Command();
 
 // Helper to get vault (required for most commands)
+// Checks: 1) explicit path, 2) CLAWVAULT_PATH env, 3) walk up from cwd
 async function getVault(vaultPath) {
+  // Explicit path takes priority
   if (vaultPath) {
     const vault = new ClawVault(path.resolve(vaultPath));
     await vault.load();
     return vault;
   }
   
+  // Check environment variable
+  const envPath = process.env.CLAWVAULT_PATH;
+  if (envPath) {
+    const vault = new ClawVault(path.resolve(envPath));
+    await vault.load();
+    return vault;
+  }
+  
+  // Walk up from cwd
   const vault = await findVault();
   if (!vault) {
     console.error(chalk.red('Error: No ClawVault found. Run `clawvault init` first.'));
+    console.log(chalk.dim('Tip: Set CLAWVAULT_PATH environment variable to your vault path'));
     process.exit(1);
   }
   return vault;
