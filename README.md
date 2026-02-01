@@ -123,10 +123,16 @@ clawvault handoff \
   --working-on "building CRM, fixing webhook" \
   --blocked "waiting for API key" \
   --next "deploy to production" \
+  --decisions "chose Supabase over Firebase" \
   --feeling "focused"
 
 # On session start
-clawvault recap
+clawvault recap           # Full markdown recap
+clawvault recap --brief   # Token-efficient version
+clawvault recap --json    # For programmatic use
+
+# Health check
+clawvault doctor
 ```
 
 ## Agent Setup (AGENTS.md)

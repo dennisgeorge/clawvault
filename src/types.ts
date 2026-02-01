@@ -204,6 +204,8 @@ export interface SessionRecap {
   activeProjects: string[];
   /** Pending commitments */
   pendingCommitments: string[];
+  /** Recent decisions made */
+  recentDecisions?: string[];
   /** Recent lessons learned */
   recentLessons: string[];
   /** Key relationships to remember */

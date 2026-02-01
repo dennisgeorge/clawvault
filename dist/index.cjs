@@ -820,10 +820,13 @@ var ClawVault = class {
     const frontmatter = {
       type: "handoff",
       workingOn: handoff.workingOn,
-      blocked: handoff.blocked
+      blocked: handoff.blocked,
+      nextSteps: handoff.nextSteps
     };
     if (handoff.sessionKey) frontmatter.sessionKey = handoff.sessionKey;
     if (handoff.feeling) frontmatter.feeling = handoff.feeling;
+    if (handoff.decisions) frontmatter.decisions = handoff.decisions;
+    if (handoff.openQuestions) frontmatter.openQuestions = handoff.openQuestions;
     return this.store({
       category: "handoffs",
       title: `handoff-${dateStr}-${timeStr}`,
@@ -886,17 +889,22 @@ var ClawVault = class {
    * Call this on bootstrap to restore context
    */
   async generateRecap(options = {}) {
-    const { handoffLimit = 3 } = options;
+    const { handoffLimit = 3, brief = false } = options;
     const handoffDocs = await this.list("handoffs");
     const recentHandoffs = handoffDocs.sort((a, b) => b.modified.getTime() - a.modified.getTime()).slice(0, handoffLimit).map((doc) => this.parseHandoff(doc));
     const projectDocs = await this.list("projects");
     const activeProjects = projectDocs.filter((d) => d.frontmatter.status !== "completed" && d.frontmatter.status !== "archived").map((d) => d.title);
     const commitmentDocs = await this.list("commitments");
     const pendingCommitments = commitmentDocs.filter((d) => d.frontmatter.status !== "done").map((d) => d.title);
+    const decisionDocs = await this.list("decisions");
+    const recentDecisions = decisionDocs.sort((a, b) => b.modified.getTime() - a.modified.getTime()).slice(0, brief ? 3 : 5).map((d) => d.title);
     const lessonDocs = await this.list("lessons");
-    const recentLessons = lessonDocs.sort((a, b) => b.modified.getTime() - a.modified.getTime()).slice(0, 5).map((d) => d.title);
-    const peopleDocs = await this.list("people");
-    const keyRelationships = peopleDocs.filter((d) => d.frontmatter.importance === "high" || d.frontmatter.role).map((d) => `${d.title}${d.frontmatter.role ? ` (${d.frontmatter.role})` : ""}`);
+    const recentLessons = lessonDocs.sort((a, b) => b.modified.getTime() - a.modified.getTime()).slice(0, brief ? 3 : 5).map((d) => d.title);
+    let keyRelationships = [];
+    if (!brief) {
+      const peopleDocs = await this.list("people");
+      keyRelationships = peopleDocs.filter((d) => d.frontmatter.importance === "high" || d.frontmatter.role).map((d) => `${d.title}${d.frontmatter.role ? ` (${d.frontmatter.role})` : ""}`);
+    }
     const feelings = recentHandoffs.map((h) => h.feeling).filter(Boolean);
     const emotionalArc = feelings.length > 0 ? feelings.join(" \u2192 ") : void 0;
     return {
@@ -904,6 +912,7 @@ var ClawVault = class {
       recentHandoffs,
       activeProjects,
       pendingCommitments,
+      recentDecisions,
       recentLessons,
       keyRelationships,
       emotionalArc
@@ -912,7 +921,8 @@ var ClawVault = class {
   /**
    * Format recap as readable markdown for injection
    */
-  formatRecap(recap) {
+  formatRecap(recap, options = {}) {
+    const { brief = false } = options;
     let md = `# Who I Was
 
 `;
@@ -928,15 +938,22 @@ var ClawVault = class {
       md += `## Recent Sessions
 `;
       for (const h of recap.recentHandoffs) {
-        md += `
+        if (brief) {
+          md += `- **${h.created.split("T")[0]}:** ${h.workingOn.slice(0, 2).join(", ")}`;
+          if (h.nextSteps.length > 0) md += ` \u2192 ${h.nextSteps[0]}`;
+          md += `
+`;
+        } else {
+          md += `
 ### ${h.created.split("T")[0]}
 `;
-        md += `**Working on:** ${h.workingOn.join(", ")}
+          md += `**Working on:** ${h.workingOn.join(", ")}
 `;
-        if (h.blocked.length > 0) md += `**Blocked:** ${h.blocked.join(", ")}
+          if (h.blocked.length > 0) md += `**Blocked:** ${h.blocked.join(", ")}
 `;
-        md += `**Next:** ${h.nextSteps.join(", ")}
+          md += `**Next:** ${h.nextSteps.join(", ")}
 `;
+        }
       }
       md += `
 `;
@@ -957,6 +974,14 @@ var ClawVault = class {
       md += `
 `;
     }
+    if (recap.recentDecisions && recap.recentDecisions.length > 0) {
+      md += `## Recent Decisions
+`;
+      recap.recentDecisions.forEach((d) => md += `- ${d}
+`);
+      md += `
+`;
+    }
     if (recap.recentLessons.length > 0) {
       md += `## Recent Lessons
 `;
@@ -965,7 +990,7 @@ var ClawVault = class {
       md += `
 `;
     }
-    if (recap.keyRelationships.length > 0) {
+    if (!brief && recap.keyRelationships.length > 0) {
       md += `## Key People
 `;
       recap.keyRelationships.forEach((r) => md += `- ${r}
@@ -982,7 +1007,9 @@ var ClawVault = class {
       sessionKey: doc.frontmatter.sessionKey,
       workingOn: doc.frontmatter.workingOn || [],
       blocked: doc.frontmatter.blocked || [],
-      nextSteps: [],
+      nextSteps: doc.frontmatter.nextSteps || [],
+      decisions: doc.frontmatter.decisions,
+      openQuestions: doc.frontmatter.openQuestions,
       feeling: doc.frontmatter.feeling
     };
   }

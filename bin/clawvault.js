@@ -561,6 +561,7 @@ program
   .option('-f, --feeling <state>', 'Emotional/energy state')
   .option('-s, --session <key>', 'Session key')
   .option('-v, --vault <path>', 'Vault path')
+  .option('--no-index', 'Skip qmd index update (auto-updates by default)')
   .option('--json', 'Output as JSON')
   .action(async (options) => {
     try {
@@ -585,8 +586,8 @@ program
         console.log(chalk.dim(`  Path: ${doc.path}`));
       }
       
-      // Auto-update qmd index
-      if (hasQmd()) {
+      // Auto-update qmd index unless --no-index
+      if (options.index !== false && hasQmd()) {
         try {
           const collection = vault.getQmdCollection();
           await runQmd(collection ? ['update', '-c', collection] : ['update']);
@@ -606,12 +607,14 @@ program
   .option('-v, --vault <path>', 'Vault path')
   .option('--json', 'Output as JSON')
   .option('--markdown', 'Output as markdown (default)')
+  .option('--brief', 'Minimal output for token savings')
   .action(async (options) => {
     try {
       const vault = await getVault(options.vault);
       
       const recap = await vault.generateRecap({
-        handoffLimit: parseInt(options.handoffLimit)
+        handoffLimit: parseInt(options.handoffLimit),
+        brief: options.brief
       });
       
       if (options.json) {
@@ -620,11 +623,73 @@ program
       }
       
       // Output as markdown (default)
-      const md = vault.formatRecap(recap);
+      const md = vault.formatRecap(recap, { brief: options.brief });
       console.log(md);
     } catch (err) {
       console.error(chalk.red(`Error: ${err.message}`));
       process.exit(1);
+    }
+  });
+
+// === DOCTOR (health check) ===
+program
+  .command('doctor')
+  .description('Check ClawVault setup health')
+  .option('-v, --vault <path>', 'Vault path')
+  .action(async (options) => {
+    console.log(chalk.cyan('\n🩺 ClawVault Health Check\n'));
+    
+    let issues = 0;
+    
+    // Check qmd
+    if (hasQmd()) {
+      console.log(chalk.green('✓ qmd installed'));
+    } else {
+      console.log(chalk.red('✗ qmd not installed'));
+      console.log(chalk.dim(`  Install: bun install -g qmd`));
+      issues++;
+    }
+    
+    // Check vault
+    try {
+      const vault = await getVault(options.vault);
+      console.log(chalk.green(`✓ Vault found: ${vault.getPath()}`));
+      
+      const stats = await vault.stats();
+      console.log(chalk.dim(`  ${stats.documents} documents, ${stats.links} links`));
+      
+      // Check qmd collection
+      const collection = vault.getQmdCollection();
+      if (collection) {
+        console.log(chalk.green(`✓ qmd collection: ${collection}`));
+      } else {
+        console.log(chalk.yellow('⚠ No qmd collection configured'));
+        issues++;
+      }
+      
+      // Check for handoffs
+      const handoffs = await vault.list('handoffs');
+      if (handoffs.length > 0) {
+        console.log(chalk.green(`✓ ${handoffs.length} handoff(s) stored`));
+      } else {
+        console.log(chalk.yellow('⚠ No handoffs yet — run `clawvault handoff` before context death'));
+      }
+      
+      // Check for content
+      if (stats.documents < 5) {
+        console.log(chalk.yellow('⚠ Vault is sparse — start storing memories!'));
+      }
+      
+    } catch (err) {
+      console.log(chalk.red(`✗ Vault error: ${err.message}`));
+      issues++;
+    }
+    
+    console.log();
+    if (issues === 0) {
+      console.log(chalk.green('✅ ClawVault is healthy!\n'));
+    } else {
+      console.log(chalk.yellow(`⚠ ${issues} issue(s) found\n`));
     }
   });
 

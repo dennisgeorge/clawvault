@@ -46,13 +46,19 @@ memory_search  # External API, will hit quotas
 
 ```bash
 # On wake
-clawvault recap
+clawvault recap           # Full recap
+clawvault recap --brief   # Token-efficient recap
 
 # Before context death
 clawvault handoff \
   --working-on "task1, task2" \
   --blocked "blocker" \
-  --next "next step"
+  --next "next step" \
+  --decisions "key decision made" \
+  --feeling "focused"
+
+# Health check
+clawvault doctor
 ```
 
 ### Store memories

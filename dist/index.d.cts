@@ -144,6 +144,8 @@ interface SessionRecap {
     activeProjects: string[];
     /** Pending commitments */
     pendingCommitments: string[];
+    /** Recent decisions made */
+    recentDecisions?: string[];
     /** Recent lessons learned */
     recentLessons: string[];
     /** Key relationships to remember */
@@ -265,11 +267,14 @@ declare class ClawVault {
      */
     generateRecap(options?: {
         handoffLimit?: number;
+        brief?: boolean;
     }): Promise<SessionRecap>;
     /**
      * Format recap as readable markdown for injection
      */
-    formatRecap(recap: SessionRecap): string;
+    formatRecap(recap: SessionRecap, options?: {
+        brief?: boolean;
+    }): string;
     /**
      * Parse a handoff document back into structured form
      */
