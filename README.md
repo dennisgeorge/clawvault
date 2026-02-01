@@ -96,6 +96,8 @@ clawvault capture "Note to self"
 clawvault store -c decisions -t "Title" --content "..."
 ```
 
+**Note:** All write commands auto-update the qmd index. Use `--no-index` to skip.
+
 ### Search
 
 ```bash

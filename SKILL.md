@@ -66,6 +66,8 @@ clawvault capture "Quick note"
 
 Types: `decision`, `lesson`, `fact`, `commitment`, `project`, `person`
 
+**Auto-indexed:** All write commands update qmd automatically. Use `--no-index` to skip.
+
 ### Search
 
 ```bash
