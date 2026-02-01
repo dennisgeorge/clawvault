@@ -1,6 +1,6 @@
 {
   "name": "clawvault",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "🐘 An elephant never forgets. Structured memory system for AI agents with Obsidian-compatible markdown and embedded semantic search.",
   "type": "module",
   "main": "dist/index.cjs",
