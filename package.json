@@ -1,6 +1,6 @@
 {
   "name": "clawvault",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "🐘 An elephant never forgets. Structured memory for OpenClaw agents. Context death resilience, Obsidian-compatible markdown, local semantic search.",
   "type": "module",
   "main": "dist/index.cjs",
@@ -23,7 +23,9 @@
     "hooks"
   ],
   "openclaw": {
-    "hooks": ["./hooks/clawvault"]
+    "hooks": [
+      "./hooks/clawvault"
+    ]
   },
   "scripts": {
     "build": "tsup src/index.ts src/commands/entities.ts src/commands/link.ts src/commands/checkpoint.ts src/commands/recover.ts src/commands/status.ts src/commands/template.ts src/commands/setup.ts src/commands/wake.ts src/commands/sleep.ts src/commands/doctor.ts src/commands/shell-init.ts src/lib/entity-index.ts src/lib/auto-linker.ts src/lib/config.ts src/lib/template-engine.ts --format esm --dts --clean",
