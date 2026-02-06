@@ -1,5 +1,47 @@
 # Changelog
 
+## [1.5.0] - 2026-02-06
+
+### Added
+- **`clawvault repair-session`** - Repair corrupted OpenClaw session transcripts
+  - Detects orphaned `tool_result` blocks that reference non-existent `tool_use` IDs
+  - Identifies aborted tool calls with partial JSON
+  - Automatically relinks parent chain after removals
+  - Creates backup before repair (configurable with `--no-backup`)
+  - Dry-run mode with `--dry-run` to preview repairs
+  - List sessions with `--list` flag
+  - JSON output with `--json` for scripting
+  
+  **Problem solved:** When the Anthropic API rejects with "unexpected tool_use_id found in tool_result blocks", this command fixes the transcript so the session can continue without losing context.
+  
+  ```bash
+  # Analyze without changing
+  clawvault repair-session --dry-run
+  
+  # Repair current main session
+  clawvault repair-session
+  
+  # Repair specific session
+  clawvault repair-session --session <id> --agent <agent-id>
+  ```
+
+- **Session utilities** (`src/lib/session-utils.ts`)
+  - `listAgents()` - Find all agents in ~/.openclaw/agents/
+  - `findMainSession()` - Get current session for an agent
+  - `findSessionById()` - Look up specific session
+  - `getSessionFilePath()`, `backupSession()` - File helpers
+
+### Tests
+- Added 13 tests for session repair functionality
+  - Transcript parsing
+  - Tool use extraction from assistant messages
+  - Corruption detection (aborted + orphaned)
+  - Parent chain relinking
+  - Dry-run mode
+  - Backup creation
+
+---
+
 ## [1.4.2] - 2026-02-06
 
 ### Added

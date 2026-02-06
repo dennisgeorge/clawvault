@@ -1,7 +1,7 @@
 ---
 name: clawvault
-version: 1.4.1
-description: Structured memory system for OpenClaw agents. Context death resilience (checkpoint/recover), structured storage, Obsidian-compatible markdown, and local semantic search.
+version: 1.5.0
+description: Structured memory system for OpenClaw agents. Context death resilience (checkpoint/recover), structured storage, Obsidian-compatible markdown, local semantic search, and session transcript repair.
 author: Versatly
 repository: https://github.com/Versatly/clawvault
 ---
@@ -174,6 +174,31 @@ vault/
 - [ ] Run `clawvault doctor` when something feels off
 ```
 
+## Session Transcript Repair (v1.5.0+)
+
+When the Anthropic API rejects with "unexpected tool_use_id found in tool_result blocks", use:
+
+```bash
+# See what's wrong (dry-run)
+clawvault repair-session --dry-run
+
+# Fix it
+clawvault repair-session
+
+# Repair a specific session
+clawvault repair-session --session <id> --agent <agent-id>
+
+# List available sessions
+clawvault repair-session --list
+```
+
+**What it fixes:**
+- Orphaned `tool_result` blocks referencing non-existent `tool_use` IDs
+- Aborted tool calls with partial JSON
+- Broken parent chain references
+
+Backups are created automatically (use `--no-backup` to skip).
+
 ## Troubleshooting
 
 - **qmd not installed** — run `bun install -g github:tobi/qmd` or `npm install -g qmd`
@@ -181,6 +206,7 @@ vault/
 - **CLAWVAULT_PATH missing** — run `clawvault shell-init` and add to shell rc
 - **Too many orphan links** — run `clawvault link --orphans`
 - **Inbox backlog warning** — process or archive inbox items
+- **"unexpected tool_use_id" error** — run `clawvault repair-session`
 
 ## Integration with qmd
 
