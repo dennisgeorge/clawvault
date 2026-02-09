@@ -3,7 +3,10 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import chokidar from 'chokidar';
+import { WebSocketServer } from 'ws';
 import { buildVaultGraph } from './lib/vault-parser.js';
+import { diffGraphs } from './lib/graph-diff.js';
 
 const DEFAULT_PORT = 3377;
 const HOST = '0.0.0.0';
@@ -19,13 +22,16 @@ export async function startDashboard(options = {}) {
   const publicDir = path.join(serverDir, 'public');
   const forceGraphDistDir = path.join(projectDir, 'node_modules', 'force-graph', 'dist');
 
-  const graphCache = createGraphCache(vaultPath);
+  const graphStore = createLiveGraphStore(vaultPath);
+  await graphStore.init();
 
   app.get('/api/graph', async (req, res) => {
     try {
       const shouldRefresh = req.query.refresh === '1';
-      const graph = await graphCache.get({ forceRefresh: shouldRefresh });
-      res.json(graph);
+      if (shouldRefresh) {
+        await graphStore.refresh({ reason: 'api:refresh' });
+      }
+      res.json(graphStore.getGraph());
     } catch (error) {
       res.status(500).json({
         error: 'Failed to build graph',
@@ -50,53 +56,237 @@ export async function startDashboard(options = {}) {
       .on('error', reject);
   });
 
+  const wsServer = new WebSocketServer({
+    server,
+    path: '/ws'
+  });
+
+  const unsubscribeGraphUpdates = graphStore.subscribe((update) => {
+    broadcast(wsServer, {
+      type: 'graph:patch',
+      payload: {
+        version: update.version,
+        reason: update.reason,
+        changedPaths: update.changedPaths,
+        ...update.patch
+      }
+    });
+  });
+
+  wsServer.on('connection', (socket) => {
+    socket.send(
+      JSON.stringify({
+        type: 'graph:init',
+        payload: {
+          version: graphStore.getVersion(),
+          graph: graphStore.getGraph()
+        }
+      })
+    );
+  });
+
+  const heartbeatInterval = setInterval(() => {
+    for (const client of wsServer.clients) {
+      if (client.readyState === 1) {
+        client.ping();
+      }
+    }
+  }, 20_000);
+
+  await graphStore.startWatching();
+
   logStartup({
     port,
     vaultPath
   });
 
-  const shutdown = () => {
+  let isShuttingDown = false;
+  const shutdown = async () => {
+    if (isShuttingDown) {
+      return;
+    }
+    isShuttingDown = true;
+    clearInterval(heartbeatInterval);
+    unsubscribeGraphUpdates();
+    await graphStore.close();
+    await new Promise((resolve) => wsServer.close(() => resolve()));
     server.close(() => {
       process.exit(0);
     });
   };
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', () => {
+    void shutdown();
+  });
+  process.on('SIGTERM', () => {
+    void shutdown();
+  });
 
   return server;
 }
 
-function createGraphCache(vaultPath) {
-  const ttlMs = 2_000;
-  let cache = null;
-  let fetchedAt = 0;
-  let inFlight = null;
+function createLiveGraphStore(vaultPath) {
+  const subscribers = new Set();
+  const changedPathBuffer = new Set();
+  const refreshDebounceMs = 240;
+  let graph = null;
+  let version = 0;
+  let refreshTimer = null;
+  let watcher = null;
+  let inFlightRefresh = null;
+  let refreshQueued = false;
+
+  async function init() {
+    graph = await buildVaultGraph(vaultPath);
+    version = 1;
+  }
+
+  function getGraph() {
+    return graph;
+  }
+
+  function getVersion() {
+    return version;
+  }
+
+  function subscribe(listener) {
+    subscribers.add(listener);
+    return () => {
+      subscribers.delete(listener);
+    };
+  }
+
+  function emit(update) {
+    for (const listener of subscribers) {
+      listener(update);
+    }
+  }
+
+  function queueRefresh({ reason, changedPath }) {
+    if (changedPath) {
+      changedPathBuffer.add(changedPath);
+    }
+    if (refreshTimer) {
+      clearTimeout(refreshTimer);
+    }
+    refreshTimer = setTimeout(() => {
+      refreshTimer = null;
+      void refresh({ reason });
+    }, refreshDebounceMs);
+  }
+
+  async function refresh({ reason = 'manual' } = {}) {
+    if (inFlightRefresh) {
+      refreshQueued = true;
+      return inFlightRefresh;
+    }
+
+    const changedPaths = Array.from(changedPathBuffer).sort((a, b) => a.localeCompare(b));
+    changedPathBuffer.clear();
+
+    inFlightRefresh = buildVaultGraph(vaultPath)
+      .then((nextGraph) => {
+        const patch = diffGraphs(graph, nextGraph);
+        graph = nextGraph;
+        if (!patch.hasChanges) {
+          return;
+        }
+        version += 1;
+        emit({
+          version,
+          reason,
+          changedPaths,
+          patch
+        });
+      })
+      .finally(async () => {
+        inFlightRefresh = null;
+        if (refreshQueued) {
+          refreshQueued = false;
+          await refresh({ reason: 'coalesced' });
+        }
+      });
+
+    return inFlightRefresh;
+  }
+
+  async function startWatching() {
+    watcher = chokidar.watch(path.join(vaultPath, '**', '*.md'), {
+      persistent: true,
+      ignoreInitial: true,
+      awaitWriteFinish: {
+        stabilityThreshold: 180,
+        pollInterval: 50
+      },
+      ignored: (watchedPath) => isIgnoredPath(vaultPath, watchedPath)
+    });
+
+    watcher
+      .on('add', (filePath) => {
+        queueRefresh({
+          reason: 'fs:add',
+          changedPath: toRelativeVaultPath(vaultPath, filePath)
+        });
+      })
+      .on('change', (filePath) => {
+        queueRefresh({
+          reason: 'fs:change',
+          changedPath: toRelativeVaultPath(vaultPath, filePath)
+        });
+      })
+      .on('unlink', (filePath) => {
+        queueRefresh({
+          reason: 'fs:unlink',
+          changedPath: toRelativeVaultPath(vaultPath, filePath)
+        });
+      })
+      .on('error', (error) => {
+        console.error(`Dashboard file watcher error: ${error instanceof Error ? error.message : String(error)}`);
+      });
+  }
+
+  async function close() {
+    if (refreshTimer) {
+      clearTimeout(refreshTimer);
+      refreshTimer = null;
+    }
+    if (watcher) {
+      await watcher.close();
+      watcher = null;
+    }
+  }
 
   return {
-    async get({ forceRefresh = false } = {}) {
-      const ageMs = Date.now() - fetchedAt;
-      if (!forceRefresh && cache && ageMs < ttlMs) {
-        return cache;
-      }
-
-      if (inFlight) {
-        return inFlight;
-      }
-
-      inFlight = buildVaultGraph(vaultPath)
-        .then((graph) => {
-          cache = graph;
-          fetchedAt = Date.now();
-          return graph;
-        })
-        .finally(() => {
-          inFlight = null;
-        });
-
-      return inFlight;
-    }
+    init,
+    getGraph,
+    getVersion,
+    subscribe,
+    refresh,
+    startWatching,
+    close
   };
+}
+
+function broadcast(wsServer, data) {
+  const payload = JSON.stringify(data);
+  for (const client of wsServer.clients) {
+    if (client.readyState === 1) {
+      client.send(payload);
+    }
+  }
+}
+
+function isIgnoredPath(vaultPath, watchedPath) {
+  const relativePath = toRelativeVaultPath(vaultPath, watchedPath);
+  const segments = relativePath.split('/').filter(Boolean);
+
+  return segments.some((segment) =>
+    segment === '.git' || segment === '.obsidian' || segment === '.trash' || segment === 'node_modules'
+  );
+}
+
+function toRelativeVaultPath(vaultPath, absolutePath) {
+  return path.relative(vaultPath, absolutePath).split(path.sep).join('/');
 }
 
 function parseArgs(argv) {
