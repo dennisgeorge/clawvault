@@ -36,6 +36,7 @@ var DEFAULT_CONFIG = {
 
 // src/lib/search.ts
 import { execFileSync, spawnSync } from "child_process";
+import * as fs from "fs";
 import * as path from "path";
 var QMD_INSTALL_URL = "https://github.com/tobi/qmd";
 var QMD_INSTALL_COMMAND = "bun install -g github:tobi/qmd";
@@ -199,7 +200,8 @@ var SearchEngine = class {
       minScore = 0,
       category,
       tags,
-      fullContent = false
+      fullContent = false,
+      temporalBoost = false
     } = options;
     if (!query.trim()) return [];
     const args = [
@@ -218,14 +220,15 @@ var SearchEngine = class {
       minScore,
       category,
       tags,
-      fullContent
+      fullContent,
+      temporalBoost
     });
   }
   /**
    * Convert qmd results to ClawVault SearchResult format
    */
   convertResults(qmdResults, options) {
-    const { limit = 10, minScore = 0, category, tags, fullContent = false } = options;
+    const { limit = 10, minScore = 0, category, tags, fullContent = false, temporalBoost = false } = options;
     const results = [];
     const maxScore = qmdResults[0]?.score || 1;
     for (const qr of qmdResults) {
@@ -233,6 +236,7 @@ var SearchEngine = class {
       const relativePath = this.vaultPath ? path.relative(this.vaultPath, filePath) : filePath;
       const docId = relativePath.replace(/\.md$/, "");
       let doc = this.documents.get(docId);
+      const modifiedAt = this.resolveModifiedAt(doc, filePath);
       const parts = relativePath.split(path.sep);
       const docCategory = parts.length > 1 ? parts[0] : "root";
       if (category && docCategory !== category) continue;
@@ -241,7 +245,8 @@ var SearchEngine = class {
         if (!tags.some((t) => docTags.has(t))) continue;
       }
       const normalizedScore = maxScore > 0 ? qr.score / maxScore : 0;
-      if (normalizedScore < minScore) continue;
+      const finalScore = temporalBoost ? normalizedScore * this.getRecencyFactor(modifiedAt) : normalizedScore;
+      if (finalScore < minScore) continue;
       if (!doc) {
         doc = {
           id: docId,
@@ -253,12 +258,12 @@ var SearchEngine = class {
           frontmatter: {},
           links: [],
           tags: [],
-          modified: /* @__PURE__ */ new Date()
+          modified: modifiedAt
         };
       }
       results.push({
         document: fullContent ? doc : { ...doc, content: "" },
-        score: normalizedScore,
+        score: finalScore,
         snippet: this.cleanSnippet(qr.snippet),
         matchedTerms: []
         // qmd doesn't provide this
@@ -266,6 +271,21 @@ var SearchEngine = class {
       if (results.length >= limit) break;
     }
     return results;
+  }
+  resolveModifiedAt(doc, filePath) {
+    if (doc) return doc.modified;
+    try {
+      return fs.statSync(filePath).mtime;
+    } catch {
+      return /* @__PURE__ */ new Date(0);
+    }
+  }
+  getRecencyFactor(modifiedAt) {
+    const ageMs = Math.max(0, Date.now() - modifiedAt.getTime());
+    const ageDays = ageMs / (24 * 60 * 60 * 1e3);
+    if (ageDays < 1) return 1;
+    if (ageDays <= 7) return 0.9;
+    return 0.7;
   }
   /**
    * Convert qmd:// URI to file path

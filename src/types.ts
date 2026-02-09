@@ -73,6 +73,8 @@ export interface SearchOptions {
   tags?: string[];
   /** Include full content in results */
   fullContent?: boolean;
+  /** Boost recent documents in ranking */
+  temporalBoost?: boolean;
 }
 
 export interface StoreOptions {

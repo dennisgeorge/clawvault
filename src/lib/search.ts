@@ -4,6 +4,7 @@
  */
 
 import { execFileSync, spawnSync } from 'child_process';
+import * as fs from 'fs';
 import * as path from 'path';
 import { Document, SearchResult, SearchOptions } from '../types.js';
 
@@ -229,7 +230,8 @@ export class SearchEngine {
       minScore = 0,
       category,
       tags,
-      fullContent = false
+      fullContent = false,
+      temporalBoost = false
     } = options;
 
     if (!query.trim()) return [];
@@ -252,7 +254,8 @@ export class SearchEngine {
       minScore,
       category,
       tags,
-      fullContent
+      fullContent,
+      temporalBoost
     });
   }
 
@@ -263,7 +266,7 @@ export class SearchEngine {
     qmdResults: QmdResult[], 
     options: SearchOptions
   ): SearchResult[] {
-    const { limit = 10, minScore = 0, category, tags, fullContent = false } = options;
+    const { limit = 10, minScore = 0, category, tags, fullContent = false, temporalBoost = false } = options;
     
     const results: SearchResult[] = [];
     
@@ -280,6 +283,7 @@ export class SearchEngine {
       // Get document from cache or create minimal one
       const docId = relativePath.replace(/\.md$/, '');
       let doc = this.documents.get(docId);
+      const modifiedAt = this.resolveModifiedAt(doc, filePath);
       
       // Determine category from path
       const parts = relativePath.split(path.sep);
@@ -296,9 +300,12 @@ export class SearchEngine {
       
       // Normalize score to 0-1 range
       const normalizedScore = maxScore > 0 ? qr.score / maxScore : 0;
+      const finalScore = temporalBoost
+        ? normalizedScore * this.getRecencyFactor(modifiedAt)
+        : normalizedScore;
       
       // Apply min score filter
-      if (normalizedScore < minScore) continue;
+      if (finalScore < minScore) continue;
       
       // Create document if not cached
       if (!doc) {
@@ -311,21 +318,39 @@ export class SearchEngine {
           frontmatter: {},
           links: [],
           tags: [],
-          modified: new Date()
+          modified: modifiedAt
         };
       }
       
       results.push({
         document: fullContent ? doc : { ...doc, content: '' },
-        score: normalizedScore,
+        score: finalScore,
         snippet: this.cleanSnippet(qr.snippet),
         matchedTerms: [] // qmd doesn't provide this
       });
-      
-      if (results.length >= limit) break;
     }
     
-    return results;
+    return results
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+  }
+
+  private resolveModifiedAt(doc: Document | undefined, filePath: string): Date {
+    if (doc) return doc.modified;
+    try {
+      return fs.statSync(filePath).mtime;
+    } catch {
+      return new Date(0);
+    }
+  }
+
+  private getRecencyFactor(modifiedAt: Date): number {
+    const ageMs = Math.max(0, Date.now() - modifiedAt.getTime());
+    const ageDays = ageMs / (24 * 60 * 60 * 1000);
+
+    if (ageDays < 1) return 1.0;
+    if (ageDays <= 7) return 0.9;
+    return 0.7;
   }
 
   /**

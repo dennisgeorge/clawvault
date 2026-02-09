@@ -1,15 +1,20 @@
 import {
+  setupCommand
+} from "./chunk-Z6LQ4VTI.js";
+import {
   buildTemplateVariables,
   renderTemplate
 } from "./chunk-7766SIJP.js";
 import {
+  buildContext,
+  contextCommand,
+  formatContextMarkdown
+} from "./chunk-WBVPVD2C.js";
+import {
   ClawVault,
   createVault,
   findVault
-} from "./chunk-MXNXWOPL.js";
-import {
-  setupCommand
-} from "./chunk-QYJI73KF.js";
+} from "./chunk-Y4H6XSBV.js";
 import {
   DEFAULT_CATEGORIES,
   DEFAULT_CONFIG,
@@ -24,7 +29,7 @@ import {
   hasQmd,
   qmdEmbed,
   qmdUpdate
-} from "./chunk-VJIFT5T5.js";
+} from "./chunk-VHECN4BB.js";
 
 // src/index.ts
 import * as fs from "fs";
@@ -49,11 +54,14 @@ export {
   SearchEngine,
   TYPE_TO_CATEGORY,
   VERSION,
+  buildContext,
   buildTemplateVariables,
+  contextCommand,
   createVault,
   extractTags,
   extractWikiLinks,
   findVault,
+  formatContextMarkdown,
   hasQmd,
   qmdEmbed,
   qmdUpdate,

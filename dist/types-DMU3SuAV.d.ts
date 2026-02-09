@@ -68,6 +68,8 @@ interface SearchOptions {
     tags?: string[];
     /** Include full content in results */
     fullContent?: boolean;
+    /** Boost recent documents in ranking */
+    temporalBoost?: boolean;
 }
 interface StoreOptions {
     /** Category to store in */

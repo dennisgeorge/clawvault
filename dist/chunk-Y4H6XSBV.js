@@ -8,7 +8,7 @@ import {
   hasQmd,
   qmdEmbed,
   qmdUpdate
-} from "./chunk-VJIFT5T5.js";
+} from "./chunk-VHECN4BB.js";
 
 // src/lib/vault.ts
 import * as fs from "fs";

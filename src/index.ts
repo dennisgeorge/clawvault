@@ -29,6 +29,8 @@ import * as fs from 'fs';
 // Core exports
 export { ClawVault, createVault, findVault } from './lib/vault.js';
 export { setupCommand } from './commands/setup.js';
+export { contextCommand, buildContext, formatContextMarkdown } from './commands/context.js';
+export type { ContextFormat, ContextOptions, ContextEntry, ContextResult } from './commands/context.js';
 export {
   SearchEngine,
   extractWikiLinks,

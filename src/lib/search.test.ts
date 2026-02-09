@@ -103,4 +103,67 @@ describe('search qmd dependency', () => {
     expect(results).toHaveLength(1);
     expect(results[0].document.path).toBe('/vault/notes/a.md');
   });
+
+  it('applies temporal boosting when enabled', async () => {
+    spawnSyncMock.mockReturnValue({ error: undefined });
+    execFileSyncMock.mockReturnValue(
+      JSON.stringify([
+        {
+          docid: '1',
+          score: 10,
+          file: 'qmd://vault/projects/recent.md',
+          title: 'Recent',
+          snippet: 'Recent snippet'
+        },
+        {
+          docid: '2',
+          score: 9,
+          file: 'qmd://vault/projects/older.md',
+          title: 'Older',
+          snippet: 'Older snippet'
+        }
+      ])
+    );
+
+    const { SearchEngine } = await loadSearchModule();
+    const engine = new SearchEngine();
+    engine.setCollectionRoot('/vault');
+    engine.setVaultPath('/vault');
+    engine.addDocument({
+      id: 'projects/recent',
+      path: '/vault/projects/recent.md',
+      category: 'projects',
+      title: 'Recent',
+      content: 'content',
+      frontmatter: {},
+      links: [],
+      tags: [],
+      modified: new Date()
+    });
+    engine.addDocument({
+      id: 'projects/older',
+      path: '/vault/projects/older.md',
+      category: 'projects',
+      title: 'Older',
+      content: 'content',
+      frontmatter: {},
+      links: [],
+      tags: [],
+      modified: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
+    });
+
+    const boosted = engine.search('timeline', {
+      limit: 2,
+      temporalBoost: true
+    });
+    expect(boosted).toHaveLength(2);
+    expect(boosted[0].score).toBeCloseTo(1.0, 5);
+    expect(boosted[1].score).toBeCloseTo(0.63, 5);
+
+    const unboosted = engine.search('timeline', {
+      limit: 2,
+      temporalBoost: false
+    });
+    expect(unboosted[1].score).toBeCloseTo(0.9, 5);
+  });
 });

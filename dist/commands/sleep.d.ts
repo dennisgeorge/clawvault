@@ -1,4 +1,4 @@
-import { H as HandoffDocument, D as Document } from '../types-DO8rJ490.js';
+import { H as HandoffDocument, D as Document } from '../types-DMU3SuAV.js';
 
 type PromptFn = (question: string) => Promise<string>;
 interface SleepOptions {

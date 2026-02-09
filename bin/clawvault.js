@@ -250,6 +250,7 @@ program
   .option('-n, --limit <n>', 'Max results', '10')
   .option('-c, --category <category>', 'Filter by category')
   .option('--tags <tags>', 'Filter by tags (comma-separated)')
+  .option('--recent', 'Boost recent documents')
   .option('--full', 'Include full content in results')
   .option('-v, --vault <path>', 'Vault path')
   .option('--json', 'Output as JSON')
@@ -261,7 +262,8 @@ program
         limit: parseInt(options.limit),
         category: options.category,
         tags: options.tags?.split(',').map(t => t.trim()),
-        fullContent: options.full
+        fullContent: options.full,
+        temporalBoost: options.recent
       });
       
       if (options.json) {
@@ -303,6 +305,7 @@ program
   .option('-n, --limit <n>', 'Max results', '5')
   .option('-c, --category <category>', 'Filter by category')
   .option('--tags <tags>', 'Filter by tags (comma-separated)')
+  .option('--recent', 'Boost recent documents')
   .option('--full', 'Include full content in results')
   .option('-v, --vault <path>', 'Vault path')
   .option('--json', 'Output as JSON')
@@ -314,7 +317,8 @@ program
         limit: parseInt(options.limit),
         category: options.category,
         tags: options.tags?.split(',').map(t => t.trim()),
-        fullContent: options.full
+        fullContent: options.full,
+        temporalBoost: options.recent
       });
       
       if (options.json) {
@@ -346,6 +350,36 @@ program
       }
       console.error(chalk.red(`Error: ${err.message}`));
       console.log(chalk.dim(`\nTip: Install qmd: ${QMD_INSTALL_COMMAND}`));
+      process.exit(1);
+    }
+  });
+
+// === CONTEXT ===
+program
+  .command('context <task>')
+  .description('Generate task-relevant context for prompt injection')
+  .option('-n, --limit <n>', 'Max results', '5')
+  .option('--format <format>', 'Output format (markdown|json)', 'markdown')
+  .option('--recent', 'Boost recent documents (enabled by default)', true)
+  .option('-v, --vault <path>', 'Vault path')
+  .action(async (task, options) => {
+    try {
+      const vaultPath = resolveVaultPath(options.vault);
+      const format = options.format === 'json' ? 'json' : 'markdown';
+
+      const { contextCommand } = await import('../dist/commands/context.js');
+      await contextCommand(task, {
+        vaultPath,
+        limit: parseInt(options.limit),
+        format,
+        recent: options.recent
+      });
+    } catch (err) {
+      if (err instanceof QmdUnavailableError) {
+        printQmdMissing();
+        process.exit(1);
+      }
+      console.error(chalk.red(`Error: ${err.message}`));
       process.exit(1);
     }
   });

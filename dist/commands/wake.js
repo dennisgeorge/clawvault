@@ -1,6 +1,7 @@
 import {
   ClawVault
-} from "../chunk-MXNXWOPL.js";
+} from "../chunk-Y4H6XSBV.js";
+import "../chunk-VHECN4BB.js";
 import {
   recover
 } from "../chunk-MILVYUPK.js";
@@ -8,7 +9,6 @@ import {
   clearDirtyFlag
 } from "../chunk-MZZJLQNQ.js";
 import "../chunk-7ZRP733D.js";
-import "../chunk-VJIFT5T5.js";
 
 // src/commands/wake.ts
 import * as path from "path";

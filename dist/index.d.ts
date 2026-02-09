@@ -1,6 +1,7 @@
-import { V as VaultConfig, S as StoreOptions, D as Document, a as SearchOptions, b as SearchResult, c as SyncOptions, d as SyncResult, C as Category, M as MemoryType, H as HandoffDocument, e as SessionRecap } from './types-DO8rJ490.js';
-export { f as DEFAULT_CATEGORIES, g as DEFAULT_CONFIG, h as MEMORY_TYPES, T as TYPE_TO_CATEGORY, i as VaultMeta } from './types-DO8rJ490.js';
+import { V as VaultConfig, S as StoreOptions, D as Document, a as SearchOptions, b as SearchResult, c as SyncOptions, d as SyncResult, C as Category, M as MemoryType, H as HandoffDocument, e as SessionRecap } from './types-DMU3SuAV.js';
+export { f as DEFAULT_CATEGORIES, g as DEFAULT_CONFIG, h as MEMORY_TYPES, T as TYPE_TO_CATEGORY, i as VaultMeta } from './types-DMU3SuAV.js';
 export { setupCommand } from './commands/setup.js';
+export { ContextEntry, ContextFormat, ContextOptions, ContextResult, buildContext, contextCommand, formatContextMarkdown } from './commands/context.js';
 export { TemplateVariables, buildTemplateVariables, renderTemplate } from './lib/template-engine.js';
 
 /**
@@ -215,6 +216,8 @@ declare class SearchEngine {
      * Convert qmd results to ClawVault SearchResult format
      */
     private convertResults;
+    private resolveModifiedAt;
+    private getRecencyFactor;
     /**
      * Convert qmd:// URI to file path
      */

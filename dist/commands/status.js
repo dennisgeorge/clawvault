@@ -1,6 +1,10 @@
 import {
   ClawVault
-} from "../chunk-MXNXWOPL.js";
+} from "../chunk-Y4H6XSBV.js";
+import {
+  QmdUnavailableError,
+  hasQmd
+} from "../chunk-VHECN4BB.js";
 import {
   scanVaultLinks
 } from "../chunk-4VQTUVH7.js";
@@ -8,10 +12,6 @@ import "../chunk-J7ZWCI2C.js";
 import {
   formatAge
 } from "../chunk-7ZRP733D.js";
-import {
-  QmdUnavailableError,
-  hasQmd
-} from "../chunk-VJIFT5T5.js";
 
 // src/commands/status.ts
 import * as fs from "fs";
