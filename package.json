@@ -1,6 +1,6 @@
 {
   "name": "clawvault",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "🐘 An elephant never forgets. Structured memory for OpenClaw agents. Context death resilience, Obsidian-compatible markdown, local semantic search.",
   "type": "module",
   "main": "dist/index.cjs",
