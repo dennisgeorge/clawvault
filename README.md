@@ -4,6 +4,8 @@
 
 Structured memory system for AI agents. Store, search, and link memories across sessions.
 
+🌐 **Website:** [clawvault.dev](https://clawvault.dev) | 📦 **npm:** [clawvault](https://www.npmjs.com/package/clawvault) | 🛠️ **ClawHub:** [clawvault skill](https://clawhub.com/skills/clawvault)
+
 > **Built for [OpenClaw](https://openclaw.ai)** — the AI agent framework. Works standalone too.
 
 ## Install for OpenClaw Agents
