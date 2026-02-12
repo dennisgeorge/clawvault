@@ -31,12 +31,6 @@ bun install -g qmd   # or: npm install -g qmd
 npm install -g clawvault
 ```
 
-## Blog & Resources
-
-- **Blog:** [clawvault.dev/blog](https://clawvault.dev/blog/)
-- **RSS:** [feed.xml](https://clawvault.dev/blog/feed.xml)
-- **Sitemap:** [sitemap.xml](https://clawvault.dev/sitemap.xml)
-
 ## Why ClawVault?
 
 AI agents forget things. Context windows overflow, sessions end, important details get lost. ClawVault fixes that:
@@ -75,6 +69,43 @@ echo 'export CLAWVAULT_PATH="$HOME/memory"' >> ~/.bashrc
 eval "$(clawvault shell-init)"
 ```
 
+## Observational Memory
+
+Automatically compress conversations into prioritized observations:
+
+```bash
+# One-shot: compress a conversation file
+clawvault observe --compress session.md
+
+# Watch mode: monitor a directory for new session files
+clawvault observe --watch ./sessions/
+
+# Background daemon
+clawvault observe --daemon
+```
+
+Observations use emoji priorities:
+- 🔴 **Critical** — decisions, errors, blockers, deadlines
+- 🟡 **Notable** — preferences, architecture discussions, people interactions
+- 🟢 **Info** — routine updates, deployments, general progress
+
+Critical and notable observations are automatically routed to vault categories (`decisions/`, `lessons/`, `people/`, etc.). The system uses LLM compression (Gemini, Anthropic, or OpenAI) with a rule-based fallback.
+
+Integrated into the sleep/wake lifecycle:
+```bash
+clawvault sleep "task summary" --session-transcript conversation.md
+# → observations auto-generated and routed
+
+clawvault wake
+# → recent 🔴/🟡 observations included in context
+```
+
+Token-budget-aware context injection:
+```bash
+clawvault context "what decisions were made" --budget 2000
+# → fits within token budget, 🔴 items first
+```
+
 ## ClawVault Cloud
 
 ClawVault Cloud extends local memory with org-linked decision traces. The local vault stays your source of truth, and cloud sync adds cross-agent visibility plus centralized audit trails.
@@ -101,23 +132,13 @@ clawvault trace emit --summary "Approved 20% discount for ACME"
 clawvault sync
 ```
 
-## Search: qmd vs memory_search
+## Search
 
-**Use `qmd` (or `clawvault search`) — not `memory_search`**
-
-| Tool | Backend | Speed | API Limits |
-|------|---------|-------|------------|
-| `qmd search` / `clawvault search` | Local BM25 | Instant | None |
-| `qmd vsearch` / `clawvault vsearch` | Local embeddings | Fast | None |
-| `memory_search` | Gemini API | Variable | **Yes, hits quotas** |
+ClawVault provides local search via qmd (BM25 + semantic). Works alongside OpenClaw's built-in `memory_search`.
 
 ```bash
-# ✅ Use this
-qmd search "query" -c my-memory
-clawvault search "query"
-
-# ❌ Avoid (API quotas)
-memory_search
+clawvault search "query"           # BM25 keyword search
+clawvault vsearch "what did I decide" # Semantic search (local embeddings)
 ```
 
 ## Vault Structure
@@ -250,10 +271,6 @@ clawvault sleep "..." --next "..."
 clawvault checkpoint --working-on "..." --focus "..." --blocked "..."
 \`\`\`
 
-### Why qmd over memory_search?
-- Local embeddings — no API quotas
-- Always works — no external dependencies
-- Fast — instant BM25, quick semantic
 ```
 
 ## Templates
