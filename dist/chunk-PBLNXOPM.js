@@ -21,7 +21,7 @@ var Compressor = class {
     const provider = this.resolveProvider();
     if (provider) {
       try {
-        const llmOutput = provider === "anthropic" ? await this.callAnthropic(prompt) : await this.callOpenAI(prompt);
+        const llmOutput = provider === "anthropic" ? await this.callAnthropic(prompt) : provider === "gemini" ? await this.callGemini(prompt) : await this.callOpenAI(prompt);
         const normalized = this.normalizeLlmOutput(llmOutput);
         if (normalized) {
           return this.mergeObservations(existingObservations, normalized);
@@ -38,6 +38,9 @@ var Compressor = class {
     }
     if (process.env.OPENAI_API_KEY) {
       return "openai";
+    }
+    if (process.env.GEMINI_API_KEY) {
+      return "gemini";
     }
     return null;
   }
@@ -113,6 +116,29 @@ var Compressor = class {
     }
     const payload = await response.json();
     return payload.choices?.[0]?.message?.content?.trim() ?? "";
+  }
+  async callGemini(prompt) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return "";
+    }
+    const model = this.model ?? "gemini-2.0-flash";
+    const response = await this.fetchImpl(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 1400 }
+        })
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Gemini request failed (${response.status})`);
+    }
+    const payload = await response.json();
+    return payload.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
   }
   normalizeLlmOutput(output) {
     if (!output.trim()) {

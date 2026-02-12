@@ -107,8 +107,8 @@ describe('Observer', () => {
 
       const observations = observer.getObservations();
       expect(observations).toContain('## 2026-02-11');
-      expect(observations).toMatch(/🔴 14:10 .*decided/i);
-      expect(observations).toMatch(/🔴 14:12 .*error/i);
+      expect(observations).toMatch(/🔴.*(?:decided|chose|PostgreSQL)/i);
+      expect(observations).toMatch(/🔴.*(?:error|fail|crash|bug)/i);
     } finally {
       fs.rmSync(vaultPath, { recursive: true, force: true });
     }

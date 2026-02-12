@@ -325,6 +325,7 @@ declare class Compressor {
     private buildPrompt;
     private callAnthropic;
     private callOpenAI;
+    private callGemini;
     private normalizeLlmOutput;
     private fallbackCompression;
     private mergeObservations;

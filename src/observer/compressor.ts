@@ -41,6 +41,8 @@ export class Compressor {
       try {
         const llmOutput = provider === 'anthropic'
           ? await this.callAnthropic(prompt)
+          : provider === 'gemini'
+          ? await this.callGemini(prompt)
           : await this.callOpenAI(prompt);
         const normalized = this.normalizeLlmOutput(llmOutput);
         if (normalized) {
@@ -55,12 +57,15 @@ export class Compressor {
     return this.mergeObservations(existingObservations, fallback);
   }
 
-  private resolveProvider(): 'anthropic' | 'openai' | null {
+  private resolveProvider(): 'anthropic' | 'openai' | 'gemini' | null {
     if (process.env.ANTHROPIC_API_KEY) {
       return 'anthropic';
     }
     if (process.env.OPENAI_API_KEY) {
       return 'openai';
+    }
+    if (process.env.GEMINI_API_KEY) {
+      return 'gemini';
     }
     return null;
   }
@@ -154,6 +159,35 @@ export class Compressor {
       choices?: Array<{ message?: { content?: string } }>;
     };
     return payload.choices?.[0]?.message?.content?.trim() ?? '';
+  }
+
+  private async callGemini(prompt: string): Promise<string> {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return '';
+    }
+
+    const model = this.model ?? 'gemini-2.0-flash';
+    const response = await this.fetchImpl(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 1400 }
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Gemini request failed (${response.status})`);
+    }
+
+    const payload = await response.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    return payload.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
   }
 
   private normalizeLlmOutput(output: string): string {
