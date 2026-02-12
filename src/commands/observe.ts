@@ -94,9 +94,15 @@ async function runOneShotCompression(
   const messages = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   await observer.processMessages(messages.length > 0 ? messages : [raw]);
 
+  // Force flush to capture everything
+  const { observations, routingSummary } = await observer.flush();
+
   const datePart = new Date().toISOString().split('T')[0];
   const outputPath = path.join(vaultPath, 'observations', `${datePart}.md`);
   console.log(`Observations updated: ${outputPath}`);
+  if (routingSummary) {
+    console.log(routingSummary);
+  }
 }
 
 async function watchSessions(observer: Observer, watchPath: string): Promise<void> {

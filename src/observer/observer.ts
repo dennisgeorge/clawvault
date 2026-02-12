@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Compressor } from './compressor.js';
 import { Reflector } from './reflector.js';
+import { Router } from './router.js';
 
 export interface ObserverCompressor {
   compress(messages: string[], existingObservations: string): Promise<string>;
@@ -29,8 +30,10 @@ export class Observer {
   private readonly reflector: ObserverReflector;
   private readonly now: () => Date;
 
+  private readonly router: Router;
   private pendingMessages: string[] = [];
   private observationsCache = '';
+  private lastRoutingSummary = '';
 
   constructor(vaultPath: string, options: ObserverOptions = {}) {
     this.vaultPath = path.resolve(vaultPath);
@@ -40,6 +43,8 @@ export class Observer {
     this.now = options.now ?? (() => new Date());
     this.compressor = options.compressor ?? new Compressor({ model: options.model, now: this.now });
     this.reflector = options.reflector ?? new Reflector({ now: this.now });
+
+    this.router = new Router(vaultPath);
 
     fs.mkdirSync(this.observationsDir, { recursive: true });
     this.observationsCache = this.readTodayObservations();
@@ -69,7 +74,38 @@ export class Observer {
     this.writeObservationFile(todayPath, compressed);
     this.observationsCache = compressed;
 
+    // Route observations to vault categories (decisions/, lessons/, etc.)
+    const { summary } = this.router.route(compressed);
+    if (summary) {
+      this.lastRoutingSummary = summary;
+    }
+
     await this.reflectIfNeeded();
+  }
+
+  /**
+   * Force-flush pending messages regardless of threshold.
+   * Call this on session end to capture everything.
+   */
+  async flush(): Promise<{ observations: string; routingSummary: string }> {
+    if (this.pendingMessages.length === 0) {
+      return { observations: this.observationsCache, routingSummary: this.lastRoutingSummary };
+    }
+
+    const todayPath = this.getObservationPath(this.now());
+    const existing = this.readObservationFile(todayPath);
+    const compressed = (await this.compressor.compress(this.pendingMessages, existing)).trim();
+    this.pendingMessages = [];
+
+    if (compressed) {
+      this.writeObservationFile(todayPath, compressed);
+      this.observationsCache = compressed;
+      const { summary } = this.router.route(compressed);
+      this.lastRoutingSummary = summary;
+      await this.reflectIfNeeded();
+    }
+
+    return { observations: this.observationsCache, routingSummary: this.lastRoutingSummary };
   }
 
   getObservations(): string {
