@@ -427,8 +427,11 @@ export function ensureReportDir(compatReportDir) {
   fs.mkdirSync(compatReportDir, { recursive: true });
 }
 
-export function writeCaseReport(compatReportDir, testCase, report) {
+export function writeCaseReport(compatReportDir, testCase, report, options = {}) {
   if (!compatReportDir || !report) return;
+  if (options.validate !== false) {
+    ensureCompatReportShape(report, testCase.name);
+  }
   const reportPath = path.join(compatReportDir, `${testCase.name}.json`);
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf-8');
 }

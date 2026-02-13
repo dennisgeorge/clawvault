@@ -680,6 +680,7 @@ describe('compat fixture runner utilities', () => {
       expect(() => ensureReportDir('')).not.toThrow();
       expect(() => writeCaseReport('', { name: 'healthy' }, report)).not.toThrow();
       expect(() => writeSummaryReport('', summary)).not.toThrow();
+      expect(() => writeCaseReport(root, { name: 'broken' }, { generatedAt: '2026-02-13T00:00:00.000Z' })).toThrow('report missing');
       expect(() => writeSummaryReport(root, { generatedAt: 'invalid' })).toThrow('compat summary');
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
