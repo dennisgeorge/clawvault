@@ -3,6 +3,7 @@ import {
   buildWorkflowJobsContractSnapshot,
   buildWorkflowContractSnapshot,
   countTopLevelFieldOccurrences,
+  extractTopLevelFieldNameCounts,
   countJobNameOccurrences,
   countScalarFieldOccurrences,
   countStepFieldOccurrences,
@@ -143,6 +144,17 @@ jobs:
               run: echo beta
 `.trim();
 
+const DUPLICATE_TOP_LEVEL_FIELDS_WORKFLOW_YAML = `
+name: First
+name: Second
+jobs:
+  only:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Done
+        run: echo done
+`.trim();
+
 describe('compat ci workflow test utils', () => {
   it('extracts workflow-level trigger metadata', () => {
     expect(extractWorkflowName(`\n${SAMPLE_WORKFLOW_YAML}\n`)).toBe('CI');
@@ -156,6 +168,21 @@ describe('compat ci workflow test utils', () => {
     expect(extractOnTriggerSectionFieldNames(`\n${SAMPLE_WORKFLOW_YAML}\n`, 'pull_request')).toEqual([]);
     expect(extractPushBranches(`\n${SAMPLE_WORKFLOW_YAML}\n`)).toEqual(['main', 'master']);
     expect(hasPullRequestTrigger(`\n${SAMPLE_WORKFLOW_YAML}\n`)).toBe(true);
+  });
+
+  it('builds top-level field-name counts for uniqueness-domain checks', () => {
+    expect(extractTopLevelFieldNameCounts(`\n${SAMPLE_WORKFLOW_YAML}\n`)).toEqual({
+      name: 1,
+      on: 1,
+      jobs: 1
+    });
+    expect(extractTopLevelFieldNameCounts(`\n${DUPLICATE_TOP_LEVEL_FIELDS_WORKFLOW_YAML}\n`)).toEqual({
+      name: 2,
+      jobs: 1
+    });
+    expect(countTopLevelFieldOccurrences(`\n${DUPLICATE_TOP_LEVEL_FIELDS_WORKFLOW_YAML}\n`, 'name')).toBe(2);
+    expect(countTopLevelFieldOccurrences(`\n${DUPLICATE_TOP_LEVEL_FIELDS_WORKFLOW_YAML}\n`, 'jobs')).toBe(1);
+    expect(countTopLevelFieldOccurrences(`\n${DUPLICATE_TOP_LEVEL_FIELDS_WORKFLOW_YAML}\n`, 'on')).toBe(0);
   });
 
   it('extracts workflow trigger/jobs metadata with nonstandard section indentation', () => {

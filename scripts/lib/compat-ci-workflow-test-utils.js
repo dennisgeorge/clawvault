@@ -2,17 +2,39 @@ export function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function extractTopLevelFieldEntries(workflowYaml) {
+  return workflowYaml
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => /^[A-Za-z0-9_-]+:\s*/.test(line))
+    .map((line) => {
+      const fieldMatch = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(line);
+      return fieldMatch
+        ? {
+            fieldName: fieldMatch[1],
+            fieldValue: fieldMatch[2].trim()
+          }
+        : null;
+    })
+    .filter((entry) => entry !== null);
+}
+
 export function extractWorkflowName(workflowYaml) {
   const match = workflowYaml.match(/^name:\s*(.+)\s*$/m);
   return match ? match[1].trim() : null;
 }
 
 export function extractTopLevelFieldNames(workflowYaml) {
-  return workflowYaml
-    .split('\n')
-    .map((line) => line.trimEnd())
-    .filter((line) => /^[A-Za-z0-9_-]+:\s*/.test(line))
-    .map((line) => line.replace(/^([A-Za-z0-9_-]+):.*/, '$1'));
+  return extractTopLevelFieldEntries(workflowYaml)
+    .map((entry) => entry.fieldName);
+}
+
+export function extractTopLevelFieldNameCounts(workflowYaml) {
+  return extractTopLevelFieldEntries(workflowYaml).reduce((counts, entry) => {
+    const existingCount = counts[entry.fieldName] ?? 0;
+    counts[entry.fieldName] = existingCount + 1;
+    return counts;
+  }, {});
 }
 
 function findSectionHeaderLineIndex(lines, sectionName) {
@@ -161,8 +183,7 @@ export function extractTopLevelJobNames(workflowYaml) {
 }
 
 export function countTopLevelFieldOccurrences(workflowYaml, fieldName) {
-  const pattern = new RegExp(`^${escapeRegex(fieldName)}:\\s*`, 'gm');
-  return [...workflowYaml.matchAll(pattern)].length;
+  return extractTopLevelFieldNameCounts(workflowYaml)[fieldName] ?? 0;
 }
 
 export function extractPushBranches(workflowYaml) {
