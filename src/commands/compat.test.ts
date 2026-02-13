@@ -138,4 +138,30 @@ describe('checkOpenClawCompatibility', () => {
       fs.rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it('matches declarative compatibility fixture expectations', async () => {
+    spawnSyncMock.mockReturnValue({ error: undefined });
+    const { checkOpenClawCompatibility, compatibilityExitCode } = await loadCompatModule();
+    const casesPath = path.resolve(process.cwd(), 'tests', 'compat-fixtures', 'cases.json');
+    const cases = JSON.parse(fs.readFileSync(casesPath, 'utf-8')) as Array<{
+      name: string;
+      expectedExitCode: number;
+      expectedWarnings: number;
+      expectedErrors: number;
+      expectedCheckStatuses: Record<string, 'ok' | 'warn' | 'error'>;
+    }>;
+
+    for (const testCase of cases) {
+      const fixtureRoot = path.resolve(process.cwd(), 'tests', 'compat-fixtures', testCase.name);
+      const report = checkOpenClawCompatibility({ baseDir: fixtureRoot });
+      expect(report.warnings).toBe(testCase.expectedWarnings);
+      expect(report.errors).toBe(testCase.expectedErrors);
+      expect(compatibilityExitCode(report, { strict: true })).toBe(testCase.expectedExitCode);
+
+      for (const [label, expectedStatus] of Object.entries(testCase.expectedCheckStatuses)) {
+        const check = report.checks.find((candidate) => candidate.label === label);
+        expect(check?.status).toBe(expectedStatus);
+      }
+    }
+  });
 });
