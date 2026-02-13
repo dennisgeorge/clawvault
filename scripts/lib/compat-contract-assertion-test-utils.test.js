@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  expectEachDomainValueOccursExactlyOnce,
   expectUnitCountMapByKeyParity,
   expectUnitCountMapParity
 } from './compat-contract-assertion-test-utils.js';
@@ -60,6 +61,31 @@ describe('compat contract assertion test utils', () => {
           }
         },
         'mismatched nested array domain'
+      );
+    }).toThrow();
+  });
+
+  it('asserts each domain value occurs exactly once via resolver', () => {
+    const counts = {
+      alpha: 1,
+      beta: 1
+    };
+    expectEachDomainValueOccursExactlyOnce(
+      ['alpha', 'beta'],
+      (value) => counts[value] ?? 0,
+      'unit-domain occurrence check'
+    );
+  });
+
+  it('throws when a domain value does not occur exactly once', () => {
+    const counts = {
+      alpha: 2
+    };
+    expect(() => {
+      expectEachDomainValueOccursExactlyOnce(
+        ['alpha'],
+        (value) => counts[value] ?? 0,
+        'mismatched domain occurrence check'
       );
     }).toThrow();
   });

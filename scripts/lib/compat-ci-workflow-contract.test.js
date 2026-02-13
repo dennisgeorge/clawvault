@@ -85,6 +85,7 @@ import {
   hasPullRequestTrigger
 } from './compat-ci-workflow-test-utils.js';
 import {
+  expectEachDomainValueOccursExactlyOnce,
   expectUnitCountMapByKeyParity,
   expectUnitCountMapParity
 } from './compat-contract-assertion-test-utils.js';
@@ -113,12 +114,11 @@ describe('compat ci workflow contract', () => {
     const workflowYaml = loadCiWorkflowYaml();
     expect(extractWorkflowName(workflowYaml)).toBe(REQUIRED_COMPAT_CI_WORKFLOW_NAME);
     expect(extractTopLevelFieldNames(workflowYaml)).toEqual(REQUIRED_COMPAT_CI_WORKFLOW_FIELD_NAMES);
-    for (const fieldName of REQUIRED_COMPAT_CI_WORKFLOW_UNIQUE_FIELD_NAMES) {
-      expect(
-        countTopLevelFieldOccurrences(workflowYaml, fieldName),
-        `required top-level workflow field "${fieldName}" must appear exactly once`
-      ).toBe(1);
-    }
+    expectEachDomainValueOccursExactlyOnce(
+      REQUIRED_COMPAT_CI_WORKFLOW_UNIQUE_FIELD_NAMES,
+      (fieldName) => countTopLevelFieldOccurrences(workflowYaml, fieldName),
+      'workflow unique top-level fields'
+    );
   });
 
   it('keeps workflow top-level field count map aligned with uniqueness contracts', () => {
@@ -301,12 +301,11 @@ describe('compat ci workflow contract', () => {
   it('keeps required CI job declarations unique in workflow', () => {
     const workflowYaml = loadCiWorkflowYaml();
     expect(extractTopLevelJobNames(workflowYaml)).toEqual(REQUIRED_COMPAT_CI_JOB_NAMES);
-    for (const jobName of REQUIRED_COMPAT_CI_JOB_NAMES) {
-      expect(
-        countJobNameOccurrences(workflowYaml, jobName),
-        `required CI job "${jobName}" must appear exactly once`
-      ).toBe(1);
-    }
+    expectEachDomainValueOccursExactlyOnce(
+      REQUIRED_COMPAT_CI_JOB_NAMES,
+      (jobName) => countJobNameOccurrences(workflowYaml, jobName),
+      'required CI job declarations'
+    );
   });
 
   it('keeps CI job count map aligned with required job uniqueness contracts', () => {
@@ -333,16 +332,16 @@ describe('compat ci workflow contract', () => {
       const jobBlock = extractJobBlock(workflowYaml, jobName);
       expect(jobBlock, `missing CI workflow job: ${jobName}`).toBeTruthy();
       const scalarFieldNameCounts = extractScalarFieldNameCounts(jobBlock);
-      for (const fieldName of uniqueFieldNames) {
-        expect(
-          countScalarFieldOccurrences(jobBlock, fieldName),
-          `required job field "${fieldName}" must appear exactly once in ${jobName}`
-        ).toBe(1);
-        expect(
-          scalarFieldNameCounts[fieldName] ?? 0,
-          `scalar field count map must include "${fieldName}" exactly once in ${jobName}`
-        ).toBe(1);
-      }
+      expectEachDomainValueOccursExactlyOnce(
+        uniqueFieldNames,
+        (fieldName) => countScalarFieldOccurrences(jobBlock, fieldName),
+        `required job-level fields in ${jobName}`
+      );
+      expectEachDomainValueOccursExactlyOnce(
+        uniqueFieldNames,
+        (fieldName) => scalarFieldNameCounts[fieldName] ?? 0,
+        `required job-level scalar field count-map in ${jobName}`
+      );
     }
   });
 
@@ -370,12 +369,11 @@ describe('compat ci workflow contract', () => {
     for (const [jobName, requiredStepNames] of Object.entries(REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES)) {
       const jobBlock = extractJobBlock(workflowYaml, jobName);
       expect(jobBlock, `missing CI workflow job: ${jobName}`).toBeTruthy();
-      for (const stepName of requiredStepNames) {
-        expect(
-          countStepNameOccurrences(jobBlock, stepName),
-          `required CI step "${stepName}" must appear exactly once in ${jobName}`
-        ).toBe(1);
-      }
+      expectEachDomainValueOccursExactlyOnce(
+        requiredStepNames,
+        (stepName) => countStepNameOccurrences(jobBlock, stepName),
+        `required CI steps in ${jobName}`
+      );
     }
   });
 
