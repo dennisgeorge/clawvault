@@ -4,6 +4,9 @@ import * as path from 'path';
 import {
   REQUIRED_COMPAT_CI_JOB_NAME,
   REQUIRED_COMPAT_CI_JOB_NAMES,
+  REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES,
+  REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS,
+  REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES,
   REQUIRED_COMPAT_CI_JOB_RUNS_ON,
   REQUIRED_COMPAT_CI_JOB_TIMEOUT_MINUTES,
   REQUIRED_COMPAT_CI_JOB_FIELD_NAMES,
@@ -49,6 +52,7 @@ import {
   REQUIRED_COMPAT_CI_UPLOAD_USES
 } from './compat-npm-script-contracts.mjs';
 import {
+  buildWorkflowJobsContractSnapshot,
   buildWorkflowContractSnapshot,
   countTopLevelFieldOccurrences,
   countJobNameOccurrences,
@@ -85,6 +89,13 @@ function compactDefinedSectionMap(sectionMapByName) {
   return Object.fromEntries(
     Object.entries(sectionMapByName)
       .filter(([, fieldNames]) => Array.isArray(fieldNames))
+  );
+}
+
+function compactDefinedSectionMapByJob(stepSectionFieldMapByJob) {
+  return Object.fromEntries(
+    Object.entries(stepSectionFieldMapByJob)
+      .map(([jobName, sectionMap]) => [jobName, compactDefinedSectionMap(sectionMap)])
   );
 }
 
@@ -151,6 +162,61 @@ describe('compat ci workflow contract', () => {
       stepTopLevelFieldNamesByName: REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES,
       stepWithFieldNamesByName: REQUIRED_COMPAT_CI_STEP_WITH_FIELD_NAME_SEQUENCES,
       stepEnvFieldNamesByName: REQUIRED_COMPAT_CI_STEP_ENV_FIELD_NAME_SEQUENCES
+    });
+  });
+
+  it('matches canonical CI job-domain snapshot map for required jobs', () => {
+    const workflowYaml = loadCiWorkflowYaml();
+    const jobSnapshotsByName = buildWorkflowJobsContractSnapshot({
+      workflowYaml,
+      jobNames: REQUIRED_COMPAT_CI_JOB_NAMES,
+      stepNamesByJobName: REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES
+    });
+
+    expect({
+      jobNames: Object.keys(jobSnapshotsByName),
+      jobTopLevelFieldNamesByName: Object.fromEntries(
+        Object.entries(jobSnapshotsByName).map(([jobName, snapshot]) => [jobName, snapshot.jobTopLevelFieldNames])
+      ),
+      jobTopLevelScalarValuesByName: Object.fromEntries(
+        Object.entries(jobSnapshotsByName).map(([jobName, snapshot]) => [
+          jobName,
+          {
+            'runs-on': snapshot.jobRunsOn,
+            'timeout-minutes': snapshot.jobTimeoutMinutes
+          }
+        ])
+      ),
+      stepNamesByJobName: Object.fromEntries(
+        Object.entries(jobSnapshotsByName).map(([jobName, snapshot]) => [jobName, snapshot.stepNames])
+      ),
+      stepTopLevelFieldNamesByJobName: Object.fromEntries(
+        Object.entries(jobSnapshotsByName).map(([jobName, snapshot]) => [jobName, snapshot.stepTopLevelFieldNamesByName])
+      ),
+      stepWithFieldNamesByJobName: compactDefinedSectionMapByJob(
+        Object.fromEntries(
+          Object.entries(jobSnapshotsByName).map(([jobName, snapshot]) => [jobName, snapshot.stepWithFieldNamesByName])
+        )
+      ),
+      stepEnvFieldNamesByJobName: compactDefinedSectionMapByJob(
+        Object.fromEntries(
+          Object.entries(jobSnapshotsByName).map(([jobName, snapshot]) => [jobName, snapshot.stepEnvFieldNamesByName])
+        )
+      )
+    }).toEqual({
+      jobNames: REQUIRED_COMPAT_CI_JOB_NAMES,
+      jobTopLevelFieldNamesByName: REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES,
+      jobTopLevelScalarValuesByName: REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS,
+      stepNamesByJobName: REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES,
+      stepTopLevelFieldNamesByJobName: {
+        [REQUIRED_COMPAT_CI_JOB_NAME]: REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES
+      },
+      stepWithFieldNamesByJobName: {
+        [REQUIRED_COMPAT_CI_JOB_NAME]: REQUIRED_COMPAT_CI_STEP_WITH_FIELD_NAME_SEQUENCES
+      },
+      stepEnvFieldNamesByJobName: {
+        [REQUIRED_COMPAT_CI_JOB_NAME]: REQUIRED_COMPAT_CI_STEP_ENV_FIELD_NAME_SEQUENCES
+      }
     });
   });
 

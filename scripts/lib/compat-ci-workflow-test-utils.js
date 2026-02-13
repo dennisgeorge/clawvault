@@ -419,7 +419,7 @@ export function extractUploadArtifactPaths(stepBlock) {
   return pathLines;
 }
 
-export function buildWorkflowContractSnapshot({
+function buildJobContractSnapshot({
   workflowYaml,
   jobName,
   stepNames
@@ -427,13 +427,6 @@ export function buildWorkflowContractSnapshot({
   const normalizedStepNames = Array.isArray(stepNames) && stepNames.length > 0
     ? stepNames
     : [];
-  const triggerNames = extractOnTriggerNames(workflowYaml) ?? [];
-  const triggerSectionFieldNamesByTrigger = Object.fromEntries(
-    triggerNames.map((triggerName) => [
-      triggerName,
-      extractOnTriggerSectionFieldNames(workflowYaml, triggerName)
-    ])
-  );
   const jobBlock = extractJobBlock(workflowYaml, jobName);
   const stepTopLevelFieldNamesByName = {};
   const stepWithFieldNamesByName = {};
@@ -446,13 +439,6 @@ export function buildWorkflowContractSnapshot({
   }
 
   return {
-    workflowName: extractWorkflowName(workflowYaml),
-    topLevelFieldNames: extractTopLevelFieldNames(workflowYaml),
-    triggerNames,
-    triggerSectionFieldNamesByTrigger,
-    pushBranches: extractPushBranches(workflowYaml),
-    pullRequestTrigger: hasPullRequestTrigger(workflowYaml),
-    jobNames: extractTopLevelJobNames(workflowYaml),
     jobName,
     jobTopLevelFieldNames: jobBlock ? extractJobTopLevelFieldNames(jobBlock) : null,
     jobRunsOn: jobBlock ? extractScalarField(jobBlock, 'runs-on') : null,
@@ -461,5 +447,66 @@ export function buildWorkflowContractSnapshot({
     stepTopLevelFieldNamesByName,
     stepWithFieldNamesByName,
     stepEnvFieldNamesByName
+  };
+}
+
+export function buildWorkflowJobsContractSnapshot({
+  workflowYaml,
+  jobNames,
+  stepNamesByJobName
+}) {
+  const normalizedJobNames = Array.isArray(jobNames) && jobNames.length > 0
+    ? jobNames
+    : [];
+  const normalizedStepNamesByJobName = stepNamesByJobName && typeof stepNamesByJobName === 'object'
+    ? stepNamesByJobName
+    : {};
+  return Object.fromEntries(
+    normalizedJobNames.map((jobName) => [
+      jobName,
+      buildJobContractSnapshot({
+        workflowYaml,
+        jobName,
+        stepNames: normalizedStepNamesByJobName[jobName]
+      })
+    ])
+  );
+}
+
+export function buildWorkflowContractSnapshot({
+  workflowYaml,
+  jobName,
+  stepNames
+}) {
+  const triggerNames = extractOnTriggerNames(workflowYaml) ?? [];
+  const triggerSectionFieldNamesByTrigger = Object.fromEntries(
+    triggerNames.map((triggerName) => [
+      triggerName,
+      extractOnTriggerSectionFieldNames(workflowYaml, triggerName)
+    ])
+  );
+  const jobsByName = buildWorkflowJobsContractSnapshot({
+    workflowYaml,
+    jobNames: jobName ? [jobName] : [],
+    stepNamesByJobName: jobName ? { [jobName]: stepNames } : {}
+  });
+  const selectedJobSnapshot = jobName ? jobsByName[jobName] ?? null : null;
+
+  return {
+    workflowName: extractWorkflowName(workflowYaml),
+    topLevelFieldNames: extractTopLevelFieldNames(workflowYaml),
+    triggerNames,
+    triggerSectionFieldNamesByTrigger,
+    pushBranches: extractPushBranches(workflowYaml),
+    pullRequestTrigger: hasPullRequestTrigger(workflowYaml),
+    jobNames: extractTopLevelJobNames(workflowYaml),
+    jobName,
+    jobTopLevelFieldNames: selectedJobSnapshot?.jobTopLevelFieldNames ?? null,
+    jobRunsOn: selectedJobSnapshot?.jobRunsOn ?? null,
+    jobTimeoutMinutes: selectedJobSnapshot?.jobTimeoutMinutes ?? null,
+    stepNames: selectedJobSnapshot?.stepNames ?? null,
+    stepTopLevelFieldNamesByName: selectedJobSnapshot?.stepTopLevelFieldNamesByName ?? {},
+    stepWithFieldNamesByName: selectedJobSnapshot?.stepWithFieldNamesByName ?? {},
+    stepEnvFieldNamesByName: selectedJobSnapshot?.stepEnvFieldNamesByName ?? {}
   };
 }

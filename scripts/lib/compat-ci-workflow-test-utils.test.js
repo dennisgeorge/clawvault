@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildWorkflowJobsContractSnapshot,
   buildWorkflowContractSnapshot,
   countTopLevelFieldOccurrences,
   countJobNameOccurrences,
@@ -109,6 +110,56 @@ describe('compat ci workflow test utils', () => {
     expect(snapshot.stepWithFieldNamesByName['Upload']).toEqual(['name', 'path', 'if-no-files-found']);
     expect(snapshot.stepEnvFieldNamesByName['Build']).toEqual(['SAMPLE_ENV']);
     expect(snapshot.stepEnvFieldNamesByName['First Step']).toBe(null);
+  });
+
+  it('builds normalized workflow job snapshots keyed by job name', () => {
+    const snapshotsByJobName = buildWorkflowJobsContractSnapshot({
+      workflowYaml: `\n${SAMPLE_WORKFLOW_YAML}\n`,
+      jobNames: ['test-and-compat', 'second-job'],
+      stepNamesByJobName: {
+        'test-and-compat': ['First Step', 'Build', 'Upload'],
+        'second-job': ['Done']
+      }
+    });
+    expect(Object.keys(snapshotsByJobName)).toEqual(['test-and-compat', 'second-job']);
+    expect(snapshotsByJobName['test-and-compat']).toEqual({
+      jobName: 'test-and-compat',
+      jobTopLevelFieldNames: ['runs-on', 'steps'],
+      jobRunsOn: 'ubuntu-latest',
+      jobTimeoutMinutes: null,
+      stepNames: ['First Step', 'Build', 'Upload'],
+      stepTopLevelFieldNamesByName: {
+        'First Step': ['name', 'uses'],
+        Build: ['name', 'run', 'env'],
+        Upload: ['name', 'uses', 'with']
+      },
+      stepWithFieldNamesByName: {
+        'First Step': null,
+        Build: null,
+        Upload: ['name', 'path', 'if-no-files-found']
+      },
+      stepEnvFieldNamesByName: {
+        'First Step': null,
+        Build: ['SAMPLE_ENV'],
+        Upload: null
+      }
+    });
+    expect(snapshotsByJobName['second-job']).toEqual({
+      jobName: 'second-job',
+      jobTopLevelFieldNames: ['runs-on', 'steps'],
+      jobRunsOn: 'ubuntu-latest',
+      jobTimeoutMinutes: null,
+      stepNames: ['Done'],
+      stepTopLevelFieldNamesByName: {
+        Done: ['name', 'run']
+      },
+      stepWithFieldNamesByName: {
+        Done: null
+      },
+      stepEnvFieldNamesByName: {
+        Done: null
+      }
+    });
   });
 
   it('extracts job metadata/block boundaries and scalar fields', () => {

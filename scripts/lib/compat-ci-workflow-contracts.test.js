@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   REQUIRED_COMPAT_CI_JOB_NAME,
   REQUIRED_COMPAT_CI_JOB_NAMES,
+  REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES,
+  REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS,
+  REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES,
   REQUIRED_COMPAT_CI_JOB_RUNS_ON,
   REQUIRED_COMPAT_CI_JOB_TIMEOUT_MINUTES,
   REQUIRED_COMPAT_CI_JOB_FIELD_NAMES,
@@ -114,6 +117,28 @@ describe('compat ci workflow contracts constants', () => {
     expect(REQUIRED_COMPAT_CI_JOB_NAMES.length).toBeGreaterThan(0);
     expect(new Set(REQUIRED_COMPAT_CI_JOB_NAMES).size).toBe(REQUIRED_COMPAT_CI_JOB_NAMES.length);
     expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(REQUIRED_COMPAT_CI_JOB_NAME);
+    expect(Object.keys(REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES).sort()).toEqual(
+      [...REQUIRED_COMPAT_CI_JOB_NAMES].sort()
+    );
+    for (const [jobName, fieldNames] of Object.entries(REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES)) {
+      expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
+      expect(Array.isArray(fieldNames)).toBe(true);
+      expect(fieldNames.length).toBeGreaterThan(0);
+      expect(new Set(fieldNames).size).toBe(fieldNames.length);
+    }
+    expect(Object.keys(REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS).sort()).toEqual(
+      [...REQUIRED_COMPAT_CI_JOB_NAMES].sort()
+    );
+    for (const [jobName, scalarValueContracts] of Object.entries(REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS)) {
+      expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
+      expect(typeof scalarValueContracts).toBe('object');
+      expect(scalarValueContracts).toBeTruthy();
+      for (const [fieldName, fieldValue] of Object.entries(scalarValueContracts)) {
+        expect(fieldName.length).toBeGreaterThan(0);
+        expect(typeof fieldValue).toBe('string');
+        expect(fieldValue.length).toBeGreaterThan(0);
+      }
+    }
     expect(typeof REQUIRED_COMPAT_CI_JOB_RUNS_ON).toBe('string');
     expect(REQUIRED_COMPAT_CI_JOB_RUNS_ON.length).toBeGreaterThan(0);
     expect(typeof REQUIRED_COMPAT_CI_JOB_TIMEOUT_MINUTES).toBe('string');
@@ -144,6 +169,15 @@ describe('compat ci workflow contracts constants', () => {
     expect(REQUIRED_COMPAT_CI_STEP_NAMES.length).toBeGreaterThan(0);
     expect(new Set(REQUIRED_COMPAT_CI_STEP_NAMES).size).toBe(REQUIRED_COMPAT_CI_STEP_NAMES.length);
     expect(REQUIRED_COMPAT_CI_STEP_NAMES).toEqual(REQUIRED_COMPAT_CI_STEP_SEQUENCE);
+    expect(Object.keys(REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES).sort()).toEqual(
+      [...REQUIRED_COMPAT_CI_JOB_NAMES].sort()
+    );
+    for (const [jobName, stepNames] of Object.entries(REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES)) {
+      expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
+      expect(Array.isArray(stepNames)).toBe(true);
+      expect(stepNames.length).toBeGreaterThan(0);
+      expect(new Set(stepNames).size).toBe(stepNames.length);
+    }
     expect(Object.keys(REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES).sort()).toEqual(
       [...REQUIRED_COMPAT_CI_STEP_NAMES].sort()
     );

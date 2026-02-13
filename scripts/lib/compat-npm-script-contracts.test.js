@@ -18,7 +18,10 @@ import {
   REQUIRED_COMPAT_CI_JOB_NAMES,
   REQUIRED_COMPAT_CI_JOB_RUNS_ON,
   REQUIRED_COMPAT_CI_JOB_TIMEOUT_MINUTES,
+  REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES,
   REQUIRED_COMPAT_CI_JOB_FIELD_NAMES,
+  REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES,
+  REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS,
   REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAMES,
   REQUIRED_COMPAT_CI_CHECKOUT_STEP_NAME,
   REQUIRED_COMPAT_CI_CHECKOUT_USES,
@@ -173,6 +176,26 @@ describe('compat npm script contracts constants', () => {
     expect(REQUIRED_COMPAT_CI_JOB_NAME.length).toBeGreaterThan(0);
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_JOB_NAMES, 'REQUIRED_COMPAT_CI_JOB_NAMES');
     expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(REQUIRED_COMPAT_CI_JOB_NAME);
+    expect(Object.keys(REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES).sort()).toEqual(
+      [...REQUIRED_COMPAT_CI_JOB_NAMES].sort()
+    );
+    for (const [jobName, fieldNames] of Object.entries(REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES)) {
+      expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
+      expectNonEmptyUniqueStringArray(fieldNames, `REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES[${jobName}]`);
+    }
+    expect(Object.keys(REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS).sort()).toEqual(
+      [...REQUIRED_COMPAT_CI_JOB_NAMES].sort()
+    );
+    for (const [jobName, scalarContracts] of Object.entries(REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS)) {
+      expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
+      expect(typeof scalarContracts).toBe('object');
+      expect(scalarContracts).toBeTruthy();
+      for (const [fieldName, fieldValue] of Object.entries(scalarContracts)) {
+        expect(fieldName.length).toBeGreaterThan(0);
+        expect(typeof fieldValue).toBe('string');
+        expect(fieldValue.length).toBeGreaterThan(0);
+      }
+    }
     expect(typeof REQUIRED_COMPAT_CI_JOB_RUNS_ON).toBe('string');
     expect(REQUIRED_COMPAT_CI_JOB_RUNS_ON.length).toBeGreaterThan(0);
     expect(typeof REQUIRED_COMPAT_CI_JOB_TIMEOUT_MINUTES).toBe('string');
@@ -208,6 +231,13 @@ describe('compat npm script contracts constants', () => {
     ]));
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_STEP_NAMES, 'REQUIRED_COMPAT_CI_STEP_NAMES');
     expect(REQUIRED_COMPAT_CI_STEP_NAMES).toEqual(REQUIRED_COMPAT_CI_STEP_SEQUENCE);
+    expect(Object.keys(REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES).sort()).toEqual(
+      [...REQUIRED_COMPAT_CI_JOB_NAMES].sort()
+    );
+    for (const [jobName, stepNames] of Object.entries(REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES)) {
+      expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
+      expectNonEmptyUniqueStringArray(stepNames, `REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES[${jobName}]`);
+    }
     expect(Object.keys(REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES).sort()).toEqual(
       [...REQUIRED_COMPAT_CI_STEP_NAMES].sort()
     );
