@@ -187,6 +187,13 @@ export function selectCases(cases, rawSelection) {
     .map((value) => value.trim())
     .filter(Boolean);
 
+  const duplicateSelections = selected
+    .filter((name, index, values) => values.indexOf(name) !== index)
+    .filter((name, index, values) => values.indexOf(name) === index);
+  if (duplicateSelections.length > 0) {
+    throw new Error(`Duplicate COMPAT_CASES entries: ${duplicateSelections.join(', ')}`);
+  }
+
   const selectedSet = new Set(selected);
   const missing = selected.filter((name) => !cases.some((testCase) => testCase.name === name));
   if (missing.length > 0) {

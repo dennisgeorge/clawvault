@@ -490,6 +490,7 @@ describe('compat fixture runner utilities', () => {
     ];
     expect(selectCases(cases, 'healthy')).toEqual([{ name: 'healthy', description: 'ok' }]);
     expect(() => selectCases(cases, 'unknown')).toThrow('Unknown COMPAT_CASES entries');
+    expect(() => selectCases(cases, 'healthy,healthy')).toThrow('Duplicate COMPAT_CASES entries');
   });
 
   it('validates compatibility report shape and parsing', () => {
