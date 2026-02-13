@@ -162,6 +162,25 @@ describe('compat ci workflow test utils', () => {
     });
   });
 
+  it('discovers workflow job names when explicit job list is omitted', () => {
+    const snapshotsByJobName = buildWorkflowJobsContractSnapshot({
+      workflowYaml: `\n${SAMPLE_WORKFLOW_YAML}\n`,
+      stepNamesByJobName: {
+        'test-and-compat': ['First Step'],
+        'second-job': ['Done']
+      }
+    });
+    expect(Object.keys(snapshotsByJobName)).toEqual(['test-and-compat', 'second-job']);
+    expect(snapshotsByJobName['test-and-compat'].jobName).toBe('test-and-compat');
+    expect(snapshotsByJobName['test-and-compat'].stepTopLevelFieldNamesByName).toEqual({
+      'First Step': ['name', 'uses']
+    });
+    expect(snapshotsByJobName['second-job'].jobName).toBe('second-job');
+    expect(snapshotsByJobName['second-job'].stepTopLevelFieldNamesByName).toEqual({
+      Done: ['name', 'run']
+    });
+  });
+
   it('extracts job metadata/block boundaries and scalar fields', () => {
     const metadata = extractJobMetadata(`\n${SAMPLE_WORKFLOW_YAML}\n`, 'test-and-compat');
     expect(metadata).toBeTruthy();

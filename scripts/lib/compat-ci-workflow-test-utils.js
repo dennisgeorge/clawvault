@@ -455,9 +455,10 @@ export function buildWorkflowJobsContractSnapshot({
   jobNames,
   stepNamesByJobName
 }) {
+  const discoveredJobNames = extractTopLevelJobNames(workflowYaml) ?? [];
   const normalizedJobNames = Array.isArray(jobNames) && jobNames.length > 0
     ? jobNames
-    : [];
+    : discoveredJobNames;
   const normalizedStepNamesByJobName = stepNamesByJobName && typeof stepNamesByJobName === 'object'
     ? stepNamesByJobName
     : {};

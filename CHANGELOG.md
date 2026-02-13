@@ -28,6 +28,7 @@
 - CI workflow contract domain constants now include job-keyed field/scalar/step sequence maps, and parser utilities now expose reusable multi-job snapshot builders so governance can scale to future matrix/multi-job workflows without duplicating assertion logic.
 - README compatibility command-reference governance now enforces exact-once canonical command lines for required stack/documentation entrypoints, preventing duplicate or missing contract command guidance drift.
 - CI workflow contract enforcement now validates required job-level unique field occurrences and required step ordering/uniqueness through job-keyed sequence maps, making multi-job expansion contract checks reusable without single-job assumptions.
+- Workflow job snapshot utilities now auto-discover top-level job names when explicit job lists are omitted, with regression coverage to keep multi-job contract extraction reusable for future CI topology expansion.
 - Dashboard edge diffing now includes edge type/label, enabling reliable live updates when relation type changes.
 - Hook event matching now supports alias payload shapes (`event`, `eventName`, etc.) for better OpenClaw compatibility.
 - `link` and `entities` commands now consistently respect `--vault` without requiring `CLAWVAULT_PATH`.
