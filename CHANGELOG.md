@@ -88,6 +88,7 @@
 - Compatibility fixture runner now emits aggregate runtime telemetry (`totalDurationMs`, `averageDurationMs`) in summary artifacts and console output.
 - Fixture manifest validation now rejects orphan detail/hint assertions by requiring `expectedDetailIncludes`/`expectedHintIncludes` labels to also be declared in `expectedCheckStatuses`.
 - Compatibility fixture contracts now also support `openclawMissing` simulation to validate missing-binary warnings in the OpenClaw readiness check path.
+- Compatibility summary artifacts now include both declarative and discovered runtime check-label lists (`expectedCheckLabels`, `runtimeCheckLabels`) for faster contract triage.
 
 ## [1.11.2] - 2026-02-12
 
