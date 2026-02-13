@@ -37,6 +37,9 @@ export function loadCases(casesPath) {
     if (typeof testCase.name !== 'string' || testCase.name.length === 0) {
       throw new Error(`compat fixture case[${index}] missing name`);
     }
+    if (typeof testCase.description !== 'string' || testCase.description.trim().length === 0) {
+      throw new Error(`compat fixture case[${index}] missing description`);
+    }
     if (names.has(testCase.name)) {
       throw new Error(`compat fixture case[${index}] duplicates name "${testCase.name}"`);
     }
@@ -225,12 +228,13 @@ export function validateFixtureDirectoryCoverage(fixturesRoot, cases) {
 
 export function validateFixtureReadmeCoverage(readmePath, cases) {
   const readme = fs.readFileSync(readmePath, 'utf-8');
-  const documented = new Set(
+  const documented = new Map(
     readme
       .split(/\r?\n/)
       .map((line) => {
-        const match = /^\s*-\s+`([^`]+)`\s+—/.exec(line);
-        return match?.[1] ?? '';
+        const match = /^\s*-\s+`([^`]+)`\s+—\s+(.+?)\s*$/.exec(line);
+        if (!match) return null;
+        return [match[1], match[2]];
       })
       .filter(Boolean)
   );
@@ -242,8 +246,15 @@ export function validateFixtureReadmeCoverage(readmePath, cases) {
     throw new Error(`Undocumented fixture cases in README: ${missingReadmeEntries.join(', ')}`);
   }
 
-  const unknownReadmeEntries = [...documented].filter((name) => !caseNameSet.has(name));
+  const unknownReadmeEntries = [...documented.keys()].filter((name) => !caseNameSet.has(name));
   if (unknownReadmeEntries.length > 0) {
     throw new Error(`README lists unknown fixture cases: ${unknownReadmeEntries.join(', ')}`);
+  }
+
+  const descriptionMismatches = cases
+    .filter((testCase) => documented.get(testCase.name) !== testCase.description)
+    .map((testCase) => testCase.name);
+  if (descriptionMismatches.length > 0) {
+    throw new Error(`README descriptions out of sync for cases: ${descriptionMismatches.join(', ')}`);
   }
 }

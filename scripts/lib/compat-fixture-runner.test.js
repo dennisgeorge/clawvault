@@ -27,6 +27,7 @@ describe('compat fixture runner utilities', () => {
       cases: [
         {
           name: 'healthy',
+          description: 'expected strict pass.',
           expectedExitCode: 0,
           expectedWarnings: 0,
           expectedErrors: 0,
@@ -51,6 +52,7 @@ describe('compat fixture runner utilities', () => {
       cases: [
         {
           name: 'bad-status',
+          description: 'fixture with invalid status metadata.',
           expectedExitCode: 0,
           expectedWarnings: 0,
           expectedErrors: 0,
@@ -73,6 +75,7 @@ describe('compat fixture runner utilities', () => {
       cases: [
         {
           name: 'bad-allow-missing',
+          description: 'fixture with invalid allowMissingFiles metadata.',
           expectedExitCode: 0,
           expectedWarnings: 0,
           expectedErrors: 0,
@@ -96,6 +99,7 @@ describe('compat fixture runner utilities', () => {
       cases: [
         {
           name: 'bad-hint-metadata',
+          description: 'fixture with invalid expectedHintIncludes metadata.',
           expectedExitCode: 0,
           expectedWarnings: 0,
           expectedErrors: 0,
@@ -125,12 +129,34 @@ describe('compat fixture runner utilities', () => {
     }
   });
 
+  it('rejects missing case description metadata', () => {
+    const root = makeTempDir('compat-cases-');
+    const file = path.join(root, 'cases.json');
+    fs.writeFileSync(file, JSON.stringify({
+      schemaVersion: COMPAT_FIXTURE_SCHEMA_VERSION,
+      cases: [
+        {
+          name: 'missing-description',
+          expectedExitCode: 0,
+          expectedWarnings: 0,
+          expectedErrors: 0,
+          expectedCheckStatuses: { 'hook handler safety': 'ok' }
+        }
+      ]
+    }), 'utf-8');
+    try {
+      expect(() => loadCases(file)).toThrow('missing description');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('filters selected case names and rejects unknown filters', () => {
     const cases = [
-      { name: 'healthy' },
-      { name: 'missing-events' }
+      { name: 'healthy', description: 'ok' },
+      { name: 'missing-events', description: 'error drift' }
     ];
-    expect(selectCases(cases, 'healthy')).toEqual([{ name: 'healthy' }]);
+    expect(selectCases(cases, 'healthy')).toEqual([{ name: 'healthy', description: 'ok' }]);
     expect(() => selectCases(cases, 'unknown')).toThrow('Unknown COMPAT_CASES entries');
   });
 
@@ -206,12 +232,15 @@ describe('compat fixture runner utilities', () => {
     fs.mkdirSync(path.join(root, 'missing-events'));
     try {
       expect(() => validateFixtureDirectoryCoverage(root, [
-        { name: 'healthy' },
-        { name: 'missing-events' }
+        { name: 'healthy', description: 'ok' },
+        { name: 'missing-events', description: 'error drift' }
       ])).not.toThrow();
-      expect(() => validateFixtureDirectoryCoverage(root, [{ name: 'healthy' }]))
+      expect(() => validateFixtureDirectoryCoverage(root, [{ name: 'healthy', description: 'ok' }]))
         .toThrow('Unreferenced fixture directories');
-      expect(() => validateFixtureDirectoryCoverage(root, [{ name: 'healthy' }, { name: 'missing-package-hook' }]))
+      expect(() => validateFixtureDirectoryCoverage(root, [
+        { name: 'healthy', description: 'ok' },
+        { name: 'missing-package-hook', description: 'missing package hook' }
+      ]))
         .toThrow('Missing fixture directories');
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
@@ -224,19 +253,24 @@ describe('compat fixture runner utilities', () => {
     try {
       fs.writeFileSync(readmePath, ['- `healthy` — ok', '- `missing-events` — bad'].join('\n'), 'utf-8');
       expect(() => validateFixtureReadmeCoverage(readmePath, [
-        { name: 'healthy' },
-        { name: 'missing-events' }
+        { name: 'healthy', description: 'ok' },
+        { name: 'missing-events', description: 'bad' }
       ])).not.toThrow();
 
       expect(() => validateFixtureReadmeCoverage(readmePath, [
-        { name: 'healthy' },
-        { name: 'missing-package-hook' }
+        { name: 'healthy', description: 'ok' },
+        { name: 'missing-package-hook', description: 'missing package hook' }
       ])).toThrow('Undocumented fixture cases');
 
       fs.writeFileSync(readmePath, ['- `healthy` — ok', '- `extra-fixture` — stale'].join('\n'), 'utf-8');
       expect(() => validateFixtureReadmeCoverage(readmePath, [
-        { name: 'healthy' }
+        { name: 'healthy', description: 'ok' }
       ])).toThrow('README lists unknown fixture cases');
+
+      fs.writeFileSync(readmePath, ['- `healthy` — stale description'].join('\n'), 'utf-8');
+      expect(() => validateFixtureReadmeCoverage(readmePath, [
+        { name: 'healthy', description: 'ok' }
+      ])).toThrow('descriptions out of sync');
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

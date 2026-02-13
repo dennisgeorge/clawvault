@@ -14,10 +14,10 @@ This directory contains declarative fixtures used by `npm run test:compat-fixtur
 Current fixture scenarios:
 
 - `healthy` — expected strict pass.
-- `missing-requires-bin` — warning for missing `metadata.openclaw.requires.bins`.
-- `non-auto-profile` — warning for missing `--profile auto` delegation.
+- `missing-requires-bin` — warning for missing metadata.openclaw.requires.bins.
+- `non-auto-profile` — warning for missing --profile auto delegation.
 - `missing-events` — error for missing required hook events.
-- `missing-package-hook` — error for missing `openclaw.hooks` registration.
-- `missing-skill-openclaw` — warning for missing `metadata.openclaw` in `SKILL.md`.
-- `missing-skill-file` — warning for missing `SKILL.md` file entirely.
-- `unsafe-hook-handler` — warning for unsafe hook execution conventions (`execSync`, missing shared profile delegation).
+- `missing-package-hook` — error for missing openclaw.hooks registration.
+- `missing-skill-openclaw` — warning for missing metadata.openclaw in SKILL.md.
+- `missing-skill-file` — warning for missing SKILL.md file entirely.
+- `unsafe-hook-handler` — warning for unsafe hook execution conventions (execSync, missing shared profile delegation).
