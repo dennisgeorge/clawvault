@@ -24,7 +24,7 @@
 - Memory graph index now auto-refreshes on vault writes/reindex and link mutations, reducing stale graph context.
 - `doctor` and `status` now report memory graph index presence/staleness to aid long-running agent hygiene.
 - Dashboard now validates graph-index freshness before reuse, automatically falling back to markdown parsing when stale.
-- CLI command registration is being modularized (`maintenance`, `template`, `resilience`, `session-lifecycle`, `vault-operations`, `query`) to improve maintainability.
+- CLI command registration is being modularized (`core`, `maintenance`, `template`, `resilience`, `session-lifecycle`, `vault-operations`, `query`) to improve maintainability.
 - Hook `session:start` context injection now infers `context --profile` from prompt intent (incident/planning/handoff/default).
 
 ## [1.11.2] - 2026-02-12
