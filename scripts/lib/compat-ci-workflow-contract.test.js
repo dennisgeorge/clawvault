@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
   REQUIRED_COMPAT_CI_JOB_NAME,
+  REQUIRED_COMPAT_CI_JOB_NAMES,
   REQUIRED_COMPAT_CI_JOB_RUNS_ON,
   REQUIRED_COMPAT_CI_JOB_TIMEOUT_MINUTES,
   REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAMES,
@@ -49,6 +50,7 @@ import {
   extractStepBlock,
   extractStepMetadata,
   extractPushBranches,
+  extractTopLevelJobNames,
   extractOnTriggerNames,
   extractUploadArtifactPaths,
   extractUsesField,
@@ -82,6 +84,7 @@ describe('compat ci workflow contract', () => {
 
   it('keeps compat job declaration unique in workflow', () => {
     const workflowYaml = loadCiWorkflowYaml();
+    expect(extractTopLevelJobNames(workflowYaml)).toEqual(REQUIRED_COMPAT_CI_JOB_NAMES);
     expect(
       countJobNameOccurrences(workflowYaml, REQUIRED_COMPAT_CI_JOB_NAME),
       `required CI job "${REQUIRED_COMPAT_CI_JOB_NAME}" must appear exactly once`

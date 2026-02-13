@@ -84,6 +84,9 @@ export const REQUIRED_COMPAT_CI_REPORT_DIR_ENV_VALUE = '${{ runner.temp }}/compa
 export const REQUIRED_COMPAT_CI_CHECKOUT_STEP_NAME = 'Checkout';
 export const REQUIRED_COMPAT_CI_CHECKOUT_USES = 'actions/checkout@v4';
 export const REQUIRED_COMPAT_CI_JOB_NAME = 'test-and-compat';
+export const REQUIRED_COMPAT_CI_JOB_NAMES = Object.freeze([
+  REQUIRED_COMPAT_CI_JOB_NAME
+]);
 export const REQUIRED_COMPAT_CI_JOB_RUNS_ON = 'ubuntu-latest';
 export const REQUIRED_COMPAT_CI_JOB_TIMEOUT_MINUTES = '15';
 export const REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAMES = Object.freeze([

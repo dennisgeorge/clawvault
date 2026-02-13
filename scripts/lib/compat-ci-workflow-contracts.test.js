@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   REQUIRED_COMPAT_CI_JOB_NAME,
+  REQUIRED_COMPAT_CI_JOB_NAMES,
   REQUIRED_COMPAT_CI_JOB_RUNS_ON,
   REQUIRED_COMPAT_CI_JOB_TIMEOUT_MINUTES,
   REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAMES,
@@ -87,6 +88,10 @@ describe('compat ci workflow contracts constants', () => {
     expect(REQUIRED_COMPAT_CI_CHECKOUT_USES.length).toBeGreaterThan(0);
     expect(typeof REQUIRED_COMPAT_CI_JOB_NAME).toBe('string');
     expect(REQUIRED_COMPAT_CI_JOB_NAME.length).toBeGreaterThan(0);
+    expect(Array.isArray(REQUIRED_COMPAT_CI_JOB_NAMES)).toBe(true);
+    expect(REQUIRED_COMPAT_CI_JOB_NAMES.length).toBeGreaterThan(0);
+    expect(new Set(REQUIRED_COMPAT_CI_JOB_NAMES).size).toBe(REQUIRED_COMPAT_CI_JOB_NAMES.length);
+    expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(REQUIRED_COMPAT_CI_JOB_NAME);
     expect(typeof REQUIRED_COMPAT_CI_JOB_RUNS_ON).toBe('string');
     expect(REQUIRED_COMPAT_CI_JOB_RUNS_ON.length).toBeGreaterThan(0);
     expect(typeof REQUIRED_COMPAT_CI_JOB_TIMEOUT_MINUTES).toBe('string');
