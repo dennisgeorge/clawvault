@@ -26,6 +26,7 @@ CI publishes the generated summary artifact (`compat-summary`) for each run, wit
 Compatibility report parsing now enforces per-check schema and warning/error tally coherence to catch malformed check output early.
 Validator result payload schema generation/validation is centralized in `scripts/lib/compat-summary-validator-output.mjs` with dedicated unit tests.
 Validator CLI tests also assert that `--out` still captures structured error payloads during argument-parse failures (e.g., unknown/missing-value options).
+Machine-readable JSON schema documents for validator payload contracts are versioned under `schemas/`.
 - Additional mode rules are enforced: `contract` summaries cannot contain case results, and `fixtures` summaries must keep totals aligned with selected cases.
 - Fixtures-mode summary validation now also enforces per-result schema + status coherence (`passedCases`/`failedCases`) and selected-case ordering parity for emitted result lists.
 - `slowestCases` is contract-validated against emitted fixture results (exact `min(3,total)` length, descending order, and duration parity).
