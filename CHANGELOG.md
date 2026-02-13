@@ -191,6 +191,8 @@
 - Bundle-validator CLI manifest-validator drift tests now share a common fixture helper (`runManifestValidatorPayloadDriftScenario`), reducing repeated setup boilerplate while preserving explicit per-drift assertion contracts.
 - Explicit `--manifest` override drift tests now also cover required `artifactFile` and `versionField` contract tampering and share a dedicated helper (`runManifestOverrideDriftScenario`), improving override-path contract coverage while reducing repetitive fixture setup code.
 - Manifest-validator CLI drift tests now share a helper (`runManifestDriftScenario`) and include explicit required `versionField` drift coverage, reducing repeated setup boilerplate while extending contract-path regression protection.
+- Fast compatibility artifact stack now includes the expanded helper-driven drift suites (`test:compat-artifact-cli-drift:fast`), so both bundle-validator and manifest-validator drift regressions (including required `versionField` and override-path contract tampering) run in default fast compatibility gates.
+- Added `test:compat-artifact-cli-drift:fast` and wired it into `test:compat-artifact-stack:fast`, ensuring artifact CLI drift-regression suites run in the fast compatibility artifact stack gate (not only in full-unit-test runs).
 - Compatibility npm workflows are now modularized into composable stack scripts (`test:compat-report-stack:fast`, `test:compat-validator-stack:fast`, `test:compat-artifact-stack:fast`) so `test:compat-summary:fast` remains maintainable as contract gates grow.
 
 ## [1.11.2] - 2026-02-12
