@@ -55,6 +55,7 @@
 - Compatibility fixture manifest now includes explicit `schemaVersion` validation to make contract changes intentional and reviewable.
 - Compatibility unit tests now assert expected diagnostic detail substrings from declarative cases, not only status/count outputs.
 - Added `npm run test:compat-smoke` for fast healthy-fixture compatibility checks during local iteration.
+- Added `npm run test:compat-fixtures:fast` for fixture checks without rebuilding, and updated smoke script to use fast mode.
 - Compatibility fixture matrix now covers missing `SKILL.md` OpenClaw metadata as an explicit warning-drift scenario.
 - Compatibility fixture matrix now also covers unsafe hook handler conventions (`execSync` and missing `--profile auto` delegation) as warning-drift scenarios.
 - Compatibility fixture runner now enforces one-to-one coverage between declarative cases and fixture directories (missing/unreferenced fixture detection).

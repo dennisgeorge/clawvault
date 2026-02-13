@@ -216,15 +216,20 @@ clawvault compat --strict --base-dir ./tests/compat-fixtures/healthy
 npm run test:compat-fixtures
 # fixture expectations are defined in tests/compat-fixtures/cases.json
 # fixture manifest includes schemaVersion for explicit contract evolution
+# includes a fresh build before running fixtures
 
 # Quick smoke check (healthy fixture only)
 npm run test:compat-smoke
+# uses fast fixture runner mode (requires existing dist build)
 
 # Run full local CI gate (typecheck + tests + compat fixtures)
 npm run ci
 
 # Optional: run only specific compatibility fixtures
 COMPAT_CASES=healthy,missing-events npm run test:compat-fixtures
+
+# Optional: run fast fixture checks without building
+npm run test:compat-fixtures:fast
 
 # Optional: write per-fixture JSON reports to a directory
 COMPAT_REPORT_DIR=/tmp/clawvault-compat-reports npm run test:compat-fixtures

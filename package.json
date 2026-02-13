@@ -35,7 +35,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:compat-fixtures": "npm run build && node scripts/check-compat-fixtures.mjs",
-    "test:compat-smoke": "COMPAT_CASES=healthy npm run test:compat-fixtures",
+    "test:compat-fixtures:fast": "node scripts/check-compat-fixtures.mjs",
+    "test:compat-smoke": "COMPAT_CASES=healthy npm run test:compat-fixtures:fast",
     "ci": "npm run typecheck && npm test && npm run test:compat-fixtures",
     "seo:generate": "node generate-seo-assets.mjs",
     "prepublishOnly": "npm run build"

@@ -15,6 +15,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..');
 const fixturesRoot = path.join(repoRoot, 'tests', 'compat-fixtures');
 const fixtureCasesPath = path.join(fixturesRoot, 'cases.json');
+const distEntryPath = path.join(repoRoot, 'dist', 'index.js');
 const compatReportDir = process.env.COMPAT_REPORT_DIR
   ? path.resolve(process.env.COMPAT_REPORT_DIR)
   : '';
@@ -106,6 +107,10 @@ function runCase(testCase, env) {
 }
 
 function main() {
+  if (!fs.existsSync(distEntryPath)) {
+    throw new Error('Missing dist/index.js. Run `npm run build` before running compatibility fixture checks.');
+  }
+
   const allCases = loadCases(fixtureCasesPath);
   validateFixtureDirectoryCoverage(fixturesRoot, allCases);
   const cases = selectCases(allCases, process.env.COMPAT_CASES);
