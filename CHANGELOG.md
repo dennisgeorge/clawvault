@@ -150,6 +150,7 @@
 - Shared validator argument parsing helpers are now centralized in `scripts/lib/validator-arg-utils.mjs` (`readRequiredOptionValue`, flag-token helpers), reducing repeated `--option` missing-value guard code across validator CLIs while preserving existing error contracts.
 - Added standalone artifact-bundle manifest verifier (`scripts/validate-compat-artifact-bundle-manifest.mjs`) with structured output contract/schema (`scripts/lib/compat-artifact-bundle-manifest-validator-output.mjs`, `schemas/compat-artifact-bundle-manifest-validator-output.schema.json`) and workflow/CI integration, enabling semantic manifest validation beyond JSON schema shape checks.
 - Artifact-bundle validator now verifies `artifact-bundle-manifest-validator-result.json` as part of the end-to-end artifact contract set, and emitted bundle contract metadata/CI artifacts now include this manifest-verifier result artifact.
+- Compatibility npm workflows are now modularized into composable stack scripts (`test:compat-report-stack:fast`, `test:compat-validator-stack:fast`, `test:compat-artifact-stack:fast`) so `test:compat-summary:fast` remains maintainable as contract gates grow.
 
 ## [1.11.2] - 2026-02-12
 
