@@ -110,4 +110,13 @@ describe('validate-compat-summary script', () => {
       fs.rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it('fails with a clear message when no summary path input is provided', () => {
+    const result = runSummaryValidator([], {
+      COMPAT_REPORT_DIR: '',
+      COMPAT_SUMMARY_PATH: ''
+    });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Missing summary path');
+  });
 });
