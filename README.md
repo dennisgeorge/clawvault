@@ -207,6 +207,7 @@ clawvault compat
 
 # CI/automation-friendly compatibility gate
 clawvault compat --strict   # exits non-zero on warnings/errors
+# validates hook events, required bins metadata, and handler safety/profile delegation
 ```
 
 

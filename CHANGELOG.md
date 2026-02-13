@@ -35,6 +35,7 @@
 - Config resolver test coverage now includes env-vs-discovery precedence and explicit missing-vault failure behavior.
 - `clawvault compat --strict` now exits non-zero on warnings/errors for CI-friendly OpenClaw compatibility gates.
 - CLI entrypoint runtime helpers (`getVault`, `runQmd`, qmd-missing handling) were extracted into a dedicated module to keep command bootstrap maintainable.
+- Compatibility diagnostics now also validate hook manifest required bins metadata and hook handler delegation to `context --profile auto`.
 
 ## [1.11.2] - 2026-02-12
 
