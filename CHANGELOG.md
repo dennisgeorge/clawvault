@@ -108,6 +108,7 @@
 - Summary validation now enforces mode-specific invariants: contract mode must remain zero-result metadata, while fixtures mode totals must match selected-case counts with bounded slowest-case lists.
 - Compatibility summary validation now enforces fixture result-entry schema and coherence between `results`, pass/fail lists, and selected-case ordering, tightening downstream report contract guarantees.
 - Summary validation now enforces `slowestCases` coherence with fixture results (expected count, descending duration order, and exact per-case duration parity), reducing telemetry drift risk.
+- Compatibility summary validation now enforces pass/fail result semantics (failed cases must carry mismatch details, and passed cases must keep expected/actual exit-code parity).
 - Fixture manifest validation now requires `expectedCheckStatuses` labels to be declared in `expectedCheckLabels`, tightening declarative contract integrity.
 
 ## [1.11.2] - 2026-02-12
