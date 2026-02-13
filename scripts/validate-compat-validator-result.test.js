@@ -6,6 +6,7 @@ import { spawnSync } from 'child_process';
 import {
   buildSummaryValidatorErrorPayload
 } from './lib/compat-summary-validator-output.mjs';
+import { COMPAT_VALIDATOR_RESULT_VERIFIER_OUTPUT_SCHEMA_VERSION } from './lib/compat-validator-result-verifier-output.mjs';
 
 const validatorResultScript = path.resolve(process.cwd(), 'scripts', 'validate-compat-validator-result.mjs');
 
@@ -21,6 +22,10 @@ function runValidatorResult(args = [], env = {}) {
   );
 }
 
+function parseJsonLine(stdout) {
+  return JSON.parse(stdout.trim());
+}
+
 describe('validate-compat-validator-result script', () => {
   it('validates payload via explicit path argument', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compat-validator-result-'));
@@ -30,6 +35,19 @@ describe('validate-compat-validator-result script', () => {
       const result = runValidatorResult([payloadPath]);
       expect(result.status).toBe(0);
       expect(result.stdout).toContain('Validator result payload is valid');
+
+      const outPath = path.join(root, 'validator-verify-result.json');
+      const jsonResult = runValidatorResult(['--validator-result', payloadPath, '--json', '--out', outPath]);
+      expect(jsonResult.status).toBe(0);
+      const expectedPayload = {
+        outputSchemaVersion: COMPAT_VALIDATOR_RESULT_VERIFIER_OUTPUT_SCHEMA_VERSION,
+        status: 'ok',
+        payloadPath,
+        payloadStatus: 'error',
+        validatorPayloadOutputSchemaVersion: 1
+      };
+      expect(parseJsonLine(jsonResult.stdout)).toEqual(expectedPayload);
+      expect(JSON.parse(fs.readFileSync(outPath, 'utf-8'))).toEqual(expectedPayload);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -47,8 +65,35 @@ describe('validate-compat-validator-result script', () => {
       const failure = runValidatorResult([], { COMPAT_REPORT_DIR: root });
       expect(failure.status).toBe(1);
       expect(failure.stderr).toContain('Unable to read validator result payload');
+
+      const errorOutPath = path.join(root, 'validator-verify-error.json');
+      const jsonFailure = runValidatorResult(['--json', '--out', errorOutPath], { COMPAT_REPORT_DIR: root });
+      expect(jsonFailure.status).toBe(1);
+      const expectedErrorPayload = {
+        outputSchemaVersion: COMPAT_VALIDATOR_RESULT_VERIFIER_OUTPUT_SCHEMA_VERSION,
+        status: 'error',
+        error: expect.stringContaining('Unable to read validator result payload')
+      };
+      expect(parseJsonLine(jsonFailure.stdout)).toEqual(expectedErrorPayload);
+      expect(JSON.parse(fs.readFileSync(errorOutPath, 'utf-8'))).toEqual(expectedErrorPayload);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  it('prints usage help and validates argument error messaging', () => {
+    const helpResult = runValidatorResult(['--help']);
+    expect(helpResult.status).toBe(0);
+    expect(helpResult.stdout).toContain('Usage: node scripts/validate-compat-validator-result.mjs');
+    expect(helpResult.stdout).toContain('--validator-result <path>');
+    expect(helpResult.stdout).toContain('--json');
+
+    const unknownOptionResult = runValidatorResult(['--unknown']);
+    expect(unknownOptionResult.status).toBe(1);
+    expect(unknownOptionResult.stderr).toContain('Unknown option');
+
+    const missingValueResult = runValidatorResult(['--validator-result']);
+    expect(missingValueResult.status).toBe(1);
+    expect(missingValueResult.stderr).toContain('Missing value for --validator-result');
   });
 });
