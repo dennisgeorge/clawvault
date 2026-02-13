@@ -152,6 +152,7 @@ function main() {
   validateFixtureDirectoryCoverage(fixturesRoot, allCases);
   validateFixtureReadmeCoverage(fixtureReadmePath, allCases);
   const cases = selectCases(allCases, process.env.COMPAT_CASES);
+  console.log(`Compatibility fixture selection: ${cases.length} case(s) [${cases.map((testCase) => testCase.name).join(', ')}]`);
   ensureReportDir(compatReportDir);
   const { shimDir } = createOpenClawShim();
   const env = {
