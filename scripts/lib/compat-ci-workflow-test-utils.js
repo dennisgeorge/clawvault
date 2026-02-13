@@ -436,8 +436,20 @@ export function extractNestedSectionScalarFieldMap(stepBlock, sectionName) {
 }
 
 export function countScalarFieldOccurrences(block, fieldName) {
-  const fieldPattern = new RegExp(`\\n\\s*${escapeRegex(fieldName)}:\\s*`, 'g');
-  return [...block.matchAll(fieldPattern)].length;
+  return extractScalarFieldNameCounts(block)[fieldName] ?? 0;
+}
+
+export function extractScalarFieldNameCounts(block) {
+  return block
+    .split('\n')
+    .map((line) => line.trim())
+    .map((line) => /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(line)?.[1] ?? null)
+    .filter((fieldName) => typeof fieldName === 'string' && fieldName.length > 0)
+    .reduce((counts, fieldName) => {
+      const existingCount = counts[fieldName] ?? 0;
+      counts[fieldName] = existingCount + 1;
+      return counts;
+    }, {});
 }
 
 export function extractStepMetadata(workflowYaml, stepName) {

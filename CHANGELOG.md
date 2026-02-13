@@ -43,6 +43,7 @@
 - CI workflow contract coverage now includes discovered-step snapshot parity checks (no explicit per-job step map input), ensuring job-snapshot auto-discovery remains aligned with canonical step/field domain contracts.
 - CI workflow utilities now expose parsed job-name and step-name count maps, and contract suites assert count-map parity for required job/step uniqueness domains (complementing per-name occurrence assertions).
 - Added reusable workflow domain consistency snapshots (top-level field names/counts, job names/counts, per-job step names/counts) with both utility-level and live-contract invariants to guard parser extraction/count coherence across domains.
+- Scalar/job/step occurrence counting in CI workflow utilities now routes through shared parsed count-map helpers (including `extractScalarFieldNameCounts`, `extractJobNameCounts`, and `extractStepNameCounts`), and contract/test suites assert additional count-map parity invariants for required workflow/job/step domains.
 - Dashboard edge diffing now includes edge type/label, enabling reliable live updates when relation type changes.
 - Hook event matching now supports alias payload shapes (`event`, `eventName`, etc.) for better OpenClaw compatibility.
 - `link` and `entities` commands now consistently respect `--vault` without requiring `CLAWVAULT_PATH`.

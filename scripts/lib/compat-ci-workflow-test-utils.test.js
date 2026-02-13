@@ -10,6 +10,7 @@ import {
   countStepFieldOccurrences,
   countStepNameOccurrences,
   extractJobNameCounts,
+  extractScalarFieldNameCounts,
   extractStepNameCounts,
   extractEnvField,
   extractJobBlock,
@@ -401,6 +402,19 @@ describe('compat ci workflow test utils', () => {
     expect(extractJobTopLevelFieldNames(jobBlock)).toEqual(['runs-on', 'steps']);
     expect(countJobNameOccurrences(`\n${SAMPLE_WORKFLOW_YAML}\n`, 'test-and-compat')).toBe(1);
     expect(countJobNameOccurrences(`\n${SAMPLE_WORKFLOW_YAML}\n`, 'Missing Job')).toBe(0);
+    expect(extractScalarFieldNameCounts(jobBlock)).toEqual({
+      'test-and-compat': 1,
+      'runs-on': 1,
+      steps: 1,
+      name: 1,
+      uses: 2,
+      run: 1,
+      env: 1,
+      'SAMPLE_ENV': 1,
+      with: 1,
+      path: 1,
+      'if-no-files-found': 1
+    });
     expect(countScalarFieldOccurrences(jobBlock, 'runs-on')).toBe(1);
     expect(countScalarFieldOccurrences(jobBlock, 'steps')).toBe(1);
   });
@@ -539,6 +553,10 @@ describe('compat ci workflow test utils', () => {
     expect(extractNestedSectionScalarFieldMap('run: npm test', 'env')).toBe(null);
     expect(extractNestedSectionScalarFieldValue('run: npm test', 'env', 'SAMPLE_ENV')).toBe(null);
     expect(extractUploadArtifactPaths('- name: Upload\n  uses: actions/upload-artifact@v4')).toBe(null);
+    expect(extractScalarFieldNameCounts('run: npm test\nrun: npm test\nname: test')).toEqual({
+      run: 2,
+      name: 1
+    });
     expect(countScalarFieldOccurrences('run: npm test', 'missing')).toBe(0);
     expect(extractWorkflowName('jobs:\n  test:\n    runs-on: ubuntu-latest')).toBe(null);
     expect(extractTopLevelFieldNames('  name: CI\njobs:\n  test:\n    runs-on: ubuntu-latest')).toEqual(['jobs']);

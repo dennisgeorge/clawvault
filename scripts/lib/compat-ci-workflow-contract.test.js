@@ -58,6 +58,7 @@ import {
   countJobNameOccurrences,
   extractJobNameCounts,
   countScalarFieldOccurrences,
+  extractScalarFieldNameCounts,
   countStepNameOccurrences,
   extractStepNameCounts,
   extractEnvField,
@@ -326,10 +327,15 @@ describe('compat ci workflow contract', () => {
     for (const [jobName, uniqueFieldNames] of Object.entries(REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAME_SEQUENCES)) {
       const jobBlock = extractJobBlock(workflowYaml, jobName);
       expect(jobBlock, `missing CI workflow job: ${jobName}`).toBeTruthy();
+      const scalarFieldNameCounts = extractScalarFieldNameCounts(jobBlock);
       for (const fieldName of uniqueFieldNames) {
         expect(
           countScalarFieldOccurrences(jobBlock, fieldName),
           `required job field "${fieldName}" must appear exactly once in ${jobName}`
+        ).toBe(1);
+        expect(
+          scalarFieldNameCounts[fieldName] ?? 0,
+          `scalar field count map must include "${fieldName}" exactly once in ${jobName}`
         ).toBe(1);
       }
     }
