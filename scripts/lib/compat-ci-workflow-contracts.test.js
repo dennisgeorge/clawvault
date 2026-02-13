@@ -26,6 +26,7 @@ import {
   REQUIRED_COMPAT_CI_SETUP_NODE_STEP_NAME,
   REQUIRED_COMPAT_CI_SETUP_NODE_USES,
   REQUIRED_COMPAT_CI_SETUP_NODE_VERSION,
+  REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES,
   REQUIRED_COMPAT_CI_STEP_NAMES,
   REQUIRED_COMPAT_CI_STEP_SEQUENCE,
   REQUIRED_COMPAT_CI_PRIMARY_RUN_STEP_NAME,
@@ -119,6 +120,15 @@ describe('compat ci workflow contracts constants', () => {
     expect(REQUIRED_COMPAT_CI_STEP_NAMES.length).toBeGreaterThan(0);
     expect(new Set(REQUIRED_COMPAT_CI_STEP_NAMES).size).toBe(REQUIRED_COMPAT_CI_STEP_NAMES.length);
     expect(REQUIRED_COMPAT_CI_STEP_NAMES).toEqual(REQUIRED_COMPAT_CI_STEP_SEQUENCE);
+    expect(Object.keys(REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES).sort()).toEqual(
+      [...REQUIRED_COMPAT_CI_STEP_NAMES].sort()
+    );
+    for (const fieldNameSequence of Object.values(REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES)) {
+      expect(Array.isArray(fieldNameSequence)).toBe(true);
+      expect(fieldNameSequence.length).toBeGreaterThan(0);
+      expect(new Set(fieldNameSequence).size).toBe(fieldNameSequence.length);
+      expect(fieldNameSequence[0]).toBe('name');
+    }
   });
 
   it('keeps required upload artifact file domain unique and non-empty', () => {

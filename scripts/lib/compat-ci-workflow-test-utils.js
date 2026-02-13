@@ -104,6 +104,35 @@ export function extractStepNames(workflowYamlOrJobBlock) {
   return [...workflowYamlOrJobBlock.matchAll(stepHeaderPattern)].map((match) => match[1].trim());
 }
 
+export function extractStepFieldNames(stepBlock) {
+  const lines = stepBlock.split('\n');
+  const stepHeaderLine = lines.find((line) => line.trim().startsWith('- name:'));
+  if (!stepHeaderLine) {
+    return null;
+  }
+  const stepHeaderIndentMatch = /^(\s*)- name:\s+/.exec(stepHeaderLine);
+  if (!stepHeaderIndentMatch) {
+    return null;
+  }
+  const topLevelFieldIndent = stepHeaderIndentMatch[1].length + 2;
+  const topLevelFieldPattern = new RegExp(`^\\s{${topLevelFieldIndent}}([A-Za-z0-9-]+):\\s*`);
+  const fieldNames = ['name'];
+  for (const line of lines) {
+    const fieldMatch = topLevelFieldPattern.exec(line);
+    if (!fieldMatch) {
+      continue;
+    }
+    fieldNames.push(fieldMatch[1]);
+  }
+  return fieldNames;
+}
+
+export function countStepFieldOccurrences(stepBlock, fieldName) {
+  return (extractStepFieldNames(stepBlock) ?? [])
+    .filter((candidateFieldName) => candidateFieldName === fieldName)
+    .length;
+}
+
 export function countScalarFieldOccurrences(block, fieldName) {
   const fieldPattern = new RegExp(`\\n\\s*${escapeRegex(fieldName)}:\\s*`, 'g');
   return [...block.matchAll(fieldPattern)].length;

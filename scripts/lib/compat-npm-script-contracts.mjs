@@ -111,6 +111,14 @@ export const REQUIRED_COMPAT_CI_STEP_SEQUENCE = Object.freeze([
 export const REQUIRED_COMPAT_CI_STEP_NAMES = Object.freeze([
   ...REQUIRED_COMPAT_CI_STEP_SEQUENCE
 ]);
+export const REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES = Object.freeze({
+  [REQUIRED_COMPAT_CI_CHECKOUT_STEP_NAME]: Object.freeze(['name', 'uses']),
+  [REQUIRED_COMPAT_CI_SETUP_NODE_STEP_NAME]: Object.freeze(['name', 'uses', 'with']),
+  [REQUIRED_COMPAT_CI_INSTALL_STEP_NAME]: Object.freeze(['name', 'run']),
+  [REQUIRED_COMPAT_CI_PRIMARY_RUN_STEP_NAME]: Object.freeze(['name', 'run', 'env']),
+  [REQUIRED_COMPAT_CI_FAILURE_UPLOAD_STEP_NAME]: Object.freeze(['name', 'if', 'uses', 'with']),
+  [REQUIRED_COMPAT_CI_UPLOAD_STEP_NAME]: Object.freeze(['name', 'if', 'uses', 'with'])
+});
 
 export const REQUIRED_COMPAT_ARTIFACT_STACK_SEQUENCE = Object.freeze([
   'npm run test:compat-artifact-alignment:fast',

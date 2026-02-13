@@ -3,6 +3,7 @@ import {
   countTopLevelFieldOccurrences,
   countJobNameOccurrences,
   countScalarFieldOccurrences,
+  countStepFieldOccurrences,
   countStepNameOccurrences,
   extractEnvField,
   extractJobBlock,
@@ -11,6 +12,7 @@ import {
   extractTopLevelJobNames,
   extractRunCommand,
   extractScalarField,
+  extractStepFieldNames,
   extractStepNames,
   extractStepBlock,
   extractStepMetadata,
@@ -92,6 +94,9 @@ describe('compat ci workflow test utils', () => {
     expect(countStepNameOccurrences(`\n${SAMPLE_WORKFLOW_YAML}\n`, 'Build')).toBe(1);
     expect(countStepNameOccurrences(`\n${SAMPLE_WORKFLOW_YAML}\n`, 'Missing Step')).toBe(0);
     expect(extractStepNames(`\n${SAMPLE_WORKFLOW_YAML}\n`)).toEqual(['First Step', 'Build', 'Upload', 'Done']);
+    expect(extractStepFieldNames(metadata.block)).toEqual(['name', 'run', 'env']);
+    expect(countStepFieldOccurrences(metadata.block, 'run')).toBe(1);
+    expect(countStepFieldOccurrences(metadata.block, 'missing')).toBe(0);
   });
 
   it('extracts uses/scalar fields and multiline upload paths', () => {
@@ -99,6 +104,7 @@ describe('compat ci workflow test utils', () => {
     expect(uploadStepBlock).toBeTruthy();
     expect(extractUsesField(uploadStepBlock)).toBe('actions/upload-artifact@v4');
     expect(extractScalarField(uploadStepBlock, 'name')).toBe('sample-artifact');
+    expect(extractStepFieldNames(uploadStepBlock)).toEqual(['name', 'uses', 'with']);
     expect(extractScalarField(uploadStepBlock, 'if-no-files-found')).toBe('ignore');
     expect(extractUploadArtifactPaths(uploadStepBlock)).toEqual([
       '${{ runner.temp }}/reports/a.json',
@@ -113,6 +119,7 @@ describe('compat ci workflow test utils', () => {
     expect(extractJobMetadata(`\n${SAMPLE_WORKFLOW_YAML}\n`, 'Missing Job')).toBe(null);
     expect(extractStepMetadata(`\n${SAMPLE_WORKFLOW_YAML}\n`, 'Missing Step')).toBe(null);
     expect(extractScalarField('run: npm test', 'missing')).toBe(null);
+    expect(extractStepFieldNames('run: npm test')).toBe(null);
     expect(extractUploadArtifactPaths('- name: Upload\n  uses: actions/upload-artifact@v4')).toBe(null);
     expect(countScalarFieldOccurrences('run: npm test', 'missing')).toBe(0);
     expect(extractWorkflowName('jobs:\n  test:\n    runs-on: ubuntu-latest')).toBe(null);

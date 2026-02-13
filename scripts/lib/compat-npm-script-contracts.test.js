@@ -27,6 +27,7 @@ import {
   REQUIRED_COMPAT_CI_SETUP_NODE_STEP_NAME,
   REQUIRED_COMPAT_CI_SETUP_NODE_USES,
   REQUIRED_COMPAT_CI_SETUP_NODE_VERSION,
+  REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES,
   REQUIRED_COMPAT_CI_STEP_NAMES,
   REQUIRED_COMPAT_CI_STEP_SEQUENCE,
   REQUIRED_COMPAT_CI_PRIMARY_RUN_STEP_NAME,
@@ -162,6 +163,14 @@ describe('compat npm script contracts constants', () => {
     ]));
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_STEP_NAMES, 'REQUIRED_COMPAT_CI_STEP_NAMES');
     expect(REQUIRED_COMPAT_CI_STEP_NAMES).toEqual(REQUIRED_COMPAT_CI_STEP_SEQUENCE);
+    expect(Object.keys(REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES).sort()).toEqual(
+      [...REQUIRED_COMPAT_CI_STEP_NAMES].sort()
+    );
+    for (const [stepName, fieldNameSequence] of Object.entries(REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES)) {
+      expect(stepName.length).toBeGreaterThan(0);
+      expectNonEmptyUniqueStringArray(fieldNameSequence, `REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES[${stepName}]`);
+      expect(fieldNameSequence[0]).toBe('name');
+    }
     expect(typeof REQUIRED_COMPAT_CI_REPORT_DIR_ENV_KEY).toBe('string');
     expect(REQUIRED_COMPAT_CI_REPORT_DIR_ENV_KEY.length).toBeGreaterThan(0);
     expect(typeof REQUIRED_COMPAT_CI_REPORT_DIR_ENV_VALUE).toBe('string');

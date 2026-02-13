@@ -29,6 +29,7 @@ import {
   REQUIRED_COMPAT_CI_SETUP_NODE_STEP_NAME,
   REQUIRED_COMPAT_CI_SETUP_NODE_USES,
   REQUIRED_COMPAT_CI_SETUP_NODE_VERSION,
+  REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES,
   REQUIRED_COMPAT_CI_STEP_NAMES,
   REQUIRED_COMPAT_CI_STEP_SEQUENCE,
   REQUIRED_COMPAT_CI_UPLOAD_ARTIFACT_NAME,
@@ -48,6 +49,7 @@ import {
   extractJobBlock,
   extractRunCommand,
   extractScalarField,
+  extractStepFieldNames,
   extractStepBlock,
   extractStepMetadata,
   extractPushBranches,
@@ -147,6 +149,17 @@ describe('compat ci workflow contract', () => {
     const ciJobBlock = extractJobBlock(workflowYaml, REQUIRED_COMPAT_CI_JOB_NAME);
     expect(ciJobBlock, `missing CI workflow job: ${REQUIRED_COMPAT_CI_JOB_NAME}`).toBeTruthy();
     expect(extractStepNames(ciJobBlock)).toEqual(REQUIRED_COMPAT_CI_STEP_NAMES);
+  });
+
+  it('keeps canonical top-level field-name domain for each required CI step', () => {
+    const workflowYaml = loadCiWorkflowYaml();
+    const ciJobBlock = extractJobBlock(workflowYaml, REQUIRED_COMPAT_CI_JOB_NAME);
+    expect(ciJobBlock, `missing CI workflow job: ${REQUIRED_COMPAT_CI_JOB_NAME}`).toBeTruthy();
+    for (const [stepName, expectedFieldNames] of Object.entries(REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES)) {
+      const stepBlock = extractStepBlock(ciJobBlock, stepName);
+      expect(stepBlock, `missing CI workflow step: ${stepName}`).toBeTruthy();
+      expect(extractStepFieldNames(stepBlock)).toEqual(expectedFieldNames);
+    }
   });
 
   it('keeps checkout/setup/install steps aligned with canonical CI environment contracts', () => {
