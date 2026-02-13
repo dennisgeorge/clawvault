@@ -53,6 +53,7 @@
 - Added reusable string-record assertion helper (`expectNonEmptyStringRecord`, with optional empty-record allowance) and refactored npm/CI scalar-value contract loops to use shared key/value-domain semantics instead of duplicated inline object-entry checks.
 - Added reusable object key-domain parity assertion helper (`expectObjectKeyDomainParity`) and refactored npm/CI key-domain map contracts to use shared domain-key parity checks instead of repeated `Object.keys(...).sort()` comparisons.
 - Added reusable array-of-record string-field assertion helper (`expectArrayOfRecordsWithRequiredStringFields`, with optional empty-array allowance) and refactored compatibility contract suites to validate producer/consumer contracts plus artifact-definition/path-field records via shared structured-record semantics.
+- Added reusable cross-record string-field invariant helpers (`expectUniqueStringFieldAcrossRecords`, `expectDistinctStringFieldsPerRecord`) and refactored compatibility contract suites to enforce unique field domains and producer/consumer segment distinctness through shared assertion semantics.
 - Dashboard edge diffing now includes edge type/label, enabling reliable live updates when relation type changes.
 - Hook event matching now supports alias payload shapes (`event`, `eventName`, etc.) for better OpenClaw compatibility.
 - `link` and `entities` commands now consistently respect `--vault` without requiring `CLAWVAULT_PATH`.

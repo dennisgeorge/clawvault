@@ -12,7 +12,8 @@ import {
 import {
   expectArrayOfRecordsWithRequiredStringFields,
   expectNonEmptyUniqueStringArray,
-  expectObjectKeyDomainParity
+  expectObjectKeyDomainParity,
+  expectUniqueStringFieldAcrossRecords
 } from './compat-contract-assertion-test-utils.js';
 
 describe('compat artifact bundle contracts constants', () => {
@@ -23,8 +24,12 @@ describe('compat artifact bundle contracts constants', () => {
       'REQUIRED_COMPAT_ARTIFACT_BUNDLE_ARTIFACT_DEFINITIONS'
     );
     expect(REQUIRED_COMPAT_ARTIFACT_BUNDLE_ARTIFACT_DEFINITIONS.length).toBe(REQUIRED_COMPAT_ARTIFACT_BUNDLE_ARTIFACT_COUNT);
+    expectUniqueStringFieldAcrossRecords(
+      REQUIRED_COMPAT_ARTIFACT_BUNDLE_ARTIFACT_DEFINITIONS,
+      'artifactName',
+      'REQUIRED_COMPAT_ARTIFACT_BUNDLE_ARTIFACT_DEFINITIONS artifactName'
+    );
     const artifactNames = REQUIRED_COMPAT_ARTIFACT_BUNDLE_ARTIFACT_DEFINITIONS.map((entry) => entry.artifactName);
-    expect(new Set(artifactNames).size).toBe(REQUIRED_COMPAT_ARTIFACT_BUNDLE_ARTIFACT_COUNT);
     expect(artifactNames).toEqual(REQUIRED_COMPAT_ARTIFACT_BUNDLE_ARTIFACT_NAMES);
   });
 
@@ -42,11 +47,17 @@ describe('compat artifact bundle contracts constants', () => {
       ['fieldName', 'artifactName'],
       'REQUIRED_COMPAT_ARTIFACT_BUNDLE_PATH_FIELDS'
     );
-    const boundArtifactNames = REQUIRED_COMPAT_ARTIFACT_BUNDLE_PATH_FIELDS.map((entry) => entry.artifactName);
-    expect(new Set(boundArtifactNames).size).toBe(REQUIRED_COMPAT_ARTIFACT_BUNDLE_PATH_FIELDS.length);
-    expect(new Set(REQUIRED_COMPAT_ARTIFACT_BUNDLE_PATH_FIELDS.map((entry) => entry.fieldName)).size).toBe(
-      REQUIRED_COMPAT_ARTIFACT_BUNDLE_PATH_FIELDS.length
+    expectUniqueStringFieldAcrossRecords(
+      REQUIRED_COMPAT_ARTIFACT_BUNDLE_PATH_FIELDS,
+      'artifactName',
+      'REQUIRED_COMPAT_ARTIFACT_BUNDLE_PATH_FIELDS artifactName'
     );
+    expectUniqueStringFieldAcrossRecords(
+      REQUIRED_COMPAT_ARTIFACT_BUNDLE_PATH_FIELDS,
+      'fieldName',
+      'REQUIRED_COMPAT_ARTIFACT_BUNDLE_PATH_FIELDS fieldName'
+    );
+    const boundArtifactNames = REQUIRED_COMPAT_ARTIFACT_BUNDLE_PATH_FIELDS.map((entry) => entry.artifactName);
     expect(boundArtifactNames).toEqual(expect.arrayContaining(REQUIRED_COMPAT_ARTIFACT_BUNDLE_ARTIFACT_NAMES));
   });
 

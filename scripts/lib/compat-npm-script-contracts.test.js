@@ -71,9 +71,11 @@ import {
 } from './compat-npm-script-contracts.mjs';
 import {
   expectArrayOfRecordsWithRequiredStringFields,
+  expectDistinctStringFieldsPerRecord,
   expectNonEmptyStringRecord,
   expectObjectKeyDomainParity,
-  expectNonEmptyUniqueStringArray
+  expectNonEmptyUniqueStringArray,
+  expectUniqueStringFieldAcrossRecords
 } from './compat-contract-assertion-test-utils.js';
 
 describe('compat npm script contracts constants', () => {
@@ -294,8 +296,16 @@ describe('compat npm script contracts constants', () => {
       ['scriptName', 'artifactFile', 'producerSegment', 'consumerSegment'],
       'REQUIRED_COMPAT_ARTIFACT_PRODUCER_CONSUMER_CONTRACTS'
     );
-    for (const contract of REQUIRED_COMPAT_ARTIFACT_PRODUCER_CONSUMER_CONTRACTS) {
-      expect(contract.producerSegment).not.toBe(contract.consumerSegment);
-    }
+    expectUniqueStringFieldAcrossRecords(
+      REQUIRED_COMPAT_ARTIFACT_PRODUCER_CONSUMER_CONTRACTS,
+      'artifactFile',
+      'REQUIRED_COMPAT_ARTIFACT_PRODUCER_CONSUMER_CONTRACTS artifactFile'
+    );
+    expectDistinctStringFieldsPerRecord(
+      REQUIRED_COMPAT_ARTIFACT_PRODUCER_CONSUMER_CONTRACTS,
+      'producerSegment',
+      'consumerSegment',
+      'REQUIRED_COMPAT_ARTIFACT_PRODUCER_CONSUMER_CONTRACTS segment-distinctness'
+    );
   });
 });

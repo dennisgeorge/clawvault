@@ -67,6 +67,41 @@ export function expectArrayOfRecordsWithRequiredStringFields(records, requiredFi
   }
 }
 
+export function expectUniqueStringFieldAcrossRecords(records, fieldName, label, options = {}) {
+  const { requireNonEmpty = true } = options;
+  expect(Array.isArray(records), `${label} must be an array`).toBe(true);
+  expect(typeof fieldName, `${label} fieldName must be a string`).toBe('string');
+  expect(fieldName.length, `${label} fieldName must be non-empty`).toBeGreaterThan(0);
+  if (requireNonEmpty) {
+    expect(records.length, `${label} must not be empty`).toBeGreaterThan(0);
+  }
+  const values = records.map((record) => record?.[fieldName]);
+  expectNonEmptyUniqueStringArray(values, `${label} field=${fieldName}`, { requireNonEmpty });
+}
+
+export function expectDistinctStringFieldsPerRecord(records, leftFieldName, rightFieldName, label, options = {}) {
+  const { requireNonEmpty = true } = options;
+  expect(Array.isArray(records), `${label} must be an array`).toBe(true);
+  expect(typeof leftFieldName, `${label} leftFieldName must be a string`).toBe('string');
+  expect(leftFieldName.length, `${label} leftFieldName must be non-empty`).toBeGreaterThan(0);
+  expect(typeof rightFieldName, `${label} rightFieldName must be a string`).toBe('string');
+  expect(rightFieldName.length, `${label} rightFieldName must be non-empty`).toBeGreaterThan(0);
+  if (requireNonEmpty) {
+    expect(records.length, `${label} must not be empty`).toBeGreaterThan(0);
+  }
+  for (const record of records) {
+    expect(record && typeof record === 'object', `${label} entries must be objects`).toBe(true);
+    expect(Array.isArray(record), `${label} entries must not be arrays`).toBe(false);
+    expect(typeof record[leftFieldName], `${label} field=${leftFieldName} must be a string`).toBe('string');
+    expect(record[leftFieldName].length, `${label} field=${leftFieldName} must be non-empty`).toBeGreaterThan(0);
+    expect(typeof record[rightFieldName], `${label} field=${rightFieldName} must be a string`).toBe('string');
+    expect(record[rightFieldName].length, `${label} field=${rightFieldName} must be non-empty`).toBeGreaterThan(0);
+    expect(record[leftFieldName], `${label} fields must differ (${leftFieldName} vs ${rightFieldName})`).not.toBe(
+      record[rightFieldName]
+    );
+  }
+}
+
 export function expectEachDomainValueOccursExactlyOnce(values, resolveCount, label) {
   expect(Array.isArray(values), `${label} must receive array values`).toBe(true);
   for (const value of values) {

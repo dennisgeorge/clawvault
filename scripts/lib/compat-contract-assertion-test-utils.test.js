@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   expectArrayOfRecordsWithRequiredStringFields,
+  expectDistinctStringFieldsPerRecord,
   expectEachDomainValueOccursExactlyOnce,
   expectNonEmptyStringRecord,
   expectNonEmptyUniqueStringArray,
   expectObjectKeyDomainParity,
+  expectUniqueStringFieldAcrossRecords,
   expectUniqueDomainCountMapByKeyParity,
   expectUniqueDomainCountMapParity,
   expectUnitCountMapByKeyParity,
@@ -260,6 +262,68 @@ describe('compat contract assertion test utils', () => {
         [],
         ['name'],
         'empty-required array-of-records string-field domain'
+      );
+    }).toThrow();
+  });
+
+  it('asserts unique string field domains across records', () => {
+    expectUniqueStringFieldAcrossRecords(
+      [
+        { name: 'alpha' },
+        { name: 'beta' }
+      ],
+      'name',
+      'unique string field domain'
+    );
+  });
+
+  it('throws when unique string field domains across records are invalid', () => {
+    expect(() => {
+      expectUniqueStringFieldAcrossRecords(
+        [
+          { name: 'alpha' },
+          { name: 'alpha' }
+        ],
+        'name',
+        'duplicate unique string field domain'
+      );
+    }).toThrow();
+    expect(() => {
+      expectUniqueStringFieldAcrossRecords(
+        [{ notName: 'alpha' }],
+        'name',
+        'missing field unique string field domain'
+      );
+    }).toThrow();
+  });
+
+  it('asserts distinct string field pairs per record', () => {
+    expectDistinctStringFieldsPerRecord(
+      [
+        { left: 'alpha', right: 'beta' },
+        { left: 'one', right: 'two' }
+      ],
+      'left',
+      'right',
+      'distinct string field-pair domain'
+    );
+  });
+
+  it('throws when distinct string field pairs per record are invalid', () => {
+    expect(() => {
+      expectDistinctStringFieldsPerRecord(
+        [{ left: 'same', right: 'same' }],
+        'left',
+        'right',
+        'equal string field-pair domain'
+      );
+    }).toThrow();
+    expect(() => {
+      expectDistinctStringFieldsPerRecord(
+        [{ left: 'present' }],
+        'left',
+        'right',
+        'missing right field-pair domain'
       );
     }).toThrow();
   });
