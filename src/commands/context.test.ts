@@ -6,13 +6,15 @@ const {
   listMock,
   vsearchMock,
   readObservationsMock,
-  parseObservationLinesMock
+  parseObservationLinesMock,
+  getMemoryGraphMock
 } = vi.hoisted(() => ({
   loadMock: vi.fn(),
   listMock: vi.fn(),
   vsearchMock: vi.fn(),
   readObservationsMock: vi.fn(),
-  parseObservationLinesMock: vi.fn()
+  parseObservationLinesMock: vi.fn(),
+  getMemoryGraphMock: vi.fn()
 }));
 
 vi.mock('../lib/vault.js', () => ({
@@ -44,6 +46,10 @@ vi.mock('../lib/vault.js', () => ({
 vi.mock('../lib/observation-reader.js', () => ({
   readObservations: (vaultPath: string, days: number) => readObservationsMock(vaultPath, days),
   parseObservationLines: (markdown: string) => parseObservationLinesMock(markdown)
+}));
+
+vi.mock('../lib/memory-graph.js', () => ({
+  getMemoryGraph: (vaultPath: string) => getMemoryGraphMock(vaultPath)
 }));
 
 import { buildContext } from './context.js';
@@ -84,6 +90,7 @@ describe('buildContext budget handling', () => {
       { priority: '🔴', content: 'Critical deployment gate remains open', date: '2026-02-11' },
       { priority: '🟢', content: 'Low priority chatter '.repeat(50), date: '2026-02-11' }
     ]);
+    getMemoryGraphMock.mockResolvedValue({ nodes: [], edges: [] });
 
     const budget = 40;
     const result = await buildContext('ship release', {
@@ -107,6 +114,7 @@ describe('buildContext observation scoring', () => {
       { priority: '🔴', content: '09:10 Postgres migration rollback failed', date: '2026-02-11' },
       { priority: '🔴', content: '09:20 Team synced on release timeline', date: '2026-02-11' }
     ]);
+    getMemoryGraphMock.mockResolvedValue({ nodes: [], edges: [] });
 
     const result = await buildContext('postgres migration', {
       vaultPath: '/vault',
@@ -118,5 +126,67 @@ describe('buildContext observation scoring', () => {
     expect(observations[0].snippet).toContain('Postgres migration rollback failed');
     expect(observations[0].score).toBeGreaterThan(observations[1].score);
     expect(observations[1].score).toBe(0.1);
+  });
+});
+
+describe('buildContext graph-aware retrieval', () => {
+  it('includes graph neighbor entries with rationale signals', async () => {
+    const modified = new Date('2026-02-11T08:00:00.000Z');
+    loadMock.mockResolvedValue(undefined);
+    listMock.mockResolvedValue([
+      {
+        path: '/vault/projects/core-api.md',
+        title: 'Core API',
+        category: 'projects',
+        content: 'Core API details and migration plan',
+        modified,
+        frontmatter: {}
+      },
+      {
+        path: '/vault/decisions/use-postgres.md',
+        title: 'Use Postgres',
+        category: 'decisions',
+        content: 'Decision content',
+        modified,
+        frontmatter: {}
+      }
+    ]);
+    vsearchMock.mockResolvedValue([
+      {
+        score: 0.9,
+        snippet: 'Selected postgres for reliability',
+        document: {
+          path: '/vault/decisions/use-postgres.md',
+          title: 'Use Postgres',
+          category: 'decisions',
+          content: '',
+          modified,
+          frontmatter: {}
+        }
+      }
+    ]);
+    readObservationsMock.mockReturnValue('');
+    parseObservationLinesMock.mockReturnValue([]);
+    getMemoryGraphMock.mockResolvedValue({
+      nodes: [
+        { id: 'note:decisions/use-postgres', title: 'Use Postgres', type: 'decision', category: 'decisions', path: 'decisions/use-postgres.md' },
+        { id: 'note:projects/core-api', title: 'Core API', type: 'project', category: 'projects', path: 'projects/core-api.md' }
+      ],
+      edges: [
+        {
+          id: 'wiki_link:note:decisions/use-postgres->note:projects/core-api',
+          source: 'note:decisions/use-postgres',
+          target: 'note:projects/core-api',
+          type: 'wiki_link'
+        }
+      ]
+    });
+
+    const result = await buildContext('postgres migration', { vaultPath: '/vault' });
+    const graphEntry = result.context.find((entry) => entry.source === 'graph');
+    expect(graphEntry).toBeTruthy();
+    expect(graphEntry?.title).toBe('Core API');
+    expect(graphEntry?.signals).toContain('graph_neighbor');
+    expect(graphEntry?.rationale).toContain('Connected to "Use Postgres" via wiki_link');
   });
 });
