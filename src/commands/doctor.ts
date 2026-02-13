@@ -5,6 +5,8 @@ import { ClawVault, findVault } from '../lib/vault.js';
 import { scanVaultLinks } from '../lib/backlinks.js';
 import { formatAge } from '../lib/time.js';
 import { hasQmd } from '../lib/search.js';
+import { loadMemoryGraphIndex } from '../lib/memory-graph.js';
+import { checkOpenClawCompatibility } from './compat.js';
 
 const CLAWVAULT_DIR = '.clawvault';
 const CHECKPOINT_FILE = 'last-checkpoint.json';
@@ -100,6 +102,30 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
   const checks: DoctorCheck[] = [];
   let warnings = 0;
   let errors = 0;
+  const compatReport = checkOpenClawCompatibility();
+
+  if (compatReport.errors > 0) {
+    checks.push({
+      label: 'OpenClaw compatibility',
+      status: 'error',
+      detail: `${compatReport.errors} error(s), ${compatReport.warnings} warning(s)`,
+      hint: 'Run `clawvault compat` for full compatibility diagnostics.'
+    });
+    errors++;
+  } else if (compatReport.warnings > 0) {
+    checks.push({
+      label: 'OpenClaw compatibility',
+      status: 'warn',
+      detail: `${compatReport.warnings} warning(s)`,
+      hint: 'Run `clawvault compat` for full compatibility diagnostics.'
+    });
+    warnings++;
+  } else {
+    checks.push({
+      label: 'OpenClaw compatibility',
+      status: 'ok'
+    });
+  }
 
   if (hasQmd()) {
     checks.push({ label: 'qmd installed', status: 'ok' });
@@ -167,6 +193,38 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
     .slice()
     .sort((a, b) => b.modified.getTime() - a.modified.getTime())[0];
   const latestDocAge = latestDoc ? daysSince(latestDoc.modified) : null;
+
+  const graphIndex = loadMemoryGraphIndex(vault.getPath());
+  if (!graphIndex) {
+    checks.push({
+      label: 'memory graph index',
+      status: 'warn',
+      detail: 'No graph index found',
+      hint: 'Run `clawvault graph --refresh` to build .clawvault/graph-index.json.'
+    });
+    warnings++;
+  } else {
+    const generatedAt = new Date(graphIndex.generatedAt);
+    const generatedAge = describeAge(generatedAt);
+    const latestDocIsNewer = latestDoc
+      ? latestDoc.modified.getTime() > generatedAt.getTime() + 1000
+      : false;
+    if (latestDocIsNewer) {
+      checks.push({
+        label: 'memory graph index',
+        status: 'warn',
+        detail: `Stale graph index (generated ${generatedAge} ago)`,
+        hint: 'Run `clawvault graph --refresh` to resync index.'
+      });
+      warnings++;
+    } else {
+      checks.push({
+        label: 'memory graph index',
+        status: 'ok',
+        detail: `${graphIndex.graph.stats.nodeCount} nodes, ${graphIndex.graph.stats.edgeCount} edges`
+      });
+    }
+  }
 
   let lastHandoffAge: number | null = null;
   if (handoffs.length === 0) {

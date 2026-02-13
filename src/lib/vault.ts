@@ -24,6 +24,7 @@ import {
   SessionRecap
 } from '../types.js';
 import { SearchEngine, extractWikiLinks, extractTags, hasQmd, qmdUpdate, qmdEmbed, QmdUnavailableError } from './search.js';
+import { buildOrUpdateMemoryGraphIndex } from './memory-graph.js';
 
 const CONFIG_FILE = '.clawvault.json';
 const INDEX_FILE = '.clawvault-index.json';
@@ -97,6 +98,7 @@ export class ClawVault {
     };
     fs.writeFileSync(configPath, JSON.stringify(meta, null, 2));
 
+    await this.syncMemoryGraphIndex({ forceFull: true });
     this.initialized = true;
   }
 
@@ -154,6 +156,7 @@ export class ClawVault {
 
     // Save index
     await this.saveIndex();
+    await this.syncMemoryGraphIndex();
 
     return this.search.size;
   }
@@ -235,6 +238,7 @@ export class ClawVault {
     if (doc) {
       this.search.addDocument(doc);
       await this.saveIndex();
+      await this.syncMemoryGraphIndex();
     }
 
     // Trigger qmd reindex if requested
@@ -747,6 +751,14 @@ export class ClawVault {
       if (!fs.existsSync(targetPath)) {
         fs.copyFileSync(sourcePath, targetPath);
       }
+    }
+  }
+
+  private async syncMemoryGraphIndex(options: { forceFull?: boolean } = {}): Promise<void> {
+    try {
+      await buildOrUpdateMemoryGraphIndex(this.config.path, options);
+    } catch {
+      // Graph index sync is best-effort and should never block core vault operations.
     }
   }
 

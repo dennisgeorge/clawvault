@@ -215,10 +215,15 @@ function applySnapshot(payload, { shouldLazyLoad, shouldFit }) {
   for (const edge of nextEdges) {
     const sourceId = String(edge.source);
     const targetId = String(edge.target);
-    state.allEdgeByKey.set(toEdgeKey(sourceId, targetId), {
-      key: toEdgeKey(sourceId, targetId),
+    const edgeType = String(edge.type ?? '');
+    const edgeLabel = String(edge.label ?? '');
+    const edgeKey = toEdgeKey(sourceId, targetId, edgeType, edgeLabel);
+    state.allEdgeByKey.set(edgeKey, {
+      key: edgeKey,
       source: sourceId,
-      target: targetId
+      target: targetId,
+      type: edgeType,
+      label: edgeLabel
     });
   }
 
@@ -271,14 +276,18 @@ function applyPatch(payload) {
   for (const edge of removedEdges) {
     const sourceId = String(edge.source);
     const targetId = String(edge.target);
-    state.allEdgeByKey.delete(toEdgeKey(sourceId, targetId));
+    const edgeType = String(edge.type ?? '');
+    const edgeLabel = String(edge.label ?? '');
+    state.allEdgeByKey.delete(toEdgeKey(sourceId, targetId, edgeType, edgeLabel));
   }
 
   for (const edge of addedEdges) {
     const sourceId = String(edge.source);
     const targetId = String(edge.target);
-    const key = toEdgeKey(sourceId, targetId);
-    state.allEdgeByKey.set(key, { key, source: sourceId, target: targetId });
+    const edgeType = String(edge.type ?? '');
+    const edgeLabel = String(edge.label ?? '');
+    const key = toEdgeKey(sourceId, targetId, edgeType, edgeLabel);
+    state.allEdgeByKey.set(key, { key, source: sourceId, target: targetId, type: edgeType, label: edgeLabel });
   }
 
   if (payload?.stats) {
@@ -333,6 +342,8 @@ function applyFiltersAndRender({ shouldLazyLoad }) {
       filteredLinks.push({
         source: edge.source,
         target: edge.target,
+        type: edge.type,
+        label: edge.label,
         _key: edge.key
       });
     }
@@ -585,7 +596,9 @@ function linkKey(link) {
   }
   const sourceId = typeof link.source === 'object' ? link.source.id : String(link.source);
   const targetId = typeof link.target === 'object' ? link.target.id : String(link.target);
-  return toEdgeKey(sourceId, targetId);
+  const edgeType = String(link.type ?? '');
+  const edgeLabel = String(link.label ?? '');
+  return toEdgeKey(sourceId, targetId, edgeType, edgeLabel);
 }
 
 function colorForCategory(category) {
@@ -769,8 +782,8 @@ function areSetsEqual(left, right) {
   return true;
 }
 
-function toEdgeKey(sourceId, targetId) {
-  return `${sourceId}=>${targetId}`;
+function toEdgeKey(sourceId, targetId, edgeType = '', edgeLabel = '') {
+  return `${sourceId}=>${targetId}:${edgeType}:${edgeLabel}`;
 }
 
 function escapeHtml(value) {

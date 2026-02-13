@@ -103,7 +103,16 @@ clawvault wake
 Token-budget-aware context injection:
 ```bash
 clawvault context "what decisions were made" --budget 2000
-# → fits within token budget, 🔴 items first
+# → blends semantic + graph-neighbor context within budget
+
+clawvault context "what decisions were made" --format json
+# → includes explain metadata (signals + rationale) per entry
+
+clawvault context "plan database migration" --profile planning
+# → profile-tuned ordering for planning, incident, handoff, or default
+
+clawvault context "URGENT outage: rollback failed" --profile auto
+# → auto infers incident/planning/handoff/default from prompt intent
 ```
 
 ## Search
@@ -126,6 +135,8 @@ clawvault vsearch "what did I decide" # Semantic (local embeddings)
 ```
 my-memory/
 ├── .clawvault.json      # Config (includes qmd collection name)
+├── .clawvault/
+│   └── graph-index.json # Typed memory graph index (incremental rebuilds)
 ├── decisions/           # Choices with reasoning
 ├── lessons/             # Things learned
 ├── people/              # One file per person
@@ -168,6 +179,7 @@ clawvault list                # All documents
 clawvault list decisions      # By category
 clawvault get decisions/title # Specific document
 clawvault stats               # Vault overview
+clawvault graph --refresh     # Typed memory graph summary
 ```
 
 ### Session Continuity
@@ -189,6 +201,128 @@ clawvault recap --brief   # Token-efficient recap
 
 # Health check
 clawvault doctor
+
+# OpenClaw compatibility check
+clawvault compat
+
+# CI/automation-friendly compatibility gate
+clawvault compat --strict   # exits non-zero on warnings/errors
+# validates openclaw CLI readiness, hook events/requirements, handler safety/profile delegation, and SKILL metadata
+# flags missing, non-zero, or signal-terminated openclaw CLI checks as warnings
+# warns on unsafe handler execution conventions (execSync usage, shell:true options, missing --profile auto delegation)
+
+# Validate a specific project root (fixtures/CI)
+clawvault compat --strict --base-dir ./tests/compat-fixtures/healthy
+
+# Run strict compatibility fixture matrix (healthy + intentional drift cases)
+npm run test:compat-fixtures
+# fixture expectations are defined in tests/compat-fixtures/cases.json
+# fixture manifest includes schemaVersion for explicit contract evolution (current schemaVersion=2)
+# includes expectedCheckLabels to lock compat check-label contract
+# supports expected status, detail snippets, and hint snippets per check
+# supports openclawExitCode/openclawSignal/openclawMissing for declarative CLI failure simulation cases
+# each case also owns its scenario description (README coverage is validated)
+# expected check labels are validated against live compat output to catch stale contracts
+# includes a fresh build before running fixtures
+
+# Quick smoke check (healthy fixture only)
+npm run test:compat-smoke
+# runs fast contract validation + healthy fixture check (requires existing dist build)
+# fails fast if build artifacts are stale
+
+# Validate compatibility fixture contract only (no full matrix execution)
+npm run test:compat-contract
+# includes manifest/docs/runtime-label parity checks with a fresh build
+
+# Fast contract-only validation (requires existing dist build)
+npm run test:compat-contract:fast
+# fails fast if compat source is newer than dist build artifacts
+
+# Run full local CI gate (typecheck + tests + compat fixtures)
+npm run ci
+# runs build-backed contract validation, fixture matrix execution, and standalone summary artifact validation
+
+# Optional: run only specific compatibility fixtures
+COMPAT_CASES=healthy,missing-events npm run test:compat-fixtures
+# duplicate COMPAT_CASES entries are rejected to prevent ambiguous selection
+# empty/whitespace-only COMPAT_CASES values are rejected as invalid selection input
+# runner logs resolved case selection before execution for easier verification
+
+# Optional: run fast fixture checks without building
+npm run test:compat-fixtures:fast
+
+# Optional: write per-fixture JSON reports to a directory
+COMPAT_REPORT_DIR=/tmp/clawvault-compat-reports npm run test:compat-fixtures
+# includes per-case reports and summary.json (summarySchemaVersion + mode/schemaVersion/selectedCases/selectedTotal + expected/runtime labels + passed/failed case lists + preflight/overall timing + slowest cases)
+# summary artifacts are validated for schema/field invariants before write (fail-fast on malformed report generation)
+# validator now also enforces result-entry schema and passed/failed list coherence with selected case ordering
+# slowestCases telemetry is also validated against case-result durations and sort order
+# summary validation is enforced centrally in summary artifact writing, so all emitters share one contract path
+# per-case report artifacts are also validated centrally before write
+
+# Optional: validate an existing compatibility summary artifact set
+node scripts/validate-compat-summary.mjs /tmp/clawvault-compat-reports/summary.json
+# explicit option form (also supports custom case-report directory)
+node scripts/validate-compat-summary.mjs --summary /tmp/clawvault-compat-reports/summary.json --report-dir /tmp/clawvault-compat-reports
+# summary-only mode when per-case reports are unavailable
+node scripts/validate-compat-summary.mjs --summary /tmp/summary.json --allow-missing-case-reports
+# machine-readable success output for automation
+node scripts/validate-compat-summary.mjs --summary /tmp/summary.json --json
+# json output is schema-versioned and also used for machine-readable error payloads
+# success payload includes summary/fixture schema versions for downstream compatibility checks
+# write validator result payload (success/error) to a file
+node scripts/validate-compat-summary.mjs --summary /tmp/summary.json --json --out /tmp/validator-result.json
+# in CI, compat-summary artifacts now include summary.json + report-schema-validator-result.json + validator-result.json + schema-validator-result.json + validator-result-verifier-result.json + artifact-bundle-validator-result.json + artifact-bundle-manifest-validator-result.json
+# validator payload schema/validation is centralized in scripts/lib/compat-summary-validator-output.mjs
+# JSON schema artifacts for payload contracts live in /schemas (including json-schema-validator-output)
+# generic schema checker CLI lives at scripts/validate-json-schema.mjs
+# schema-validator result payload is written to schema-validator-result.json in compat report dirs
+# summary/case-report artifacts can also be schema-validated via scripts/validate-compat-report-schemas.mjs
+# see validator usage/help
+node scripts/validate-compat-summary.mjs --help
+# equivalent npm wrapper (supports arg passthrough, env fallback)
+npm run test:compat-summary:verify -- /tmp/clawvault-compat-reports/summary.json
+# validate previously emitted validator-result payload directly
+npm run test:compat-validator-result:verify -- /tmp/clawvault-compat-reports/validator-result.json
+# npm verifier wrapper enforces --require-ok by default
+# validate validator-result payload against its JSON schema contract
+npm run test:compat-validator-result:schema
+# validate schema-validator-result payload against its own schema contract
+npm run test:compat-schema-validator-result:verify
+# validate summary.json and per-case report artifacts against schema documents
+npm run test:compat-report-schemas:verify
+# emit report-schema validator output payload + validate its schema contract
+npm run test:compat-report-schemas:verify:report
+npm run test:compat-report-schemas:verify:schema
+# emit verifier output payload + validate verifier payload schema
+npm run test:compat-validator-result:verify:report
+npm run test:compat-validator-result:verify:schema
+# verify full compat artifact bundle contract + emit schema-validated bundle result
+npm run test:compat-artifact-bundle:verify
+npm run test:compat-artifact-bundle:verify:report
+npm run test:compat-artifact-bundle:verify:schema
+npm run test:compat-artifact-bundle:manifest:schema
+npm run test:compat-artifact-bundle:manifest:verify
+npm run test:compat-artifact-bundle:manifest:verify:report
+npm run test:compat-artifact-bundle:manifest:verify:schema
+# bundle result now includes an artifactContracts manifest (artifact path + schema id + expected/actual schema version), now including artifact-bundle-manifest-validator-result.json
+# bundle validator supports --manifest <path> to override the default contract manifest
+# manifest verifier emits artifact-bundle-manifest-validator-result.json with schemaId/version-field contract checks
+# explicit verifier CLI options:
+node scripts/validate-compat-validator-result.mjs --validator-result /tmp/clawvault-compat-reports/validator-result.json --json --out /tmp/verifier-result.json
+# enforce success-only validator-result status in strict automation paths
+node scripts/validate-compat-validator-result.mjs --validator-result /tmp/clawvault-compat-reports/validator-result.json --require-ok
+# use --help for verifier usage and path-resolution rules
+# or run fixture generation + standalone summary validation together
+npm run test:compat-summary:fast
+# debug stack wrappers individually when isolating compat contract drift
+npm run test:compat-report-stack:fast
+npm run test:compat-validator-stack:fast
+npm run test:compat-artifact-stack:fast
+# script behavior is covered by dedicated unit tests (success + failure + env fallback)
+# validator exits with a clear error when no summary path/source input is provided
+# summary scripts respect COMPAT_REPORT_DIR (defaults to .compat-reports when unset)
+# report parsing now validates per-check schema and warning/error count coherence before artifact evaluation
 ```
 
 

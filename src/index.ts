@@ -32,13 +32,17 @@ import { registerObserveCommand } from './commands/observe.js';
 // Core exports
 export { ClawVault, createVault, findVault } from './lib/vault.js';
 export { setupCommand } from './commands/setup.js';
+export { compatCommand, checkOpenClawCompatibility, compatibilityExitCode } from './commands/compat.js';
+export type { CompatCheck, CompatReport, CompatStatus, CompatCommandOptions } from './commands/compat.js';
+export { graphCommand, graphSummary } from './commands/graph.js';
+export type { GraphSummary } from './commands/graph.js';
 export {
   contextCommand,
   buildContext,
   formatContextMarkdown,
   registerContextCommand
 } from './commands/context.js';
-export type { ContextFormat, ContextOptions, ContextEntry, ContextResult } from './commands/context.js';
+export type { ContextFormat, ContextProfile, ContextProfileOption, ContextOptions, ContextEntry, ContextResult } from './commands/context.js';
 export { observeCommand, registerObserveCommand } from './commands/observe.js';
 export type { ObserveCommandOptions } from './commands/observe.js';
 export {
@@ -63,6 +67,28 @@ export {
   QMD_INSTALL_COMMAND,
   QMD_INSTALL_URL
 } from './lib/search.js';
+export { getVaultPath, findNearestVaultPath, resolveVaultPath } from './lib/config.js';
+export {
+  MEMORY_GRAPH_SCHEMA_VERSION,
+  buildOrUpdateMemoryGraphIndex,
+  getMemoryGraph,
+  loadMemoryGraphIndex
+} from './lib/memory-graph.js';
+export {
+  inferContextProfile,
+  normalizeContextProfileInput,
+  resolveContextProfile
+} from './lib/context-profile.js';
+export type { ContextProfileInput, ResolvedContextProfile } from './lib/context-profile.js';
+export type {
+  MemoryGraph,
+  MemoryGraphNode,
+  MemoryGraphEdge,
+  MemoryGraphEdgeType,
+  MemoryGraphNodeType,
+  MemoryGraphIndex,
+  MemoryGraphStats
+} from './lib/memory-graph.js';
 export { Observer } from './observer/observer.js';
 export type { ObserverOptions, ObserverCompressor, ObserverReflector } from './observer/observer.js';
 export { Compressor } from './observer/compressor.js';

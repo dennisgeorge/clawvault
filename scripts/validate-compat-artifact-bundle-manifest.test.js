@@ -1,0 +1,241 @@
+import { describe, expect, it } from 'vitest';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { spawnSync } from 'child_process';
+import {
+  COMPAT_ARTIFACT_BUNDLE_MANIFEST_VALIDATOR_OUTPUT_SCHEMA_VERSION
+} from './lib/compat-artifact-bundle-manifest-validator-output.mjs';
+
+const manifestValidatorScript = path.resolve(process.cwd(), 'scripts', 'validate-compat-artifact-bundle-manifest.mjs');
+
+function runManifestValidator(args = []) {
+  return spawnSync(
+    process.execPath,
+    [manifestValidatorScript, ...args],
+    {
+      cwd: process.cwd(),
+      encoding: 'utf-8'
+    }
+  );
+}
+
+function parseJsonLine(stdout) {
+  return JSON.parse(stdout.trim());
+}
+
+function runManifestDriftScenario({
+  mutateManifest,
+  expectedErrorSuffix
+}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compat-artifact-manifest-validator-'));
+  try {
+    const manifestPath = path.join(root, 'manifest.json');
+    const manifest = JSON.parse(
+      fs.readFileSync(path.resolve(process.cwd(), 'schemas', 'compat-artifact-bundle.manifest.json'), 'utf-8')
+    );
+    mutateManifest(manifest);
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+
+    const result = runManifestValidator(['--manifest', manifestPath, '--json']);
+    expect(result.status).toBe(1);
+    expect(parseJsonLine(result.stdout)).toEqual({
+      outputSchemaVersion: COMPAT_ARTIFACT_BUNDLE_MANIFEST_VALIDATOR_OUTPUT_SCHEMA_VERSION,
+      status: 'error',
+      error: `Unable to read compat artifact bundle manifest at ${manifestPath}: ${expectedErrorSuffix}`
+    });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
+describe('validate-compat-artifact-bundle-manifest script', () => {
+  it('validates default manifest successfully', () => {
+    const result = runManifestValidator([]);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Compatibility artifact bundle manifest validation passed');
+  });
+
+  it('supports --json and --out output modes', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compat-artifact-manifest-validator-'));
+    try {
+      const outPath = path.join(root, 'manifest-validator-result.json');
+      const result = runManifestValidator(['--json', '--out', outPath]);
+      expect(result.status).toBe(0);
+      const payload = parseJsonLine(result.stdout);
+      expect(payload.outputSchemaVersion).toBe(COMPAT_ARTIFACT_BUNDLE_MANIFEST_VALIDATOR_OUTPUT_SCHEMA_VERSION);
+      expect(payload.status).toBe('ok');
+      expect(payload.artifactCount).toBeGreaterThan(0);
+      expect(payload.schemaContracts.length).toBe(payload.artifactCount);
+      expect(JSON.parse(fs.readFileSync(outPath, 'utf-8'))).toEqual(payload);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails when required schemaId mapping drifts with structured error output', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compat-artifact-manifest-validator-'));
+    try {
+      const manifestPath = path.join(root, 'manifest.json');
+      const manifest = JSON.parse(
+        fs.readFileSync(path.resolve(process.cwd(), 'schemas', 'compat-artifact-bundle.manifest.json'), 'utf-8')
+      );
+      manifest.artifacts = manifest.artifacts.map((entry) => (
+        entry.artifactName === 'summary.json'
+          ? { ...entry, schemaId: 'https://example.dev/not-matching.json' }
+          : entry
+      ));
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+
+      const outPath = path.join(root, 'manifest-validator-error.json');
+      const result = runManifestValidator(['--manifest', manifestPath, '--json', '--out', outPath]);
+      expect(result.status).toBe(1);
+      const payload = parseJsonLine(result.stdout);
+      expect(payload).toEqual({
+        outputSchemaVersion: COMPAT_ARTIFACT_BUNDLE_MANIFEST_VALIDATOR_OUTPUT_SCHEMA_VERSION,
+        status: 'error',
+        error: `Unable to read compat artifact bundle manifest at ${manifestPath}: compat artifact bundle manifest required artifact summary.json must use schemaId=https://clawvault.dev/schemas/compat-summary.schema.json`
+      });
+      expect(JSON.parse(fs.readFileSync(outPath, 'utf-8'))).toEqual(payload);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails when required schemaPath mapping drifts', () => {
+    runManifestDriftScenario({
+      mutateManifest: (manifest) => {
+        manifest.artifacts = manifest.artifacts.map((entry) => (
+          entry.artifactName === 'summary.json'
+            ? { ...entry, schemaPath: 'schemas/drifted-summary.schema.json' }
+            : entry
+        ));
+      },
+      expectedErrorSuffix: 'compat artifact bundle manifest required artifact summary.json must use schemaPath=schemas/compat-summary.schema.json'
+    });
+  });
+
+  it('fails when manifest omits required artifact entries', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compat-artifact-manifest-validator-'));
+    try {
+      const manifestPath = path.join(root, 'manifest.json');
+      const manifest = JSON.parse(
+        fs.readFileSync(path.resolve(process.cwd(), 'schemas', 'compat-artifact-bundle.manifest.json'), 'utf-8')
+      );
+      manifest.artifacts = manifest.artifacts.filter((entry) => entry.artifactName !== 'summary.json');
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+
+      const result = runManifestValidator(['--manifest', manifestPath, '--json']);
+      expect(result.status).toBe(1);
+      expect(parseJsonLine(result.stdout)).toEqual({
+        outputSchemaVersion: COMPAT_ARTIFACT_BUNDLE_MANIFEST_VALIDATOR_OUTPUT_SCHEMA_VERSION,
+        status: 'error',
+        error: `Unable to read compat artifact bundle manifest at ${manifestPath}: compat artifact bundle manifest is missing required artifactName: summary.json`
+      });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails when manifest artifact order drifts from canonical order', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compat-artifact-manifest-validator-'));
+    try {
+      const manifestPath = path.join(root, 'manifest.json');
+      const manifest = JSON.parse(
+        fs.readFileSync(path.resolve(process.cwd(), 'schemas', 'compat-artifact-bundle.manifest.json'), 'utf-8')
+      );
+      [manifest.artifacts[0], manifest.artifacts[1]] = [manifest.artifacts[1], manifest.artifacts[0]];
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+
+      const result = runManifestValidator(['--manifest', manifestPath, '--json']);
+      expect(result.status).toBe(1);
+      expect(parseJsonLine(result.stdout)).toEqual({
+        outputSchemaVersion: COMPAT_ARTIFACT_BUNDLE_MANIFEST_VALIDATOR_OUTPUT_SCHEMA_VERSION,
+        status: 'error',
+        error: `Unable to read compat artifact bundle manifest at ${manifestPath}: compat artifact bundle manifest artifacts must follow required canonical artifactName order`
+      });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails when required artifact file mapping drifts', () => {
+    runManifestDriftScenario({
+      mutateManifest: (manifest) => {
+        manifest.artifacts = manifest.artifacts.map((entry) => (
+          entry.artifactName === 'summary.json'
+            ? { ...entry, artifactFile: 'summary-v2.json' }
+            : entry
+        ));
+      },
+      expectedErrorSuffix: 'compat artifact bundle manifest required artifact summary.json must use artifactFile=summary.json'
+    });
+  });
+
+  it('fails when required versionField mapping drifts', () => {
+    runManifestDriftScenario({
+      mutateManifest: (manifest) => {
+        manifest.artifacts = manifest.artifacts.map((entry) => (
+          entry.artifactName === 'summary.json'
+            ? { ...entry, versionField: 'outputSchemaVersion' }
+            : entry
+        ));
+      },
+      expectedErrorSuffix: 'compat artifact bundle manifest required artifact summary.json must use versionField=summarySchemaVersion'
+    });
+  });
+
+  it('fails when manifest includes unsupported artifact entries', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compat-artifact-manifest-validator-'));
+    try {
+      const manifestPath = path.join(root, 'manifest.json');
+      const manifest = JSON.parse(
+        fs.readFileSync(path.resolve(process.cwd(), 'schemas', 'compat-artifact-bundle.manifest.json'), 'utf-8')
+      );
+      manifest.artifacts.push({
+        artifactName: 'extra-artifact.json',
+        artifactFile: 'extra-artifact.json',
+        schemaPath: 'schemas/extra.schema.json',
+        schemaId: 'https://clawvault.dev/schemas/extra.schema.json',
+        versionField: 'outputSchemaVersion'
+      });
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+
+      const result = runManifestValidator(['--manifest', manifestPath, '--json']);
+      expect(result.status).toBe(1);
+      expect(parseJsonLine(result.stdout)).toEqual({
+        outputSchemaVersion: COMPAT_ARTIFACT_BUNDLE_MANIFEST_VALIDATOR_OUTPUT_SCHEMA_VERSION,
+        status: 'error',
+        error: `Unable to read compat artifact bundle manifest at ${manifestPath}: compat artifact bundle manifest has unsupported artifactName: extra-artifact.json`
+      });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('prints usage help and handles parse-option failures', () => {
+    const helpResult = runManifestValidator(['--help']);
+    expect(helpResult.status).toBe(0);
+    expect(helpResult.stdout).toContain('Usage: node scripts/validate-compat-artifact-bundle-manifest.mjs');
+    expect(helpResult.stdout).toContain('--manifest <manifest.json>');
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compat-artifact-manifest-validator-'));
+    try {
+      const outPath = path.join(root, 'manifest-validator-parse-error.json');
+      const parseErrorResult = runManifestValidator(['--json', '--manifest', '--out', outPath]);
+      expect(parseErrorResult.status).toBe(1);
+      expect(parseJsonLine(parseErrorResult.stdout)).toEqual({
+        outputSchemaVersion: COMPAT_ARTIFACT_BUNDLE_MANIFEST_VALIDATOR_OUTPUT_SCHEMA_VERSION,
+        status: 'error',
+        error: 'Missing value for --manifest'
+      });
+      expect(JSON.parse(fs.readFileSync(outPath, 'utf-8'))).toEqual({
+        outputSchemaVersion: COMPAT_ARTIFACT_BUNDLE_MANIFEST_VALIDATOR_OUTPUT_SCHEMA_VERSION,
+        status: 'error',
+        error: 'Missing value for --manifest'
+      });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+});

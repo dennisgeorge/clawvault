@@ -53,4 +53,23 @@ describe('diffGraphs', () => {
     expect(patch.addedEdges).toEqual([]);
     expect(patch.removedEdges).toEqual([]);
   });
+
+  it('treats edge type changes as edge diff', () => {
+    const previous = {
+      nodes: [
+        { id: 'a', title: 'A', category: 'root', tags: [], path: 'a.md', missing: false, degree: 1 },
+        { id: 'b', title: 'B', category: 'root', tags: [], path: 'b.md', missing: false, degree: 1 }
+      ],
+      edges: [{ source: 'a', target: 'b', type: 'wiki_link' }]
+    };
+    const next = {
+      nodes: previous.nodes,
+      edges: [{ source: 'a', target: 'b', type: 'frontmatter_relation', label: 'related' }]
+    };
+
+    const patch = diffGraphs(previous, next);
+    expect(patch.addedEdges).toEqual([{ source: 'a', target: 'b', type: 'frontmatter_relation', label: 'related' }]);
+    expect(patch.removedEdges).toEqual([{ source: 'a', target: 'b', type: 'wiki_link' }]);
+    expect(patch.hasChanges).toBe(true);
+  });
 });

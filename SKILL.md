@@ -226,6 +226,7 @@ Backups are created automatically (use `--no-backup` to skip).
 - **Too many orphan links** — run `clawvault link --orphans`
 - **Inbox backlog warning** — process or archive inbox items
 - **"unexpected tool_use_id" error** — run `clawvault repair-session`
+- **OpenClaw integration drift** — run `clawvault compat`
 
 ## Integration with qmd
 

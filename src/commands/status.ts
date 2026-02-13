@@ -5,6 +5,7 @@ import { ClawVault } from '../lib/vault.js';
 import { hasQmd, QmdUnavailableError } from '../lib/search.js';
 import { formatAge } from '../lib/time.js';
 import { scanVaultLinks } from '../lib/backlinks.js';
+import { loadMemoryGraphIndex } from '../lib/memory-graph.js';
 import type { CheckpointData } from './checkpoint.js';
 
 export interface VaultStatus {
@@ -25,6 +26,12 @@ export interface VaultStatus {
     root: string;
     indexStatus: 'present' | 'missing' | 'root-mismatch';
     error?: string;
+  };
+  graph: {
+    indexStatus: 'present' | 'missing' | 'stale';
+    generatedAt?: string;
+    nodeCount?: number;
+    edgeCount?: number;
   };
   git?: {
     repoRoot: string;
@@ -61,6 +68,34 @@ function getGitStatus(repoRoot: string): { clean: boolean; dirtyCount: number } 
   });
   const lines = output.split('\n').filter(Boolean);
   return { clean: lines.length === 0, dirtyCount: lines.length };
+}
+
+function getLatestVaultMarkdownMtime(vaultPath: string): Date | null {
+  const skipDirs = new Set(['.git', '.obsidian', '.trash', 'node_modules', '.clawvault']);
+  let latest: Date | null = null;
+
+  function walk(currentPath: string): void {
+    const entries = fs.readdirSync(currentPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const absolute = path.join(currentPath, entry.name);
+      if (entry.isDirectory()) {
+        if (!skipDirs.has(entry.name)) {
+          walk(absolute);
+        }
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.endsWith('.md')) {
+        continue;
+      }
+      const mtime = fs.statSync(absolute).mtime;
+      if (!latest || mtime.getTime() > latest.getTime()) {
+        latest = mtime;
+      }
+    }
+  }
+
+  walk(vaultPath);
+  return latest;
 }
 
 /**
@@ -175,6 +210,29 @@ export async function getStatus(vaultPath: string): Promise<VaultStatus> {
     }
   }
 
+  const graphIndex = loadMemoryGraphIndex(vault.getPath());
+  let graphStatus: VaultStatus['graph'] = {
+    indexStatus: 'missing'
+  };
+  if (!graphIndex) {
+    issues.push('Memory graph index missing');
+  } else {
+    const generatedAt = graphIndex.generatedAt;
+    const latestDocMtime = getLatestVaultMarkdownMtime(vault.getPath());
+    const isStale = latestDocMtime
+      ? latestDocMtime.getTime() > new Date(generatedAt).getTime() + 1000
+      : false;
+    graphStatus = {
+      indexStatus: isStale ? 'stale' : 'present',
+      generatedAt,
+      nodeCount: graphIndex.graph.stats.nodeCount,
+      edgeCount: graphIndex.graph.stats.edgeCount
+    };
+    if (isStale) {
+      issues.push('Memory graph index stale');
+    }
+  }
+
   return {
     vaultName: vault.getName(),
     vaultPath: vault.getPath(),
@@ -187,6 +245,7 @@ export async function getStatus(vaultPath: string): Promise<VaultStatus> {
       indexStatus: qmdIndexStatus,
       error: qmdError
     },
+    graph: graphStatus,
     git: gitStatus,
     links: {
       total: linkScan.linkCount,
@@ -240,6 +299,15 @@ export function formatStatus(status: VaultStatus): string {
     output += '\nGit:\n';
     output += `  - Repo: ${status.git.repoRoot}\n`;
     output += `  - Status: ${status.git.clean ? 'clean' : 'dirty'} (${status.git.dirtyCount} change(s))\n`;
+  }
+
+  output += '\nGraph:\n';
+  output += `  - Index: ${status.graph.indexStatus}\n`;
+  if (status.graph.generatedAt) {
+    output += `  - Generated: ${status.graph.generatedAt}\n`;
+  }
+  if (status.graph.nodeCount !== undefined && status.graph.edgeCount !== undefined) {
+    output += `  - Size: ${status.graph.nodeCount} nodes, ${status.graph.edgeCount} edges\n`;
   }
 
   output += '\nLinks:\n';

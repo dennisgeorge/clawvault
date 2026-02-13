@@ -10,7 +10,9 @@ function toNodeSignature(node) {
 }
 
 function toEdgeKey(edge) {
-  return `${edge.source}=>${edge.target}`;
+  const type = edge.type ?? '';
+  const label = edge.label ?? '';
+  return `${edge.source}=>${edge.target}:${type}:${label}`;
 }
 
 /**

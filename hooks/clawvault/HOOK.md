@@ -47,7 +47,8 @@ openclaw hooks enable clawvault
 ### Session Start
 
 1. Extracts the initial user prompt (`context.initialPrompt` or first user message)
-2. Runs `clawvault context "<prompt>" --format json -v <vaultPath>`
+2. Runs `clawvault context "<prompt>" --format json --profile auto -v <vaultPath>`
+   - Delegates profile selection to the shared context intent policy (`incident`, `planning`, `handoff`, or `default`)
 3. Injects up to 4 relevant context bullets into session messages
 
 Injection format:
@@ -57,6 +58,10 @@ Injection format:
 - <title> (<age>): <snippet>
 - <title> (<age>): <snippet>
 ```
+
+### Event Compatibility
+
+The hook accepts canonical OpenClaw events (`gateway:startup`, `command:new`, `session:start`) and tolerates alias payload shapes (`event`, `eventName`, `name`, `hook`, `trigger`) to remain robust across runtime wrappers.
 
 ## No Configuration Needed
 

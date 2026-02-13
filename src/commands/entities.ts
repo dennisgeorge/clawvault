@@ -1,12 +1,13 @@
 import { buildEntityIndex } from '../lib/entity-index.js';
-import { getVaultPath } from '../lib/config.js';
+import { resolveVaultPath } from '../lib/config.js';
 
 interface EntitiesOptions {
   json?: boolean;
+  vaultPath?: string;
 }
 
 export async function entitiesCommand(options: EntitiesOptions): Promise<void> {
-  const vaultPath = getVaultPath();
+  const vaultPath = resolveVaultPath({ explicitPath: options.vaultPath });
   const index = buildEntityIndex(vaultPath);
   
   if (options.json) {

@@ -3,6 +3,13 @@ import type { Command } from 'commander';
 import { ClawVault } from '../lib/vault.js';
 import { parseObservationLines, readObservations } from '../lib/observation-reader.js';
 import { estimateTokens, fitWithinBudget } from '../lib/token-counter.js';
+import { getMemoryGraph, type MemoryGraph, type MemoryGraphEdge } from '../lib/memory-graph.js';
+import {
+  resolveContextProfile,
+  normalizeContextProfileInput,
+  type ContextProfileInput,
+  type ResolvedContextProfile
+} from '../lib/context-profile.js';
 import type { Document, SearchResult } from '../types.js';
 
 const DEFAULT_LIMIT = 5;
@@ -15,6 +22,8 @@ const STOP_WORDS = new Set([
 ]);
 
 export type ContextFormat = 'markdown' | 'json';
+export type ContextProfile = ResolvedContextProfile;
+export type ContextProfileOption = ContextProfile | 'auto';
 
 export interface ContextOptions {
   vaultPath: string;
@@ -23,6 +32,7 @@ export interface ContextOptions {
   recent?: boolean;
   includeObservations?: boolean;
   budget?: number;
+  profile?: ContextProfileOption;
 }
 
 export interface ContextEntry {
@@ -33,11 +43,14 @@ export interface ContextEntry {
   snippet: string;
   modified: string;
   age: string;
-  source: 'observation' | 'daily-note' | 'search';
+  source: 'observation' | 'daily-note' | 'search' | 'graph';
+  signals?: string[];
+  rationale?: string;
 }
 
 export interface ContextResult {
   task: string;
+  profile: ContextProfile;
   generated: string;
   context: ContextEntry[];
   markdown: string;
@@ -88,6 +101,30 @@ interface PrioritizedContextItem {
   entry: ContextEntry;
   priority: number;
 }
+
+interface ContextProfileOrdering {
+  order: Array<'red' | 'daily' | 'search' | 'graph' | 'yellow' | 'green'>;
+  caps: Partial<Record<ContextEntry['source'], number>>;
+}
+
+const PROFILE_ORDERING: Record<ContextProfile, ContextProfileOrdering> = {
+  default: {
+    order: ['red', 'daily', 'search', 'graph', 'yellow', 'green'],
+    caps: {}
+  },
+  planning: {
+    order: ['search', 'graph', 'red', 'yellow', 'daily', 'green'],
+    caps: { observation: 12, graph: 12 }
+  },
+  incident: {
+    order: ['red', 'search', 'yellow', 'daily', 'graph', 'green'],
+    caps: { observation: 20, graph: 8 }
+  },
+  handoff: {
+    order: ['daily', 'red', 'yellow', 'search', 'graph', 'green'],
+    caps: { 'daily-note': 2, observation: 15 }
+  }
+};
 
 function extractKeywords(text: string): string[] {
   const raw = text.toLowerCase().match(/[a-z0-9]+/g) ?? [];
@@ -211,8 +248,7 @@ function getTargetDailyDates(now: Date = new Date()): string[] {
   return [today, yesterday];
 }
 
-async function buildDailyContextItems(vault: ClawVault): Promise<PrioritizedContextItem[]> {
-  const allDocuments = await vault.list();
+function buildDailyContextItems(vaultPath: string, allDocuments: Document[]): PrioritizedContextItem[] {
   const targetDates = getTargetDailyDates();
   const targetDateSet = new Set(targetDates);
   const byDate = new Map<string, Document>();
@@ -236,7 +272,7 @@ async function buildDailyContextItems(vault: ClawVault): Promise<PrioritizedCont
       continue;
     }
 
-    const relativePath = path.relative(vault.getPath(), document.path).split(path.sep).join('/');
+    const relativePath = path.relative(vaultPath, document.path).split(path.sep).join('/');
     const snippet = estimateSnippet(document.content);
     items.push({
       priority: 2,
@@ -248,7 +284,9 @@ async function buildDailyContextItems(vault: ClawVault): Promise<PrioritizedCont
         snippet,
         modified: document.modified.toISOString(),
         age: formatRelativeAge(document.modified),
-        source: 'daily-note'
+        source: 'daily-note',
+        signals: ['daily_recency'],
+        rationale: 'Pinned daily note context (today/yesterday).'
       }
     });
   }
@@ -261,7 +299,7 @@ function buildObservationContextItems(vaultPath: string, queryKeywords: string[]
   const parsed = parseObservationLines(observationMarkdown);
   const items: PrioritizedContextItem[] = [];
 
-  for (const observation of parsed) {
+  for (const [index, observation] of parsed.entries()) {
     const priority = observationPriorityToRank(observation.priority);
     const modifiedDate = asDate(observation.date, new Date());
     const date = observation.date || modifiedDate.toISOString().slice(0, 10);
@@ -270,14 +308,16 @@ function buildObservationContextItems(vaultPath: string, queryKeywords: string[]
     items.push({
       priority,
       entry: {
-        title: `${observation.priority} observation (${date})`,
+        title: `${observation.priority} observation (${date}) #${index + 1}`,
         path: `observations/${date}.md`,
         category: 'observations',
         score: computeKeywordOverlapScore(queryKeywords, observation.content),
         snippet,
         modified: modifiedDate.toISOString(),
         age: formatRelativeAge(modifiedDate),
-        source: 'observation'
+        source: 'observation',
+        signals: ['observation_priority', 'keyword_overlap'],
+        rationale: `Observation priority ${observation.priority} matched task keywords.`
       }
     });
   }
@@ -296,7 +336,9 @@ function buildSearchContextItems(vault: ClawVault, results: SearchResult[]): Pri
       snippet: normalizeSnippet(result),
       modified: result.document.modified.toISOString(),
       age: formatRelativeAge(result.document.modified),
-      source: 'search'
+      source: 'search',
+      signals: ['semantic_search'],
+      rationale: 'Selected by semantic retrieval.'
     };
 
     return {
@@ -304,6 +346,141 @@ function buildSearchContextItems(vault: ClawVault, results: SearchResult[]): Pri
       entry
     };
   });
+}
+
+function toNoteNodeId(vaultPath: string, absolutePath: string): string {
+  const relativePath = path.relative(vaultPath, absolutePath).split(path.sep).join('/');
+  const noteKey = relativePath.toLowerCase().endsWith('.md') ? relativePath.slice(0, -3) : relativePath;
+  return `note:${noteKey}`;
+}
+
+function buildGraphAdjacency(edges: MemoryGraphEdge[]): Map<string, MemoryGraphEdge[]> {
+  const adjacency = new Map<string, MemoryGraphEdge[]>();
+  for (const edge of edges) {
+    const sourceBucket = adjacency.get(edge.source) ?? [];
+    sourceBucket.push(edge);
+    adjacency.set(edge.source, sourceBucket);
+
+    const targetBucket = adjacency.get(edge.target) ?? [];
+    targetBucket.push(edge);
+    adjacency.set(edge.target, targetBucket);
+  }
+  return adjacency;
+}
+
+function edgeWeight(edge: MemoryGraphEdge): number {
+  if (edge.type === 'frontmatter_relation') return 0.95;
+  if (edge.type === 'wiki_link') return 0.8;
+  return 0.6;
+}
+
+function buildGraphContextItems(params: {
+  graph: MemoryGraph;
+  vaultPath: string;
+  documents: Document[];
+  searchItems: PrioritizedContextItem[];
+  limit: number;
+}): PrioritizedContextItem[] {
+  const { graph, vaultPath, documents, searchItems, limit } = params;
+  if (searchItems.length === 0 || graph.nodes.length === 0 || graph.edges.length === 0) {
+    return [];
+  }
+
+  const graphNodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const adjacency = buildGraphAdjacency(graph.edges);
+  const docByNodeId = new Map<string, Document>();
+  for (const document of documents) {
+    docByNodeId.set(toNoteNodeId(vaultPath, document.path), document);
+  }
+
+  const anchors = searchItems
+    .map((item) => ({
+      item,
+      nodeId: toNoteNodeId(vaultPath, path.join(vaultPath, item.entry.path))
+    }))
+    .filter((anchor) => graphNodeById.has(anchor.nodeId));
+
+  const candidates = new Map<string, PrioritizedContextItem>();
+
+  for (const anchor of anchors) {
+    const connectedEdges = adjacency.get(anchor.nodeId) ?? [];
+    for (const edge of connectedEdges) {
+      const neighborId = edge.source === anchor.nodeId ? edge.target : edge.source;
+      if (neighborId === anchor.nodeId) continue;
+
+      const neighborNode = graphNodeById.get(neighborId);
+      if (!neighborNode || neighborNode.type === 'tag') continue;
+
+      const neighborDoc = docByNodeId.get(neighborId);
+      const neighborPath = neighborDoc
+        ? path.relative(vaultPath, neighborDoc.path).split(path.sep).join('/')
+        : (neighborNode.path ?? neighborNode.id);
+      const neighborTitle = neighborDoc?.title ?? neighborNode.title;
+      const modifiedAt = neighborDoc?.modified ?? (neighborNode.modifiedAt ? new Date(neighborNode.modifiedAt) : new Date(0));
+      const snippet = neighborDoc?.content
+        ? estimateSnippet(neighborDoc.content)
+        : `Connected via ${edge.type}${edge.label ? ` (${edge.label})` : ''}.`;
+      const score = Math.max(0.05, Math.min(1, anchor.item.entry.score * edgeWeight(edge)));
+      const key = `${neighborId}|${edge.type}|${edge.label ?? ''}`;
+      const existing = candidates.get(key);
+
+      const candidate: PrioritizedContextItem = {
+        priority: 3,
+        entry: {
+          title: neighborTitle,
+          path: neighborPath,
+          category: neighborDoc?.category ?? neighborNode.category,
+          score,
+          snippet,
+          modified: modifiedAt.toISOString(),
+          age: formatRelativeAge(modifiedAt),
+          source: 'graph',
+          signals: ['graph_neighbor', `edge:${edge.type}`],
+          rationale: `Connected to "${anchor.item.entry.title}" via ${edge.type}${edge.label ? ` (${edge.label})` : ''}.`
+        }
+      };
+
+      if (!existing || existing.entry.score < candidate.entry.score) {
+        candidates.set(key, candidate);
+      }
+    }
+  }
+
+  return [...candidates.values()]
+    .sort((left, right) => right.entry.score - left.entry.score)
+    .slice(0, Math.max(limit, 1));
+}
+
+function dedupeContextItems(items: PrioritizedContextItem[]): PrioritizedContextItem[] {
+  const deduped = new Map<string, PrioritizedContextItem>();
+  for (const item of items) {
+    const key = `${item.entry.path}|${item.entry.source}|${item.entry.title}`;
+    const existing = deduped.get(key);
+    if (!existing || existing.entry.score < item.entry.score) {
+      deduped.set(key, item);
+    }
+  }
+  return [...deduped.values()];
+}
+
+function applySourceCaps(items: PrioritizedContextItem[], caps: Partial<Record<ContextEntry['source'], number>>): PrioritizedContextItem[] {
+  const counts: Partial<Record<ContextEntry['source'], number>> = {};
+  const capped: PrioritizedContextItem[] = [];
+
+  for (const item of items) {
+    const source = item.entry.source;
+    const limit = caps[source];
+    if (limit !== undefined) {
+      const current = counts[source] ?? 0;
+      if (current >= limit) {
+        continue;
+      }
+      counts[source] = current + 1;
+    }
+    capped.push(item);
+  }
+
+  return capped;
 }
 
 function renderEntryBlock(entry: ContextEntry): string {
@@ -379,7 +556,9 @@ export async function buildContext(task: string, options: ContextOptions): Promi
   const limit = Math.max(1, options.limit ?? DEFAULT_LIMIT);
   const recent = options.recent ?? true;
   const includeObservations = options.includeObservations ?? true;
+  const profile = resolveContextProfile(options.profile, normalizedTask);
   const queryKeywords = extractKeywords(normalizedTask);
+  const allDocuments = await vault.list();
 
   const searchResults = await vault.vsearch(normalizedTask, {
     limit,
@@ -387,10 +566,18 @@ export async function buildContext(task: string, options: ContextOptions): Promi
   });
 
   const searchItems = buildSearchContextItems(vault, searchResults);
-  const dailyItems = await buildDailyContextItems(vault);
+  const dailyItems = buildDailyContextItems(vault.getPath(), allDocuments);
   const observationItems = includeObservations
     ? buildObservationContextItems(vault.getPath(), queryKeywords)
     : [];
+  const graph = await getMemoryGraph(vault.getPath());
+  const graphItems = buildGraphContextItems({
+    graph,
+    vaultPath: vault.getPath(),
+    documents: allDocuments,
+    searchItems,
+    limit
+  });
 
   const byScoreDesc = (left: PrioritizedContextItem, right: PrioritizedContextItem): number =>
     right.entry.score - left.entry.score;
@@ -400,19 +587,28 @@ export async function buildContext(task: string, options: ContextOptions): Promi
   const greenObservations = observationItems.filter((item) => item.priority === 5).sort(byScoreDesc);
   const sortedDailyItems = [...dailyItems].sort(byScoreDesc);
   const sortedSearchItems = [...searchItems].sort(byScoreDesc);
-
-  const ordered = [
-    ...redObservations,
-    ...sortedDailyItems,
-    ...sortedSearchItems,
-    ...yellowObservations,
-    ...greenObservations
-  ];
+  const sortedGraphItems = [...graphItems].sort(byScoreDesc);
+  const grouped: Record<'red' | 'daily' | 'search' | 'graph' | 'yellow' | 'green', PrioritizedContextItem[]> = {
+    red: redObservations,
+    daily: sortedDailyItems,
+    search: sortedSearchItems,
+    graph: sortedGraphItems,
+    yellow: yellowObservations,
+    green: greenObservations
+  };
+  const ordering = PROFILE_ORDERING[profile];
+  const ordered = dedupeContextItems(
+    applySourceCaps(
+      ordering.order.flatMap((group) => grouped[group]),
+      ordering.caps
+    )
+  );
 
   const { context, markdown } = applyTokenBudget(ordered, normalizedTask, options.budget);
 
   return {
     task: normalizedTask,
+    profile,
     generated: new Date().toISOString(),
     context,
     markdown
@@ -424,11 +620,19 @@ export async function contextCommand(task: string, options: ContextOptions): Pro
   const format = options.format ?? 'markdown';
 
   if (format === 'json') {
+    const context = result.context.map((entry) => ({
+      ...entry,
+      explain: {
+        signals: entry.signals ?? [],
+        rationale: entry.rationale ?? ''
+      }
+    }));
     console.log(JSON.stringify({
       task: result.task,
+      profile: result.profile,
       generated: result.generated,
-      count: result.context.length,
-      context: result.context
+      count: context.length,
+      context
     }, null, 2));
     return;
   }
@@ -453,6 +657,7 @@ export function registerContextCommand(program: Command): void {
     .option('--recent', 'Boost recent documents (enabled by default)', true)
     .option('--include-observations', 'Include observation memories in output', true)
     .option('--budget <number>', 'Optional token budget for assembled context')
+    .option('--profile <profile>', 'Context profile (default|planning|incident|handoff|auto)', 'default')
     .option('-v, --vault <path>', 'Vault path')
     .action(async (
       task: string,
@@ -462,6 +667,7 @@ export function registerContextCommand(program: Command): void {
         recent?: boolean;
         includeObservations?: boolean;
         budget?: string;
+        profile?: string;
         vault?: string;
       }
     ) => {
@@ -480,7 +686,8 @@ export function registerContextCommand(program: Command): void {
         format,
         recent: rawOptions.recent ?? true,
         includeObservations: rawOptions.includeObservations ?? true,
-        budget
+        budget,
+        profile: normalizeContextProfileInput(rawOptions.profile)
       });
     });
 }

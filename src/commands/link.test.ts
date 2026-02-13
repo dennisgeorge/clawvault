@@ -65,4 +65,15 @@ describe('link command', () => {
     expect(output).toContain('orphan link(s) found');
     expect(output).toContain('[[missing]]');
   });
+
+  it('supports explicit vault path without CLAWVAULT_PATH env', async () => {
+    delete process.env.CLAWVAULT_PATH;
+    writeFile(vaultPath, 'people/alice.md', '# Alice');
+    writeFile(vaultPath, 'notes/a.md', 'Met with Alice.');
+
+    await linkCommand(path.join(vaultPath, 'notes', 'a.md'), { vaultPath });
+    const content = fs.readFileSync(path.join(vaultPath, 'notes', 'a.md'), 'utf-8');
+    expect(content).toContain('[[people/alice]]');
+    expect(fs.existsSync(path.join(vaultPath, '.clawvault', 'graph-index.json'))).toBe(true);
+  });
 });

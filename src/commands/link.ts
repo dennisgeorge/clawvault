@@ -3,7 +3,8 @@ import * as path from 'path';
 import { buildEntityIndex, type EntityIndex } from '../lib/entity-index.js';
 import { autoLink, dryRunLink, findUnlinkedMentions } from '../lib/auto-linker.js';
 import { readBacklinksIndex, rebuildBacklinksIndex, scanVaultLinks } from '../lib/backlinks.js';
-import { getVaultPath } from '../lib/config.js';
+import { resolveVaultPath } from '../lib/config.js';
+import { buildOrUpdateMemoryGraphIndex } from '../lib/memory-graph.js';
 
 interface LinkOptions {
   all?: boolean;
@@ -11,10 +12,11 @@ interface LinkOptions {
   backlinks?: string;
   orphans?: boolean;
   rebuild?: boolean;
+  vaultPath?: string;
 }
 
 export async function linkCommand(file: string | undefined, options: LinkOptions): Promise<void> {
-  const vaultPath = getVaultPath();
+  const vaultPath = resolveVaultPath({ explicitPath: options.vaultPath });
   const index = buildEntityIndex(vaultPath);
   const suggestionIndex = filterIndex(index, new Set(['people', 'projects', 'decisions']));
   const modeCount = [options.backlinks ? 1 : 0, options.orphans ? 1 : 0, options.rebuild ? 1 : 0]
@@ -78,6 +80,9 @@ export async function linkCommand(file: string | undefined, options: LinkOptions
   
   if (options.all) {
     await linkAllFiles(vaultPath, index, suggestionIndex, options.dryRun);
+    if (!options.dryRun) {
+      await buildOrUpdateMemoryGraphIndex(vaultPath);
+    }
     return;
   }
   
@@ -93,7 +98,10 @@ export async function linkCommand(file: string | undefined, options: LinkOptions
     process.exit(1);
   }
   
-  await linkFile(filePath, index, suggestionIndex, options.dryRun);
+  const linked = await linkFile(filePath, index, suggestionIndex, options.dryRun);
+  if (!options.dryRun && linked > 0) {
+    await buildOrUpdateMemoryGraphIndex(vaultPath);
+  }
 }
 
 function filterIndex(index: EntityIndex, categories: Set<string>): EntityIndex {

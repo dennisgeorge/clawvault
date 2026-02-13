@@ -18,6 +18,7 @@ const MAX_CONTEXT_PROMPT_LENGTH = 500;
 const MAX_CONTEXT_SNIPPET_LENGTH = 220;
 const MAX_RECAP_RESULTS = 6;
 const MAX_RECAP_SNIPPET_LENGTH = 220;
+const EVENT_NAME_SEPARATOR_RE = /[.:/]/g;
 
 // Sanitize string for safe display (prevent prompt injection via control chars)
 function sanitizeForDisplay(str) {
@@ -228,6 +229,45 @@ function injectSystemMessage(event, message) {
   return true;
 }
 
+function normalizeEventToken(value) {
+  if (typeof value !== 'string') return '';
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(EVENT_NAME_SEPARATOR_RE, ':');
+}
+
+function eventMatches(event, type, action) {
+  const normalizedExpected = `${normalizeEventToken(type)}:${normalizeEventToken(action)}`;
+  const normalizedType = normalizeEventToken(event?.type);
+  const normalizedAction = normalizeEventToken(event?.action);
+
+  if (normalizedType && normalizedAction) {
+    if (`${normalizedType}:${normalizedAction}` === normalizedExpected) {
+      return true;
+    }
+  }
+
+  const aliases = [
+    event?.event,
+    event?.name,
+    event?.hook,
+    event?.trigger,
+    event?.eventName
+  ];
+
+  for (const alias of aliases) {
+    const normalizedAlias = normalizeEventToken(alias);
+    if (!normalizedAlias) continue;
+    if (normalizedAlias === normalizedExpected) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // Validate vault path - must be absolute and exist
 function validateVaultPath(vaultPath) {
   if (!vaultPath || typeof vaultPath !== 'string') return null;
@@ -435,6 +475,7 @@ async function handleSessionStart(event) {
       'context',
       prompt,
       '--format', 'json',
+      '--profile', 'auto',
       '-v', vaultPath
     ]);
 
@@ -462,17 +503,17 @@ async function handleSessionStart(event) {
 // Main handler - route events
 const handler = async (event) => {
   try {
-    if (event.type === 'gateway' && event.action === 'startup') {
+    if (eventMatches(event, 'gateway', 'startup')) {
       await handleStartup(event);
       return;
     }
 
-    if (event.type === 'command' && event.action === 'new') {
+    if (eventMatches(event, 'command', 'new')) {
       await handleNew(event);
       return;
     }
 
-    if (event.type === 'session' && event.action === 'start') {
+    if (eventMatches(event, 'session', 'start')) {
       await handleSessionStart(event);
       return;
     }
