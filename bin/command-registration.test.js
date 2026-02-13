@@ -9,22 +9,15 @@ import { registerResilienceCommands } from './register-resilience-commands.js';
 import { registerSessionLifecycleCommands } from './register-session-lifecycle-commands.js';
 import { registerTemplateCommands } from './register-template-commands.js';
 import { registerVaultOperationsCommands } from './register-vault-operations-commands.js';
+import {
+  chalkStub,
+  createGetVaultStub,
+  registerAllCommandModules,
+  stubResolveVaultPath
+} from './test-helpers/cli-command-fixtures.js';
 
 function listCommandNames(program) {
   return program.commands.map((command) => command.name()).sort((a, b) => a.localeCompare(b));
-}
-
-const chalkStub = {
-  cyan: (value) => value,
-  green: (value) => value,
-  red: (value) => value,
-  dim: (value) => value,
-  yellow: (value) => value,
-  white: (value) => value
-};
-
-function stubResolveVaultPath(value) {
-  return value ?? '/vault';
 }
 
 describe('CLI command registration modules', () => {
@@ -35,7 +28,7 @@ describe('CLI command registration modules', () => {
       path,
       fs,
       createVault: async () => ({ getCategories: () => [], getQmdRoot: () => '', getQmdCollection: () => '' }),
-      getVault: async () => ({ store: async () => ({}), capture: async () => ({}) }),
+      getVault: createGetVaultStub({ store: async () => ({}), capture: async () => ({}) }),
       runQmd: async () => {}
     });
 
@@ -47,7 +40,7 @@ describe('CLI command registration modules', () => {
     const program = new Command();
     registerQueryCommands(program, {
       chalk: chalkStub,
-      getVault: async () => ({ find: async () => [], vsearch: async () => [] }),
+      getVault: createGetVaultStub({ find: async () => [], vsearch: async () => [] }),
       resolveVaultPath: stubResolveVaultPath,
       QmdUnavailableError: class extends Error {},
       printQmdMissing: () => {}
@@ -66,7 +59,15 @@ describe('CLI command registration modules', () => {
     registerVaultOperationsCommands(program, {
       chalk: chalkStub,
       fs,
-      getVault: async () => ({ list: async () => [], get: async () => null, stats: async () => ({ tags: [], categories: {} }), sync: async () => ({ copied: [], deleted: [], unchanged: [], errors: [] }), reindex: async () => 0, remember: async () => ({ id: '' }), getQmdCollection: () => '' }),
+      getVault: createGetVaultStub({
+        list: async () => [],
+        get: async () => null,
+        stats: async () => ({ tags: [], categories: {} }),
+        sync: async () => ({ copied: [], deleted: [], unchanged: [], errors: [] }),
+        reindex: async () => 0,
+        remember: async () => ({ id: '' }),
+        getQmdCollection: () => ''
+      }),
       runQmd: async () => {},
       resolveVaultPath: stubResolveVaultPath,
       path
@@ -97,7 +98,7 @@ describe('CLI command registration modules', () => {
       resolveVaultPath: stubResolveVaultPath,
       QmdUnavailableError: class extends Error {},
       printQmdMissing: () => {},
-      getVault: async () => ({
+      getVault: createGetVaultStub({
         createHandoff: async () => ({ id: '', path: '' }),
         getQmdCollection: () => '',
         generateRecap: async () => ({}),
@@ -136,64 +137,7 @@ describe('CLI command registration modules', () => {
   });
 
   it('keeps top-level command names unique when modules are combined', () => {
-    const program = new Command();
-    registerCoreCommands(program, {
-      chalk: chalkStub,
-      path,
-      fs,
-      createVault: async () => ({ getCategories: () => [], getQmdRoot: () => '', getQmdCollection: () => '' }),
-      getVault: async () => ({
-        store: async () => ({}),
-        capture: async () => ({}),
-        find: async () => [],
-        vsearch: async () => [],
-        list: async () => [],
-        get: async () => null,
-        stats: async () => ({ tags: [], categories: {} }),
-        sync: async () => ({ copied: [], deleted: [], unchanged: [], errors: [] }),
-        reindex: async () => 0,
-        remember: async () => ({ id: '' }),
-        getQmdCollection: () => '',
-        createHandoff: async () => ({ id: '', path: '' }),
-        generateRecap: async () => ({}),
-        formatRecap: () => ''
-      }),
-      runQmd: async () => {}
-    });
-    registerQueryCommands(program, {
-      chalk: chalkStub,
-      getVault: async () => ({ find: async () => [], vsearch: async () => [] }),
-      resolveVaultPath: stubResolveVaultPath,
-      QmdUnavailableError: class extends Error {},
-      printQmdMissing: () => {}
-    });
-    registerVaultOperationsCommands(program, {
-      chalk: chalkStub,
-      fs,
-      getVault: async () => ({ list: async () => [], get: async () => null, stats: async () => ({ tags: [], categories: {} }), sync: async () => ({ copied: [], deleted: [], unchanged: [], errors: [] }), reindex: async () => 0, remember: async () => ({ id: '' }), getQmdCollection: () => '' }),
-      runQmd: async () => {},
-      resolveVaultPath: stubResolveVaultPath,
-      path
-    });
-    registerMaintenanceCommands(program, { chalk: chalkStub });
-    registerResilienceCommands(program, {
-      chalk: chalkStub,
-      resolveVaultPath: stubResolveVaultPath
-    });
-    registerSessionLifecycleCommands(program, {
-      chalk: chalkStub,
-      resolveVaultPath: stubResolveVaultPath,
-      QmdUnavailableError: class extends Error {},
-      printQmdMissing: () => {},
-      getVault: async () => ({
-        createHandoff: async () => ({ id: '', path: '' }),
-        getQmdCollection: () => '',
-        generateRecap: async () => ({}),
-        formatRecap: () => ''
-      }),
-      runQmd: async () => {}
-    });
-    registerTemplateCommands(program, { chalk: chalkStub });
+    const program = registerAllCommandModules(new Command());
 
     const names = program.commands.map((command) => command.name());
     const unique = new Set(names);
