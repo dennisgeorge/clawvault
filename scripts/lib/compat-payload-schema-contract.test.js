@@ -7,6 +7,9 @@ import {
 import {
   COMPAT_VALIDATOR_RESULT_VERIFIER_OUTPUT_SCHEMA_VERSION
 } from './compat-validator-result-verifier-output.mjs';
+import {
+  JSON_SCHEMA_VALIDATOR_OUTPUT_SCHEMA_VERSION
+} from './json-schema-validator-output.mjs';
 
 function readSchema(schemaFileName) {
   const schemaPath = path.resolve(process.cwd(), 'schemas', schemaFileName);
@@ -25,6 +28,13 @@ describe('compat payload json schema contracts', () => {
   it('keeps validator-result verifier schema in sync with runtime contract versions', () => {
     const schema = readSchema('compat-validator-result-verifier-output.schema.json');
     expect(schema.properties.outputSchemaVersion.const).toBe(COMPAT_VALIDATOR_RESULT_VERIFIER_OUTPUT_SCHEMA_VERSION);
+    expect(schema.properties.status.enum).toEqual(['ok', 'error']);
+    expect(schema.additionalProperties).toBe(false);
+  });
+
+  it('keeps generic json-schema validator output schema in sync with runtime contract version', () => {
+    const schema = readSchema('json-schema-validator-output.schema.json');
+    expect(schema.properties.outputSchemaVersion.const).toBe(JSON_SCHEMA_VALIDATOR_OUTPUT_SCHEMA_VERSION);
     expect(schema.properties.status.enum).toEqual(['ok', 'error']);
     expect(schema.additionalProperties).toBe(false);
   });

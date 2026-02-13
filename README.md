@@ -274,7 +274,7 @@ node scripts/validate-compat-summary.mjs --summary /tmp/summary.json --json
 node scripts/validate-compat-summary.mjs --summary /tmp/summary.json --json --out /tmp/validator-result.json
 # in CI, compat-summary artifacts now include both summary.json and validator-result.json
 # validator payload schema/validation is centralized in scripts/lib/compat-summary-validator-output.mjs
-# JSON schema artifacts for payload contracts live in /schemas
+# JSON schema artifacts for payload contracts live in /schemas (including json-schema-validator-output)
 # generic schema checker CLI lives at scripts/validate-json-schema.mjs
 # schema-validator result payload is written to schema-validator-result.json in compat report dirs
 # see validator usage/help
@@ -286,6 +286,8 @@ npm run test:compat-validator-result:verify -- /tmp/clawvault-compat-reports/val
 # npm verifier wrapper enforces --require-ok by default
 # validate validator-result payload against its JSON schema contract
 npm run test:compat-validator-result:schema
+# validate schema-validator-result payload against its own schema contract
+npm run test:compat-schema-validator-result:verify
 # explicit verifier CLI options:
 node scripts/validate-compat-validator-result.mjs --validator-result /tmp/clawvault-compat-reports/validator-result.json --json --out /tmp/verifier-result.json
 # enforce success-only validator-result status in strict automation paths

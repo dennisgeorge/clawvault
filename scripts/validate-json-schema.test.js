@@ -4,6 +4,9 @@ import * as os from 'os';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
 import { buildSummaryValidatorSuccessPayload } from './lib/compat-summary-validator-output.mjs';
+import {
+  JSON_SCHEMA_VALIDATOR_OUTPUT_SCHEMA_VERSION
+} from './lib/json-schema-validator-output.mjs';
 
 const schemaValidatorScript = path.resolve(process.cwd(), 'scripts', 'validate-json-schema.mjs');
 
@@ -70,12 +73,12 @@ describe('validate-json-schema script', () => {
       const parseErrorResult = runSchemaValidator(['--json', '--schema', '--out', parseErrorOutPath]);
       expect(parseErrorResult.status).toBe(1);
       expect(parseJsonLine(parseErrorResult.stdout)).toEqual({
-        outputSchemaVersion: 1,
+        outputSchemaVersion: JSON_SCHEMA_VALIDATOR_OUTPUT_SCHEMA_VERSION,
         status: 'error',
         error: 'Missing value for --schema'
       });
       expect(JSON.parse(fs.readFileSync(parseErrorOutPath, 'utf-8'))).toEqual({
-        outputSchemaVersion: 1,
+        outputSchemaVersion: JSON_SCHEMA_VALIDATOR_OUTPUT_SCHEMA_VERSION,
         status: 'error',
         error: 'Missing value for --schema'
       });

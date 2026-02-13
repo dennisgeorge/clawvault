@@ -1,8 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import Ajv2020 from 'ajv/dist/2020.js';
-
-const JSON_SCHEMA_VALIDATOR_OUTPUT_SCHEMA_VERSION = 1;
+import {
+  buildJsonSchemaValidatorErrorPayload,
+  buildJsonSchemaValidatorSuccessPayload,
+  ensureJsonSchemaValidatorPayloadShape
+} from './lib/json-schema-validator-output.mjs';
 
 function parseCliArgs(argv) {
   const parsed = {
@@ -110,30 +113,10 @@ function normalizeValidationErrors(errors = []) {
 }
 
 function writePayload(outPath, payload) {
+  ensureJsonSchemaValidatorPayloadShape(payload);
   const resolvedPath = path.resolve(process.cwd(), outPath);
   fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
   fs.writeFileSync(resolvedPath, JSON.stringify(payload, null, 2), 'utf-8');
-}
-
-function buildSuccessPayload(schemaPath, dataPath) {
-  return {
-    outputSchemaVersion: JSON_SCHEMA_VALIDATOR_OUTPUT_SCHEMA_VERSION,
-    status: 'ok',
-    schemaPath,
-    dataPath
-  };
-}
-
-function buildErrorPayload(error, validationErrors) {
-  const payload = {
-    outputSchemaVersion: JSON_SCHEMA_VALIDATOR_OUTPUT_SCHEMA_VERSION,
-    status: 'error',
-    error: String(error ?? '')
-  };
-  if (Array.isArray(validationErrors) && validationErrors.length > 0) {
-    payload.validationErrors = validationErrors;
-  }
-  return payload;
 }
 
 function main() {
@@ -153,7 +136,10 @@ function main() {
   const isValid = validate(data);
   if (!isValid) {
     const validationErrors = normalizeValidationErrors(validate.errors);
-    const payload = buildErrorPayload('JSON schema validation failed', validationErrors);
+    const payload = buildJsonSchemaValidatorErrorPayload({
+      error: 'JSON schema validation failed',
+      validationErrors
+    });
     if (args.outPath) writePayload(args.outPath, payload);
     if (args.json) {
       console.log(JSON.stringify(payload));
@@ -166,7 +152,10 @@ function main() {
     process.exit(1);
   }
 
-  const payload = buildSuccessPayload(schemaPath, dataPath);
+  const payload = buildJsonSchemaValidatorSuccessPayload({
+    schemaPath,
+    dataPath
+  });
   if (args.outPath) writePayload(args.outPath, payload);
   if (args.json) {
     console.log(JSON.stringify(payload));
@@ -187,7 +176,7 @@ try {
       return bestEffortOutPath(argv);
     }
   })();
-  const payload = buildErrorPayload(message);
+  const payload = buildJsonSchemaValidatorErrorPayload({ error: message });
   if (outPath) writePayload(outPath, payload);
   if (argv.includes('--json')) {
     console.log(JSON.stringify(payload));
