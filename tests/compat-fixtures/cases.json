@@ -1,0 +1,49 @@
+[
+  {
+    "name": "healthy",
+    "expectedExitCode": 0,
+    "expectedWarnings": 0,
+    "expectedErrors": 0,
+    "expectedCheckStatuses": {
+      "hook manifest events": "ok",
+      "hook manifest requirements": "ok",
+      "hook handler safety": "ok"
+    }
+  },
+  {
+    "name": "missing-requires-bin",
+    "expectedExitCode": 1,
+    "expectedWarnings": 1,
+    "expectedErrors": 0,
+    "expectedCheckStatuses": {
+      "hook manifest requirements": "warn"
+    }
+  },
+  {
+    "name": "non-auto-profile",
+    "expectedExitCode": 1,
+    "expectedWarnings": 1,
+    "expectedErrors": 0,
+    "expectedCheckStatuses": {
+      "hook handler safety": "warn"
+    }
+  },
+  {
+    "name": "missing-events",
+    "expectedExitCode": 1,
+    "expectedWarnings": 0,
+    "expectedErrors": 1,
+    "expectedCheckStatuses": {
+      "hook manifest events": "error"
+    }
+  },
+  {
+    "name": "missing-package-hook",
+    "expectedExitCode": 1,
+    "expectedWarnings": 0,
+    "expectedErrors": 1,
+    "expectedCheckStatuses": {
+      "package hook registration": "error"
+    }
+  }
+]

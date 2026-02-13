@@ -7,56 +7,38 @@ import { fileURLToPath } from 'url';
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..');
 const fixturesRoot = path.join(repoRoot, 'tests', 'compat-fixtures');
+const fixtureCasesPath = path.join(fixturesRoot, 'cases.json');
 
-const cases = [
-  {
-    name: 'healthy',
-    expectedExitCode: 0,
-    expectedWarnings: 0,
-    expectedErrors: 0,
-    expectedCheckStatuses: {
-      'hook manifest events': 'ok',
-      'hook manifest requirements': 'ok',
-      'hook handler safety': 'ok'
+function loadCases() {
+  const raw = fs.readFileSync(fixtureCasesPath, 'utf-8');
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error('compat fixture cases must be a non-empty array');
+  }
+
+  for (const [index, testCase] of parsed.entries()) {
+    if (!testCase || typeof testCase !== 'object') {
+      throw new Error(`compat fixture case[${index}] must be an object`);
     }
-  },
-  {
-    name: 'missing-requires-bin',
-    expectedExitCode: 1,
-    expectedWarnings: 1,
-    expectedErrors: 0,
-    expectedCheckStatuses: {
-      'hook manifest requirements': 'warn'
+    if (typeof testCase.name !== 'string' || testCase.name.length === 0) {
+      throw new Error(`compat fixture case[${index}] missing name`);
     }
-  },
-  {
-    name: 'non-auto-profile',
-    expectedExitCode: 1,
-    expectedWarnings: 1,
-    expectedErrors: 0,
-    expectedCheckStatuses: {
-      'hook handler safety': 'warn'
+    if (!Number.isInteger(testCase.expectedExitCode)) {
+      throw new Error(`compat fixture case[${index}] missing expectedExitCode`);
     }
-  },
-  {
-    name: 'missing-events',
-    expectedExitCode: 1,
-    expectedWarnings: 0,
-    expectedErrors: 1,
-    expectedCheckStatuses: {
-      'hook manifest events': 'error'
+    if (!Number.isInteger(testCase.expectedWarnings)) {
+      throw new Error(`compat fixture case[${index}] missing expectedWarnings`);
     }
-  },
-  {
-    name: 'missing-package-hook',
-    expectedExitCode: 1,
-    expectedWarnings: 0,
-    expectedErrors: 1,
-    expectedCheckStatuses: {
-      'package hook registration': 'error'
+    if (!Number.isInteger(testCase.expectedErrors)) {
+      throw new Error(`compat fixture case[${index}] missing expectedErrors`);
+    }
+    if (!testCase.expectedCheckStatuses || typeof testCase.expectedCheckStatuses !== 'object') {
+      throw new Error(`compat fixture case[${index}] missing expectedCheckStatuses`);
     }
   }
-];
+
+  return parsed;
+}
 
 function createOpenClawShim() {
   const shimDir = fs.mkdtempSync(path.join(os.tmpdir(), 'clawvault-openclaw-shim-'));
@@ -142,6 +124,7 @@ function runCase(testCase, env) {
 }
 
 function main() {
+  const cases = loadCases();
   const { shimDir } = createOpenClawShim();
   const env = {
     ...process.env,
