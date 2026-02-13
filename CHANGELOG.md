@@ -76,6 +76,7 @@
 - Compatibility report artifact writing (`summary.json`, per-case JSON) is now centralized in fixture-runner library utilities with dedicated unit coverage.
 - Fixture contract validation now enforces coverage of every declared compatibility check label in `expectedCheckStatuses` (healthy case provides full-label baseline assertions).
 - Fixture manifest validation now enforces stricter expectation consistency (exit code domain, non-negative warning/error counts, and exit-vs-count coherence) to prevent malformed declarative contracts.
+- Consolidated `npm run ci` now includes build-backed contract validation (`test:compat-contract:fast`) before full compatibility fixture execution for earlier contract drift failure signals.
 
 ## [1.11.2] - 2026-02-12
 

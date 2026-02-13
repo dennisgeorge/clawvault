@@ -235,6 +235,7 @@ npm run test:compat-contract:fast
 
 # Run full local CI gate (typecheck + tests + compat fixtures)
 npm run ci
+# runs build-backed contract validation before full compatibility fixture matrix
 
 # Optional: run only specific compatibility fixtures
 COMPAT_CASES=healthy,missing-events npm run test:compat-fixtures
