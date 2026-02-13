@@ -100,6 +100,21 @@ describe('checkOpenClawCompatibility', () => {
     }
   });
 
+  it('flags openclaw CLI termination by signal as warning', async () => {
+    spawnSyncMock.mockReturnValue({ error: undefined, status: null, signal: 'SIGTERM' });
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clawvault-compat-'));
+    try {
+      writeProjectFixture(root);
+      const { checkOpenClawCompatibility } = await loadCompatModule();
+      const report = checkOpenClawCompatibility({ baseDir: root });
+      const cliCheck = report.checks.find((check) => check.label === 'openclaw CLI available');
+      expect(cliCheck?.status).toBe('warn');
+      expect(cliCheck?.detail).toContain('terminated by signal SIGTERM');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('computes strict exit code from warnings/errors', async () => {
     const { compatibilityExitCode } = await loadCompatModule();
     expect(compatibilityExitCode({ generatedAt: '', checks: [], warnings: 0, errors: 0 })).toBe(0);

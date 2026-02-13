@@ -72,6 +72,14 @@ function checkOpenClawCli(): CompatCheck {
       hint: 'Ensure OpenClaw CLI is installed and runnable in PATH.'
     };
   }
+  if (typeof result.signal === 'string' && result.signal.length > 0) {
+    return {
+      label: 'openclaw CLI available',
+      status: 'warn',
+      detail: `openclaw --version terminated by signal ${result.signal}`,
+      hint: 'Ensure OpenClaw CLI can execute normally in PATH.'
+    };
+  }
   return { label: 'openclaw CLI available', status: 'ok' };
 }
 
