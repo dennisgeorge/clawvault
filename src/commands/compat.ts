@@ -27,6 +27,7 @@ interface CompatOptions {
 export interface CompatCommandOptions {
   json?: boolean;
   strict?: boolean;
+  baseDir?: string;
 }
 
 const REQUIRED_HOOK_EVENTS = ['gateway:startup', 'command:new', 'session:start'];
@@ -295,7 +296,7 @@ export function compatibilityExitCode(
 }
 
 export async function compatCommand(options: CompatCommandOptions = {}): Promise<CompatReport> {
-  const report = checkOpenClawCompatibility();
+  const report = checkOpenClawCompatibility({ baseDir: options.baseDir });
   if (options.json) {
     console.log(JSON.stringify(report, null, 2));
   } else {

@@ -133,7 +133,9 @@ describe('CLI command registration modules', () => {
 
     const compatCommand = program.commands.find((command) => command.name() === 'compat');
     const strictOption = compatCommand?.options.find((option) => option.flags.includes('--strict'));
+    const baseDirOption = compatCommand?.options.find((option) => option.flags.includes('--base-dir <path>'));
     expect(strictOption).toBeTruthy();
+    expect(baseDirOption).toBeTruthy();
   });
 
   it('keeps top-level command names unique when modules are combined', () => {
