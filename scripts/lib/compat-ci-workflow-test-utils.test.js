@@ -9,6 +9,7 @@ import {
   extractJobBlock,
   extractJobMetadata,
   extractPushBranches,
+  extractNestedSectionFieldNames,
   extractTopLevelJobNames,
   extractRunCommand,
   extractScalarField,
@@ -95,6 +96,7 @@ describe('compat ci workflow test utils', () => {
     expect(countStepNameOccurrences(`\n${SAMPLE_WORKFLOW_YAML}\n`, 'Missing Step')).toBe(0);
     expect(extractStepNames(`\n${SAMPLE_WORKFLOW_YAML}\n`)).toEqual(['First Step', 'Build', 'Upload', 'Done']);
     expect(extractStepFieldNames(metadata.block)).toEqual(['name', 'run', 'env']);
+    expect(extractNestedSectionFieldNames(metadata.block, 'env')).toEqual(['SAMPLE_ENV']);
     expect(countStepFieldOccurrences(metadata.block, 'run')).toBe(1);
     expect(countStepFieldOccurrences(metadata.block, 'missing')).toBe(0);
   });
@@ -105,6 +107,11 @@ describe('compat ci workflow test utils', () => {
     expect(extractUsesField(uploadStepBlock)).toBe('actions/upload-artifact@v4');
     expect(extractScalarField(uploadStepBlock, 'name')).toBe('sample-artifact');
     expect(extractStepFieldNames(uploadStepBlock)).toEqual(['name', 'uses', 'with']);
+    expect(extractNestedSectionFieldNames(uploadStepBlock, 'with')).toEqual([
+      'name',
+      'path',
+      'if-no-files-found'
+    ]);
     expect(extractScalarField(uploadStepBlock, 'if-no-files-found')).toBe('ignore');
     expect(extractUploadArtifactPaths(uploadStepBlock)).toEqual([
       '${{ runner.temp }}/reports/a.json',
@@ -120,6 +127,7 @@ describe('compat ci workflow test utils', () => {
     expect(extractStepMetadata(`\n${SAMPLE_WORKFLOW_YAML}\n`, 'Missing Step')).toBe(null);
     expect(extractScalarField('run: npm test', 'missing')).toBe(null);
     expect(extractStepFieldNames('run: npm test')).toBe(null);
+    expect(extractNestedSectionFieldNames('run: npm test', 'env')).toBe(null);
     expect(extractUploadArtifactPaths('- name: Upload\n  uses: actions/upload-artifact@v4')).toBe(null);
     expect(countScalarFieldOccurrences('run: npm test', 'missing')).toBe(0);
     expect(extractWorkflowName('jobs:\n  test:\n    runs-on: ubuntu-latest')).toBe(null);

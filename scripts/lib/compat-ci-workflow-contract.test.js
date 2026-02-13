@@ -29,6 +29,8 @@ import {
   REQUIRED_COMPAT_CI_SETUP_NODE_STEP_NAME,
   REQUIRED_COMPAT_CI_SETUP_NODE_USES,
   REQUIRED_COMPAT_CI_SETUP_NODE_VERSION,
+  REQUIRED_COMPAT_CI_STEP_ENV_FIELD_NAME_SEQUENCES,
+  REQUIRED_COMPAT_CI_STEP_WITH_FIELD_NAME_SEQUENCES,
   REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES,
   REQUIRED_COMPAT_CI_STEP_NAMES,
   REQUIRED_COMPAT_CI_STEP_SEQUENCE,
@@ -55,6 +57,7 @@ import {
   extractPushBranches,
   extractTopLevelJobNames,
   extractOnTriggerNames,
+  extractNestedSectionFieldNames,
   extractStepNames,
   extractUploadArtifactPaths,
   extractUsesField,
@@ -159,6 +162,24 @@ describe('compat ci workflow contract', () => {
       const stepBlock = extractStepBlock(ciJobBlock, stepName);
       expect(stepBlock, `missing CI workflow step: ${stepName}`).toBeTruthy();
       expect(extractStepFieldNames(stepBlock)).toEqual(expectedFieldNames);
+    }
+  });
+
+  it('keeps canonical nested with/env field-name domains for required CI steps', () => {
+    const workflowYaml = loadCiWorkflowYaml();
+    const ciJobBlock = extractJobBlock(workflowYaml, REQUIRED_COMPAT_CI_JOB_NAME);
+    expect(ciJobBlock, `missing CI workflow job: ${REQUIRED_COMPAT_CI_JOB_NAME}`).toBeTruthy();
+
+    for (const [stepName, expectedWithFieldNames] of Object.entries(REQUIRED_COMPAT_CI_STEP_WITH_FIELD_NAME_SEQUENCES)) {
+      const stepBlock = extractStepBlock(ciJobBlock, stepName);
+      expect(stepBlock, `missing CI workflow step: ${stepName}`).toBeTruthy();
+      expect(extractNestedSectionFieldNames(stepBlock, 'with')).toEqual(expectedWithFieldNames);
+    }
+
+    for (const [stepName, expectedEnvFieldNames] of Object.entries(REQUIRED_COMPAT_CI_STEP_ENV_FIELD_NAME_SEQUENCES)) {
+      const stepBlock = extractStepBlock(ciJobBlock, stepName);
+      expect(stepBlock, `missing CI workflow step: ${stepName}`).toBeTruthy();
+      expect(extractNestedSectionFieldNames(stepBlock, 'env')).toEqual(expectedEnvFieldNames);
     }
   });
 

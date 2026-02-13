@@ -119,6 +119,14 @@ export const REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES = Object.freeze({
   [REQUIRED_COMPAT_CI_FAILURE_UPLOAD_STEP_NAME]: Object.freeze(['name', 'if', 'uses', 'with']),
   [REQUIRED_COMPAT_CI_UPLOAD_STEP_NAME]: Object.freeze(['name', 'if', 'uses', 'with'])
 });
+export const REQUIRED_COMPAT_CI_STEP_WITH_FIELD_NAME_SEQUENCES = Object.freeze({
+  [REQUIRED_COMPAT_CI_SETUP_NODE_STEP_NAME]: Object.freeze(['node-version', 'cache']),
+  [REQUIRED_COMPAT_CI_FAILURE_UPLOAD_STEP_NAME]: Object.freeze(['name', 'path', 'if-no-files-found']),
+  [REQUIRED_COMPAT_CI_UPLOAD_STEP_NAME]: Object.freeze(['name', 'path', 'if-no-files-found'])
+});
+export const REQUIRED_COMPAT_CI_STEP_ENV_FIELD_NAME_SEQUENCES = Object.freeze({
+  [REQUIRED_COMPAT_CI_PRIMARY_RUN_STEP_NAME]: Object.freeze([REQUIRED_COMPAT_CI_REPORT_DIR_ENV_KEY])
+});
 
 export const REQUIRED_COMPAT_ARTIFACT_STACK_SEQUENCE = Object.freeze([
   'npm run test:compat-artifact-alignment:fast',

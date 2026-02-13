@@ -133,6 +133,38 @@ export function countStepFieldOccurrences(stepBlock, fieldName) {
     .length;
 }
 
+function countLeadingSpaces(line) {
+  return line.length - line.trimStart().length;
+}
+
+export function extractNestedSectionFieldNames(stepBlock, sectionName) {
+  const lines = stepBlock.split('\n');
+  const sectionLineIndex = lines.findIndex((line) => {
+    const trimmedLine = line.trim();
+    return trimmedLine === `${sectionName}:` || trimmedLine === `${sectionName}: |`;
+  });
+  if (sectionLineIndex < 0) {
+    return null;
+  }
+  const sectionIndent = countLeadingSpaces(lines[sectionLineIndex]);
+  const sectionFieldNames = [];
+  for (let index = sectionLineIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.trim()) {
+      continue;
+    }
+    const lineIndent = countLeadingSpaces(line);
+    if (lineIndent <= sectionIndent) {
+      break;
+    }
+    const fieldMatch = /^\s*([A-Za-z0-9_-]+):\s*/.exec(line.trim());
+    if (fieldMatch) {
+      sectionFieldNames.push(fieldMatch[1]);
+    }
+  }
+  return sectionFieldNames;
+}
+
 export function countScalarFieldOccurrences(block, fieldName) {
   const fieldPattern = new RegExp(`\\n\\s*${escapeRegex(fieldName)}:\\s*`, 'g');
   return [...block.matchAll(fieldPattern)].length;

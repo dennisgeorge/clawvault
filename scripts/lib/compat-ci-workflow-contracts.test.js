@@ -26,6 +26,8 @@ import {
   REQUIRED_COMPAT_CI_SETUP_NODE_STEP_NAME,
   REQUIRED_COMPAT_CI_SETUP_NODE_USES,
   REQUIRED_COMPAT_CI_SETUP_NODE_VERSION,
+  REQUIRED_COMPAT_CI_STEP_ENV_FIELD_NAME_SEQUENCES,
+  REQUIRED_COMPAT_CI_STEP_WITH_FIELD_NAME_SEQUENCES,
   REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES,
   REQUIRED_COMPAT_CI_STEP_NAMES,
   REQUIRED_COMPAT_CI_STEP_SEQUENCE,
@@ -128,6 +130,18 @@ describe('compat ci workflow contracts constants', () => {
       expect(fieldNameSequence.length).toBeGreaterThan(0);
       expect(new Set(fieldNameSequence).size).toBe(fieldNameSequence.length);
       expect(fieldNameSequence[0]).toBe('name');
+    }
+    for (const [stepName, fieldNameSequence] of Object.entries(REQUIRED_COMPAT_CI_STEP_WITH_FIELD_NAME_SEQUENCES)) {
+      expect(REQUIRED_COMPAT_CI_STEP_NAMES).toContain(stepName);
+      expect(Array.isArray(fieldNameSequence)).toBe(true);
+      expect(fieldNameSequence.length).toBeGreaterThan(0);
+      expect(new Set(fieldNameSequence).size).toBe(fieldNameSequence.length);
+    }
+    for (const [stepName, fieldNameSequence] of Object.entries(REQUIRED_COMPAT_CI_STEP_ENV_FIELD_NAME_SEQUENCES)) {
+      expect(REQUIRED_COMPAT_CI_STEP_NAMES).toContain(stepName);
+      expect(Array.isArray(fieldNameSequence)).toBe(true);
+      expect(fieldNameSequence.length).toBeGreaterThan(0);
+      expect(new Set(fieldNameSequence).size).toBe(fieldNameSequence.length);
     }
   });
 
