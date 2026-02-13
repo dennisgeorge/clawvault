@@ -1,4 +1,6 @@
-[
+{
+  "schemaVersion": 1,
+  "cases": [
   {
     "name": "healthy",
     "expectedExitCode": 0,
@@ -58,4 +60,5 @@
       "package hook registration": "Missing ./hooks/clawvault"
     }
   }
-]
+  ]
+}

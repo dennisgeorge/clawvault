@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
+  COMPAT_FIXTURE_SCHEMA_VERSION,
   assertFixtureFiles,
   ensureCompatReportShape,
   loadCases,
@@ -18,15 +19,18 @@ describe('compat fixture runner utilities', () => {
   it('loads valid declarative cases from disk', () => {
     const root = makeTempDir('compat-cases-');
     const file = path.join(root, 'cases.json');
-    fs.writeFileSync(file, JSON.stringify([
-      {
-        name: 'healthy',
-        expectedExitCode: 0,
-        expectedWarnings: 0,
-        expectedErrors: 0,
-        expectedCheckStatuses: { 'hook handler safety': 'ok' }
-      }
-    ]), 'utf-8');
+    fs.writeFileSync(file, JSON.stringify({
+      schemaVersion: COMPAT_FIXTURE_SCHEMA_VERSION,
+      cases: [
+        {
+          name: 'healthy',
+          expectedExitCode: 0,
+          expectedWarnings: 0,
+          expectedErrors: 0,
+          expectedCheckStatuses: { 'hook handler safety': 'ok' }
+        }
+      ]
+    }), 'utf-8');
     try {
       const loaded = loadCases(file);
       expect(loaded).toHaveLength(1);
@@ -39,17 +43,34 @@ describe('compat fixture runner utilities', () => {
   it('rejects invalid case metadata', () => {
     const root = makeTempDir('compat-cases-');
     const file = path.join(root, 'cases.json');
-    fs.writeFileSync(file, JSON.stringify([
-      {
-        name: 'bad-status',
-        expectedExitCode: 0,
-        expectedWarnings: 0,
-        expectedErrors: 0,
-        expectedCheckStatuses: { 'hook handler safety': 'invalid' }
-      }
-    ]), 'utf-8');
+    fs.writeFileSync(file, JSON.stringify({
+      schemaVersion: COMPAT_FIXTURE_SCHEMA_VERSION,
+      cases: [
+        {
+          name: 'bad-status',
+          expectedExitCode: 0,
+          expectedWarnings: 0,
+          expectedErrors: 0,
+          expectedCheckStatuses: { 'hook handler safety': 'invalid' }
+        }
+      ]
+    }), 'utf-8');
     try {
       expect(() => loadCases(file)).toThrow('invalid status');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects unsupported fixture schema version', () => {
+    const root = makeTempDir('compat-cases-');
+    const file = path.join(root, 'cases.json');
+    fs.writeFileSync(file, JSON.stringify({
+      schemaVersion: 999,
+      cases: []
+    }), 'utf-8');
+    try {
+      expect(() => loadCases(file)).toThrow('schemaVersion');
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

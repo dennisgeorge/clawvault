@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+export const COMPAT_FIXTURE_SCHEMA_VERSION = 1;
 export const VALID_CHECK_STATUSES = new Set(['ok', 'warn', 'error']);
 export const REQUIRED_FIXTURE_FILES = [
   'package.json',
@@ -12,12 +13,24 @@ export const REQUIRED_FIXTURE_FILES = [
 export function loadCases(casesPath) {
   const raw = fs.readFileSync(casesPath, 'utf-8');
   const parsed = JSON.parse(raw);
-  if (!Array.isArray(parsed) || parsed.length === 0) {
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('compat fixture manifest must be an object');
+  }
+
+  if (parsed.schemaVersion !== COMPAT_FIXTURE_SCHEMA_VERSION) {
+    throw new Error(
+      `compat fixture schemaVersion must be ${COMPAT_FIXTURE_SCHEMA_VERSION} (received ${String(parsed.schemaVersion)})`
+    );
+  }
+
+  const cases = parsed.cases;
+  if (!Array.isArray(cases) || cases.length === 0) {
     throw new Error('compat fixture cases must be a non-empty array');
   }
 
   const names = new Set();
-  for (const [index, testCase] of parsed.entries()) {
+  for (const [index, testCase] of cases.entries()) {
     if (!testCase || typeof testCase !== 'object') {
       throw new Error(`compat fixture case[${index}] must be an object`);
     }
@@ -61,7 +74,7 @@ export function loadCases(casesPath) {
     }
   }
 
-  return parsed;
+  return cases;
 }
 
 export function selectCases(cases, rawSelection) {

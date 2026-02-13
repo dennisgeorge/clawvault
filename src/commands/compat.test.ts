@@ -143,13 +143,17 @@ describe('checkOpenClawCompatibility', () => {
     spawnSyncMock.mockReturnValue({ error: undefined });
     const { checkOpenClawCompatibility, compatibilityExitCode } = await loadCompatModule();
     const casesPath = path.resolve(process.cwd(), 'tests', 'compat-fixtures', 'cases.json');
-    const cases = JSON.parse(fs.readFileSync(casesPath, 'utf-8')) as Array<{
-      name: string;
-      expectedExitCode: number;
-      expectedWarnings: number;
-      expectedErrors: number;
-      expectedCheckStatuses: Record<string, 'ok' | 'warn' | 'error'>;
-    }>;
+    const manifest = JSON.parse(fs.readFileSync(casesPath, 'utf-8')) as {
+      schemaVersion: number;
+      cases: Array<{
+        name: string;
+        expectedExitCode: number;
+        expectedWarnings: number;
+        expectedErrors: number;
+        expectedCheckStatuses: Record<string, 'ok' | 'warn' | 'error'>;
+      }>;
+    };
+    const cases = manifest.cases;
 
     for (const testCase of cases) {
       const fixtureRoot = path.resolve(process.cwd(), 'tests', 'compat-fixtures', testCase.name);
