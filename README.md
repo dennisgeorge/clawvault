@@ -226,6 +226,13 @@ npm run test:compat-fixtures
 npm run test:compat-smoke
 # uses fast fixture runner mode (requires existing dist build)
 
+# Validate compatibility fixture contract only (no full matrix execution)
+npm run test:compat-contract
+# includes manifest/docs/runtime-label parity checks with a fresh build
+
+# Fast contract-only validation (requires existing dist build)
+npm run test:compat-contract:fast
+
 # Run full local CI gate (typecheck + tests + compat fixtures)
 npm run ci
 

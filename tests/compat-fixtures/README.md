@@ -1,6 +1,7 @@
 # Compatibility Fixtures
 
 This directory contains declarative fixtures used by `npm run test:compat-fixtures`.
+Use `npm run test:compat-contract` when you only need contract validation (manifest/docs/runtime-label parity) without executing every fixture case.
 
 - `cases.json` is the source of truth for expected outcomes.
   - includes `schemaVersion` for explicit contract evolution (current: `2`).

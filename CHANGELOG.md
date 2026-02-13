@@ -70,6 +70,7 @@
 - Compatibility fixture manifest now declares `expectedCheckLabels`, and runner validation enforces both label set and label order parity against runtime compatibility output.
 - Compatibility fixture manifest schema has been bumped to `schemaVersion: 2` to formalize the `expectedCheckLabels` contract addition.
 - Compatibility command unit tests now also assert declarative expected check-label order and `expectedHintIncludes` contracts from fixture manifest.
+- Compatibility fixture runner now supports contract-only mode (`COMPAT_VALIDATE_ONLY=1`) and dedicated scripts (`test:compat-contract`, `test:compat-contract:fast`) for quick manifest/docs/runtime-label validation.
 
 ## [1.11.2] - 2026-02-12
 
