@@ -52,18 +52,15 @@ describe('validate-compat-artifact-bundle-manifest script', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compat-artifact-manifest-validator-'));
     try {
       const manifestPath = path.join(root, 'manifest.json');
-      fs.writeFileSync(manifestPath, JSON.stringify({
-        schemaVersion: 1,
-        artifacts: [
-          {
-            artifactName: 'summary.json',
-            artifactFile: 'summary.json',
-            schemaPath: 'schemas/compat-summary.schema.json',
-            schemaId: 'https://example.dev/not-matching.json',
-            versionField: 'summarySchemaVersion'
-          }
-        ]
-      }, null, 2), 'utf-8');
+      const manifest = JSON.parse(
+        fs.readFileSync(path.resolve(process.cwd(), 'schemas', 'compat-artifact-bundle.manifest.json'), 'utf-8')
+      );
+      manifest.artifacts = manifest.artifacts.map((entry) => (
+        entry.artifactName === 'summary.json'
+          ? { ...entry, schemaId: 'https://example.dev/not-matching.json' }
+          : entry
+      ));
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
 
       const outPath = path.join(root, 'manifest-validator-error.json');
       const result = runManifestValidator(['--manifest', manifestPath, '--json', '--out', outPath]);

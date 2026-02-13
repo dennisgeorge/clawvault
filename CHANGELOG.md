@@ -164,6 +164,7 @@
 - Manifest-validator runtime output shape checks now enforce `artifacts.length === artifactCount` explicitly, producing clearer diagnostics when emitted artifact lists drift from declared counts.
 - Required compatibility artifact identifiers/path bindings are now centralized in `scripts/lib/compat-artifact-bundle-contracts.mjs` and consumed by validators/schema-contract tests, reducing duplication and drift risk across bundle-contract enforcement layers.
 - Canonical compatibility contract paths are now centralized in `scripts/lib/compat-contract-paths.mjs` (summary schema, case-report schema, artifact-bundle manifest), and validator scripts now consume these helpers instead of duplicating fallback literals.
+- Required compatibility artifact-name coverage is now enforced directly in the artifact-bundle manifest shape validator (`ensureCompatArtifactBundleManifestShape`), so manifest consumers fail fast before downstream bundle-validation orchestration.
 - Compatibility npm workflows are now modularized into composable stack scripts (`test:compat-report-stack:fast`, `test:compat-validator-stack:fast`, `test:compat-artifact-stack:fast`) so `test:compat-summary:fast` remains maintainable as contract gates grow.
 
 ## [1.11.2] - 2026-02-12

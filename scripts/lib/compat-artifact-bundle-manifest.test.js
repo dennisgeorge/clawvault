@@ -7,6 +7,19 @@ import {
   ensureCompatArtifactBundleManifestShape,
   loadCompatArtifactBundleManifest
 } from './compat-artifact-bundle-manifest.mjs';
+import {
+  REQUIRED_COMPAT_ARTIFACT_BUNDLE_ARTIFACT_NAMES
+} from './compat-artifact-bundle-contracts.mjs';
+
+function buildRequiredManifestArtifacts() {
+  return REQUIRED_COMPAT_ARTIFACT_BUNDLE_ARTIFACT_NAMES.map((artifactName) => ({
+    artifactName,
+    artifactFile: artifactName,
+    schemaPath: `schemas/${artifactName}.schema.json`,
+    schemaId: `https://clawvault.dev/schemas/${artifactName}.schema.json`,
+    versionField: artifactName === 'summary.json' ? 'summarySchemaVersion' : 'outputSchemaVersion'
+  }));
+}
 
 describe('compat artifact bundle manifest contracts', () => {
   it('loads and validates manifest payloads from disk', () => {
@@ -15,15 +28,7 @@ describe('compat artifact bundle manifest contracts', () => {
     try {
       const manifest = {
         schemaVersion: COMPAT_ARTIFACT_BUNDLE_MANIFEST_SCHEMA_VERSION,
-        artifacts: [
-          {
-            artifactName: 'summary.json',
-            artifactFile: 'summary.json',
-            schemaPath: 'schemas/compat-summary.schema.json',
-            schemaId: 'https://clawvault.dev/schemas/compat-summary.schema.json',
-            versionField: 'summarySchemaVersion'
-          }
-        ]
+        artifacts: buildRequiredManifestArtifacts()
       };
       fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
       expect(loadCompatArtifactBundleManifest(manifestPath)).toEqual(manifest);
@@ -47,13 +52,7 @@ describe('compat artifact bundle manifest contracts', () => {
     expect(() => ensureCompatArtifactBundleManifestShape({
       schemaVersion: COMPAT_ARTIFACT_BUNDLE_MANIFEST_SCHEMA_VERSION,
       artifacts: [
-        {
-          artifactName: 'summary.json',
-          artifactFile: 'summary.json',
-          schemaPath: 'schemas/compat-summary.schema.json',
-          schemaId: 'https://clawvault.dev/schemas/compat-summary.schema.json',
-          versionField: 'summarySchemaVersion'
-        },
+        ...buildRequiredManifestArtifacts(),
         {
           artifactName: 'summary.json',
           artifactFile: 'another-summary.json',
@@ -63,5 +62,10 @@ describe('compat artifact bundle manifest contracts', () => {
         }
       ]
     })).toThrow('duplicate artifactName');
+
+    expect(() => ensureCompatArtifactBundleManifestShape({
+      schemaVersion: COMPAT_ARTIFACT_BUNDLE_MANIFEST_SCHEMA_VERSION,
+      artifacts: buildRequiredManifestArtifacts().slice(1)
+    })).toThrow('missing required artifactName: summary.json');
   });
 });

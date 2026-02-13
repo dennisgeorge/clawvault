@@ -45,12 +45,8 @@ import {
   ensureArtifactPathCoherence,
   ensureCrossPayloadCoherence,
   ensureManifestValidatorPayloadCoherence,
-  ensureRequiredArtifactNamesPresent,
   ensureRequireOkStatuses
 } from './lib/compat-artifact-bundle-coherence.mjs';
-import {
-  REQUIRED_COMPAT_ARTIFACT_BUNDLE_ARTIFACT_NAMES
-} from './lib/compat-artifact-bundle-contracts.mjs';
 import {
   resolveCompatArtifactBundleManifestPath,
   resolveCompatCaseReportSchemaPath
@@ -122,7 +118,6 @@ function main() {
     artifactPath: path.join(reportDir, entry.artifactFile),
     schemaPathResolved: path.resolve(process.cwd(), entry.schemaPath)
   }));
-  ensureRequiredArtifactNamesPresent(artifactContracts, REQUIRED_COMPAT_ARTIFACT_BUNDLE_ARTIFACT_NAMES);
   const artifactPathByName = new Map(artifactContracts.map((entry) => [entry.artifactName, entry.artifactPath]));
 
   const artifactPayloadsByName = new Map();
