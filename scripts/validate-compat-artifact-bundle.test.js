@@ -161,6 +161,33 @@ function writeArtifacts(root, { verifierPayload, manifestPath = path.resolve(pro
   );
 }
 
+function runManifestValidatorPayloadDriftScenario({
+  mutatePayload,
+  assertFailure
+}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compat-artifact-bundle-'));
+  try {
+    const validatorResultPath = path.join(root, 'validator-result.json');
+    writeArtifacts(root, {
+      verifierPayload: buildValidatorResultVerifierSuccessPayload({
+        payloadPath: validatorResultPath,
+        payloadStatus: 'ok',
+        validatorPayloadOutputSchemaVersion: 1
+      })
+    });
+    const manifestValidatorResultPath = path.join(root, 'artifact-bundle-manifest-validator-result.json');
+    const manifestValidatorPayload = JSON.parse(fs.readFileSync(manifestValidatorResultPath, 'utf-8'));
+    mutatePayload(manifestValidatorPayload);
+    fs.writeFileSync(manifestValidatorResultPath, JSON.stringify(manifestValidatorPayload, null, 2), 'utf-8');
+
+    const result = runArtifactBundleValidator([], { COMPAT_REPORT_DIR: root });
+    expect(result.status).toBe(1);
+    assertFailure(result);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
 describe('validate-compat-artifact-bundle script', () => {
   it('validates complete artifact bundle and emits json payload', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compat-artifact-bundle-'));
@@ -219,91 +246,52 @@ describe('validate-compat-artifact-bundle script', () => {
   });
 
   it('fails when manifest-validator artifact list drifts from canonical order', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compat-artifact-bundle-'));
-    try {
-      const validatorResultPath = path.join(root, 'validator-result.json');
-      writeArtifacts(root, {
-        verifierPayload: buildValidatorResultVerifierSuccessPayload({
-          payloadPath: validatorResultPath,
-          payloadStatus: 'ok',
-          validatorPayloadOutputSchemaVersion: 1
-        })
-      });
-      const manifestValidatorResultPath = path.join(root, 'artifact-bundle-manifest-validator-result.json');
-      const manifestValidatorPayload = JSON.parse(fs.readFileSync(manifestValidatorResultPath, 'utf-8'));
-      const reorderedArtifacts = [
-        manifestValidatorPayload.artifacts[1],
-        manifestValidatorPayload.artifacts[0],
-        ...manifestValidatorPayload.artifacts.slice(2)
-      ];
-      manifestValidatorPayload.artifacts = reorderedArtifacts;
-      manifestValidatorPayload.schemaContracts = reorderedArtifacts.map((artifactName) => (
-        manifestValidatorPayload.schemaContracts.find((entry) => entry.artifactName === artifactName)
-      ));
-      fs.writeFileSync(manifestValidatorResultPath, JSON.stringify(manifestValidatorPayload, null, 2), 'utf-8');
-
-      const result = runArtifactBundleValidator([], { COMPAT_REPORT_DIR: root });
-      expect(result.status).toBe(1);
-      expect(result.stderr).toContain('artifacts must follow required canonical artifactName order');
-    } finally {
-      fs.rmSync(root, { recursive: true, force: true });
-    }
+    runManifestValidatorPayloadDriftScenario({
+      mutatePayload: (manifestValidatorPayload) => {
+        const reorderedArtifacts = [
+          manifestValidatorPayload.artifacts[1],
+          manifestValidatorPayload.artifacts[0],
+          ...manifestValidatorPayload.artifacts.slice(2)
+        ];
+        manifestValidatorPayload.artifacts = reorderedArtifacts;
+        manifestValidatorPayload.schemaContracts = reorderedArtifacts.map((artifactName) => (
+          manifestValidatorPayload.schemaContracts.find((entry) => entry.artifactName === artifactName)
+        ));
+      },
+      assertFailure: (result) => {
+        expect(result.stderr).toContain('artifacts must follow required canonical artifactName order');
+      }
+    });
   });
 
   it('fails when manifest-validator schemaPath drifts from active manifest resolution', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compat-artifact-bundle-'));
-    try {
-      const validatorResultPath = path.join(root, 'validator-result.json');
-      writeArtifacts(root, {
-        verifierPayload: buildValidatorResultVerifierSuccessPayload({
-          payloadPath: validatorResultPath,
-          payloadStatus: 'ok',
-          validatorPayloadOutputSchemaVersion: 1
-        })
-      });
-      const manifestValidatorResultPath = path.join(root, 'artifact-bundle-manifest-validator-result.json');
-      const manifestValidatorPayload = JSON.parse(fs.readFileSync(manifestValidatorResultPath, 'utf-8'));
-      manifestValidatorPayload.schemaContracts = manifestValidatorPayload.schemaContracts.map((entry) => (
-        entry.artifactName === 'summary.json'
-          ? { ...entry, schemaPath: '/tmp/drifted-root/schemas/compat-summary.schema.json' }
-          : entry
-      ));
-      fs.writeFileSync(manifestValidatorResultPath, JSON.stringify(manifestValidatorPayload, null, 2), 'utf-8');
-
-      const result = runArtifactBundleValidator([], { COMPAT_REPORT_DIR: root });
-      expect(result.status).toBe(1);
-      expect(result.stderr).toContain('artifact-bundle manifest validator schemaPath mismatch for summary.json');
-    } finally {
-      fs.rmSync(root, { recursive: true, force: true });
-    }
+    runManifestValidatorPayloadDriftScenario({
+      mutatePayload: (manifestValidatorPayload) => {
+        manifestValidatorPayload.schemaContracts = manifestValidatorPayload.schemaContracts.map((entry) => (
+          entry.artifactName === 'summary.json'
+            ? { ...entry, schemaPath: '/tmp/drifted-root/schemas/compat-summary.schema.json' }
+            : entry
+        ));
+      },
+      assertFailure: (result) => {
+        expect(result.stderr).toContain('artifact-bundle manifest validator schemaPath mismatch for summary.json');
+      }
+    });
   });
 
   it('fails when manifest-validator schemaId drift violates payload contract', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compat-artifact-bundle-'));
-    try {
-      const validatorResultPath = path.join(root, 'validator-result.json');
-      writeArtifacts(root, {
-        verifierPayload: buildValidatorResultVerifierSuccessPayload({
-          payloadPath: validatorResultPath,
-          payloadStatus: 'ok',
-          validatorPayloadOutputSchemaVersion: 1
-        })
-      });
-      const manifestValidatorResultPath = path.join(root, 'artifact-bundle-manifest-validator-result.json');
-      const manifestValidatorPayload = JSON.parse(fs.readFileSync(manifestValidatorResultPath, 'utf-8'));
-      manifestValidatorPayload.schemaContracts = manifestValidatorPayload.schemaContracts.map((entry) => (
-        entry.artifactName === 'summary.json'
-          ? { ...entry, schemaId: 'https://example.dev/drifted-summary.schema.json' }
-          : entry
-      ));
-      fs.writeFileSync(manifestValidatorResultPath, JSON.stringify(manifestValidatorPayload, null, 2), 'utf-8');
-
-      const result = runArtifactBundleValidator([], { COMPAT_REPORT_DIR: root });
-      expect(result.status).toBe(1);
-      expect(result.stderr).toContain('schemaContracts entry for summary.json must use schemaId=');
-    } finally {
-      fs.rmSync(root, { recursive: true, force: true });
-    }
+    runManifestValidatorPayloadDriftScenario({
+      mutatePayload: (manifestValidatorPayload) => {
+        manifestValidatorPayload.schemaContracts = manifestValidatorPayload.schemaContracts.map((entry) => (
+          entry.artifactName === 'summary.json'
+            ? { ...entry, schemaId: 'https://example.dev/drifted-summary.schema.json' }
+            : entry
+        ));
+      },
+      assertFailure: (result) => {
+        expect(result.stderr).toContain('schemaContracts entry for summary.json must use schemaId=');
+      }
+    });
   });
 
   it('fails when validator-result verifier payload drifts from validator-result artifact', () => {
