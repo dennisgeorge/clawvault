@@ -224,6 +224,7 @@ COMPAT_CASES=healthy,missing-events npm run test:compat-fixtures
 
 # Optional: write per-fixture JSON reports to a directory
 COMPAT_REPORT_DIR=/tmp/clawvault-compat-reports npm run test:compat-fixtures
+# includes per-case reports and summary.json
 ```
 
 

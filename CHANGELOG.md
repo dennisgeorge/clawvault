@@ -51,6 +51,7 @@
 - Fixture matrix runner can now emit per-case JSON reports (`COMPAT_REPORT_DIR`) for CI failure triage and artifact upload.
 - Compatibility fixture runner internals were extracted into reusable utilities with dedicated unit tests (schema selection/parsing/layout guards) to improve maintainability.
 - Added `tests/compat-fixtures/README.md` documenting fixture layout and scenario intent for easier extension/review.
+- Compatibility fixture runner now emits `summary.json` alongside per-case reports for faster CI artifact triage.
 
 ## [1.11.2] - 2026-02-12
 
