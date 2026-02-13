@@ -216,6 +216,7 @@ clawvault compat --strict --base-dir ./tests/compat-fixtures/healthy
 npm run test:compat-fixtures
 # fixture expectations are defined in tests/compat-fixtures/cases.json
 # fixture manifest includes schemaVersion for explicit contract evolution
+# supports expected status, detail snippets, and hint snippets per check
 # includes a fresh build before running fixtures
 
 # Quick smoke check (healthy fixture only)

@@ -63,6 +63,7 @@
 - `compat --base-dir` resolution is now strict to the provided root (no fallback to repository files), preventing false positives in fixture/CI validation.
 - Declarative fixture cases now support `allowMissingFiles` for intentional missing-file drift scenarios (e.g., missing `SKILL.md`).
 - Compatibility fixture runner now uses extracted case-evaluation logic with structured mismatch reporting, improving maintainability and debugging clarity.
+- Declarative fixture cases can now assert compatibility diagnostic `hint` snippets (`expectedHintIncludes`) in addition to statuses/details.
 
 ## [1.11.2] - 2026-02-12
 
