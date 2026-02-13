@@ -8,6 +8,8 @@ import {
   countScalarFieldOccurrences,
   countStepFieldOccurrences,
   countStepNameOccurrences,
+  extractJobNameCounts,
+  extractStepNameCounts,
   extractEnvField,
   extractJobBlock,
   extractJobTopLevelFieldNames,
@@ -195,15 +197,23 @@ describe('compat ci workflow test utils', () => {
     expect(Object.keys(topLevelFieldNameCounts)).toEqual(topLevelFieldNames);
 
     const jobNames = extractTopLevelJobNames(workflowYaml);
+    const jobNameCounts = extractJobNameCounts(workflowYaml);
     for (const jobName of jobNames) {
       expect(countJobNameOccurrences(workflowYaml, jobName)).toBe(
+        jobNames.filter((candidateJobName) => candidateJobName === jobName).length
+      );
+      expect(jobNameCounts[jobName]).toBe(
         jobNames.filter((candidateJobName) => candidateJobName === jobName).length
       );
     }
 
     const stepNames = extractStepNames(workflowYaml);
+    const stepNameCounts = extractStepNameCounts(workflowYaml);
     for (const stepName of stepNames) {
       expect(countStepNameOccurrences(workflowYaml, stepName)).toBe(
+        stepNames.filter((candidateStepName) => candidateStepName === stepName).length
+      );
+      expect(stepNameCounts[stepName]).toBe(
         stepNames.filter((candidateStepName) => candidateStepName === stepName).length
       );
     }
@@ -501,8 +511,10 @@ describe('compat ci workflow test utils', () => {
     expect(extractOnTriggerNames('name: CI\njobs:\n  test:\n    runs-on: ubuntu-latest')).toBe(null);
     expect(extractOnTriggerSectionFieldNames('name: CI\njobs:\n  test:\n    runs-on: ubuntu-latest', 'push')).toBe(null);
     expect(extractTopLevelJobNames('name: CI\non:\n  pull_request:')).toBe(null);
+    expect(extractJobNameCounts('name: CI\non:\n  pull_request:')).toEqual({});
     expect(extractJobTopLevelFieldNames('name: CI\njobs:\n  # no concrete job header')).toBe(null);
     expect(extractPushBranches('on:\n  pull_request:')).toBe(null);
     expect(hasPullRequestTrigger('on:\n  push:\n    branches:\n      - main')).toBe(false);
+    expect(extractStepNameCounts('run: npm test')).toEqual({});
   });
 });

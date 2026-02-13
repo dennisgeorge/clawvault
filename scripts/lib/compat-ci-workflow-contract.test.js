@@ -55,8 +55,10 @@ import {
   buildWorkflowContractSnapshot,
   countTopLevelFieldOccurrences,
   countJobNameOccurrences,
+  extractJobNameCounts,
   countScalarFieldOccurrences,
   countStepNameOccurrences,
+  extractStepNameCounts,
   extractEnvField,
   extractJobBlock,
   extractJobTopLevelFieldNames,
@@ -277,6 +279,14 @@ describe('compat ci workflow contract', () => {
     }
   });
 
+  it('keeps CI job count map aligned with required job uniqueness contracts', () => {
+    const workflowYaml = loadCiWorkflowYaml();
+    const expectedJobNameCounts = Object.fromEntries(
+      REQUIRED_COMPAT_CI_JOB_NAMES.map((jobName) => [jobName, 1])
+    );
+    expect(extractJobNameCounts(workflowYaml)).toEqual(expectedJobNameCounts);
+  });
+
   it('keeps CI job identity and runtime envelope aligned with contracts', () => {
     const workflowYaml = loadCiWorkflowYaml();
     const ciJobBlock = extractJobBlock(workflowYaml, REQUIRED_COMPAT_CI_JOB_NAME);
@@ -330,6 +340,18 @@ describe('compat ci workflow contract', () => {
           `required CI step "${stepName}" must appear exactly once in ${jobName}`
         ).toBe(1);
       }
+    }
+  });
+
+  it('keeps CI step-name count map aligned with required step uniqueness contracts', () => {
+    const workflowYaml = loadCiWorkflowYaml();
+    for (const [jobName, requiredStepNames] of Object.entries(REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES)) {
+      const jobBlock = extractJobBlock(workflowYaml, jobName);
+      expect(jobBlock, `missing CI workflow job: ${jobName}`).toBeTruthy();
+      const expectedStepNameCounts = Object.fromEntries(
+        requiredStepNames.map((stepName) => [stepName, 1])
+      );
+      expect(extractStepNameCounts(jobBlock)).toEqual(expectedStepNameCounts);
     }
   });
 

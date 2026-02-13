@@ -274,17 +274,31 @@ export function extractJobTopLevelFieldNames(jobBlock) {
 }
 
 export function countJobNameOccurrences(workflowYaml, jobName) {
-  const jobNames = extractTopLevelJobNames(workflowYaml);
-  if (!jobNames) {
-    return 0;
-  }
-  return jobNames.filter((candidateJobName) => candidateJobName === jobName).length;
+  return extractJobNameCounts(workflowYaml)[jobName] ?? 0;
 }
 
 export function countStepNameOccurrences(workflowYamlOrJobBlock, stepName) {
-  return extractStepNames(workflowYamlOrJobBlock)
-    .filter((candidateStepName) => candidateStepName === stepName)
-    .length;
+  return extractStepNameCounts(workflowYamlOrJobBlock)[stepName] ?? 0;
+}
+
+export function extractJobNameCounts(workflowYaml) {
+  const jobNames = extractTopLevelJobNames(workflowYaml);
+  if (!Array.isArray(jobNames)) {
+    return {};
+  }
+  return jobNames.reduce((counts, jobName) => {
+    const existingCount = counts[jobName] ?? 0;
+    counts[jobName] = existingCount + 1;
+    return counts;
+  }, {});
+}
+
+export function extractStepNameCounts(workflowYamlOrJobBlock) {
+  return extractStepNames(workflowYamlOrJobBlock).reduce((counts, stepName) => {
+    const existingCount = counts[stepName] ?? 0;
+    counts[stepName] = existingCount + 1;
+    return counts;
+  }, {});
 }
 
 export function extractStepNames(workflowYamlOrJobBlock) {
