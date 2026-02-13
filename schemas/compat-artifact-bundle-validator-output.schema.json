@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clawvault.dev/schemas/compat-artifact-bundle-validator-output.schema.json",
+  "title": "Compatibility artifact bundle validator CLI output",
+  "description": "Structured output payload emitted by scripts/validate-compat-artifact-bundle.mjs in --json mode and/or via --out file output.",
+  "type": "object",
+  "properties": {
+    "outputSchemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok", "error"]
+    },
+    "reportDir": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summaryMode": {
+      "type": "string",
+      "enum": ["contract", "fixtures"]
+    },
+    "requireOk": {
+      "type": "boolean"
+    },
+    "summaryPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "validatorResultPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reportSchemaValidatorResultPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaValidatorResultPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "validatorResultVerifierResultPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verifiedArtifacts": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "error": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": ["outputSchemaVersion", "status"],
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "ok" } },
+        "required": ["status"]
+      },
+      "then": {
+        "required": [
+          "reportDir",
+          "summaryMode",
+          "requireOk",
+          "summaryPath",
+          "validatorResultPath",
+          "reportSchemaValidatorResultPath",
+          "schemaValidatorResultPath",
+          "validatorResultVerifierResultPath",
+          "verifiedArtifacts"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "error" } },
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["error"]
+      }
+    }
+  ],
+  "additionalProperties": false
+}

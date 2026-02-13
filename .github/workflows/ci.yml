@@ -50,4 +50,5 @@ jobs:
             ${{ runner.temp }}/compat-reports/validator-result.json
             ${{ runner.temp }}/compat-reports/schema-validator-result.json
             ${{ runner.temp }}/compat-reports/validator-result-verifier-result.json
+            ${{ runner.temp }}/compat-reports/artifact-bundle-validator-result.json
           if-no-files-found: ignore

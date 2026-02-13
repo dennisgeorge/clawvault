@@ -17,6 +17,9 @@ import {
 import {
   COMPAT_REPORT_SCHEMA_VALIDATOR_OUTPUT_SCHEMA_VERSION
 } from './compat-report-schema-validator-output.mjs';
+import {
+  COMPAT_ARTIFACT_BUNDLE_VALIDATOR_OUTPUT_SCHEMA_VERSION
+} from './compat-artifact-bundle-validator-output.mjs';
 
 function readSchema(schemaFileName) {
   const schemaPath = path.resolve(process.cwd(), 'schemas', schemaFileName);
@@ -63,6 +66,13 @@ describe('compat payload json schema contracts', () => {
   it('keeps compat report-schema validator output schema in sync with runtime contract versions', () => {
     const schema = readSchema('compat-report-schema-validator-output.schema.json');
     expect(schema.properties.outputSchemaVersion.const).toBe(COMPAT_REPORT_SCHEMA_VALIDATOR_OUTPUT_SCHEMA_VERSION);
+    expect(schema.properties.status.enum).toEqual(['ok', 'error']);
+    expect(schema.additionalProperties).toBe(false);
+  });
+
+  it('keeps compat artifact-bundle validator output schema in sync with runtime contract versions', () => {
+    const schema = readSchema('compat-artifact-bundle-validator-output.schema.json');
+    expect(schema.properties.outputSchemaVersion.const).toBe(COMPAT_ARTIFACT_BUNDLE_VALIDATOR_OUTPUT_SCHEMA_VERSION);
     expect(schema.properties.status.enum).toEqual(['ok', 'error']);
     expect(schema.additionalProperties).toBe(false);
   });
