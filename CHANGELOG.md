@@ -13,6 +13,7 @@
   - `default`, `planning`, `incident`, `handoff`.
 - **CLI command registration smoke tests** for modular command groups.
 - **Expanded CLI registration smoke coverage** across maintenance/resilience/session-lifecycle/template modules, including duplicate-command detection.
+- **CLI help contract tests** to lock command/option surface (including `context --profile auto` and `compat --strict`).
 - Doctor now includes an **OpenClaw compatibility** check summary.
 - Dashboard graph parser now emits:
   - typed nodes,
