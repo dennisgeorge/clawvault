@@ -3,6 +3,7 @@ import {
   expectArrayOfRecordsWithRequiredStringFields,
   expectDistinctStringFieldsPerRecord,
   expectEachDomainValueOccursExactlyOnce,
+  expectNonEmptyString,
   expectNonEmptyStringRecord,
   expectNonEmptyUniqueStringArray,
   expectObjectKeyDomainParity,
@@ -157,11 +158,15 @@ describe('compat contract assertion test utils', () => {
   });
 
   it('asserts non-empty unique string arrays', () => {
+    expectNonEmptyString('alpha', 'scalar string domain');
     expectNonEmptyUniqueStringArray(['alpha', 'beta'], 'string-array domain');
     expectNonEmptyUniqueStringArray([], 'empty-allowed string-array domain', { requireNonEmpty: false });
   });
 
   it('throws when non-empty unique string arrays are invalid', () => {
+    expect(() => {
+      expectNonEmptyString('', 'empty scalar string domain');
+    }).toThrow();
     expect(() => {
       expectNonEmptyUniqueStringArray(['alpha', 'alpha'], 'duplicate string-array domain');
     }).toThrow();

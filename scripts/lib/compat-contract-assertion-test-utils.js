@@ -27,6 +27,11 @@ export function expectNonEmptyUniqueStringArray(values, label, options = {}) {
   expect(new Set(values).size, `${label} must be unique`).toBe(values.length);
 }
 
+export function expectNonEmptyString(value, label) {
+  expect(typeof value, `${label} must be a string`).toBe('string');
+  expect(value.length, `${label} must be a non-empty string`).toBeGreaterThan(0);
+}
+
 export function expectNonEmptyStringRecord(valuesByKey, label, options = {}) {
   const { requireNonEmpty = false } = options;
   expect(valuesByKey && typeof valuesByKey === 'object', `${label} must be an object`).toBe(true);

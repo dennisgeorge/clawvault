@@ -72,6 +72,7 @@ import {
 import {
   expectArrayOfRecordsWithRequiredStringFields,
   expectDistinctStringFieldsPerRecord,
+  expectNonEmptyString,
   expectNonEmptyStringRecord,
   expectObjectKeyDomainParity,
   expectNonEmptyUniqueStringArray,
@@ -109,40 +110,41 @@ describe('compat npm script contracts constants', () => {
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_SUMMARY_STACK_RUN_TARGETS, 'REQUIRED_COMPAT_SUMMARY_STACK_RUN_TARGETS');
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_SEQUENCE, 'REQUIRED_COMPAT_CI_SEQUENCE');
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_RUN_TARGETS, 'REQUIRED_COMPAT_CI_RUN_TARGETS');
-    expect(typeof REQUIRED_COMPAT_CI_UPLOAD_ARTIFACT_PATH_PREFIX).toBe('string');
-    expect(REQUIRED_COMPAT_CI_UPLOAD_ARTIFACT_PATH_PREFIX.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_README_PATH).toBe('string');
-    expect(REQUIRED_COMPAT_README_PATH.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_README_CI_ARTIFACTS_LINE_PREFIX).toBe('string');
-    expect(REQUIRED_COMPAT_README_CI_ARTIFACTS_LINE_PREFIX.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_UPLOAD_STEP_NAME).toBe('string');
-    expect(REQUIRED_COMPAT_CI_UPLOAD_STEP_NAME.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_UPLOAD_ARTIFACT_NAME).toBe('string');
-    expect(REQUIRED_COMPAT_CI_UPLOAD_ARTIFACT_NAME.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_UPLOAD_CONDITION).toBe('string');
-    expect(REQUIRED_COMPAT_CI_UPLOAD_CONDITION.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_UPLOAD_USES).toBe('string');
-    expect(REQUIRED_COMPAT_CI_UPLOAD_USES.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_UPLOAD_IF_NO_FILES_FOUND).toBe('string');
-    expect(REQUIRED_COMPAT_CI_UPLOAD_IF_NO_FILES_FOUND.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_PRIMARY_RUN_STEP_NAME).toBe('string');
-    expect(REQUIRED_COMPAT_CI_PRIMARY_RUN_STEP_NAME.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_PRIMARY_RUN_COMMAND).toBe('string');
-    expect(REQUIRED_COMPAT_CI_PRIMARY_RUN_COMMAND.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_FAILURE_UPLOAD_STEP_NAME).toBe('string');
-    expect(REQUIRED_COMPAT_CI_FAILURE_UPLOAD_STEP_NAME.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_FAILURE_UPLOAD_CONDITION).toBe('string');
-    expect(REQUIRED_COMPAT_CI_FAILURE_UPLOAD_CONDITION.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_FAILURE_UPLOAD_ARTIFACT_NAME).toBe('string');
-    expect(REQUIRED_COMPAT_CI_FAILURE_UPLOAD_ARTIFACT_NAME.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_FAILURE_UPLOAD_PATH).toBe('string');
-    expect(REQUIRED_COMPAT_CI_FAILURE_UPLOAD_PATH.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_FAILURE_UPLOAD_USES).toBe('string');
-    expect(REQUIRED_COMPAT_CI_FAILURE_UPLOAD_USES.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_FAILURE_UPLOAD_IF_NO_FILES_FOUND).toBe('string');
-    expect(REQUIRED_COMPAT_CI_FAILURE_UPLOAD_IF_NO_FILES_FOUND.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_WORKFLOW_NAME).toBe('string');
-    expect(REQUIRED_COMPAT_CI_WORKFLOW_NAME.length).toBeGreaterThan(0);
+    const requiredScalarStringContracts = [
+      [REQUIRED_COMPAT_CI_UPLOAD_ARTIFACT_PATH_PREFIX, 'REQUIRED_COMPAT_CI_UPLOAD_ARTIFACT_PATH_PREFIX'],
+      [REQUIRED_COMPAT_README_PATH, 'REQUIRED_COMPAT_README_PATH'],
+      [REQUIRED_COMPAT_README_CI_ARTIFACTS_LINE_PREFIX, 'REQUIRED_COMPAT_README_CI_ARTIFACTS_LINE_PREFIX'],
+      [REQUIRED_COMPAT_CI_UPLOAD_STEP_NAME, 'REQUIRED_COMPAT_CI_UPLOAD_STEP_NAME'],
+      [REQUIRED_COMPAT_CI_UPLOAD_ARTIFACT_NAME, 'REQUIRED_COMPAT_CI_UPLOAD_ARTIFACT_NAME'],
+      [REQUIRED_COMPAT_CI_UPLOAD_CONDITION, 'REQUIRED_COMPAT_CI_UPLOAD_CONDITION'],
+      [REQUIRED_COMPAT_CI_UPLOAD_USES, 'REQUIRED_COMPAT_CI_UPLOAD_USES'],
+      [REQUIRED_COMPAT_CI_UPLOAD_IF_NO_FILES_FOUND, 'REQUIRED_COMPAT_CI_UPLOAD_IF_NO_FILES_FOUND'],
+      [REQUIRED_COMPAT_CI_PRIMARY_RUN_STEP_NAME, 'REQUIRED_COMPAT_CI_PRIMARY_RUN_STEP_NAME'],
+      [REQUIRED_COMPAT_CI_PRIMARY_RUN_COMMAND, 'REQUIRED_COMPAT_CI_PRIMARY_RUN_COMMAND'],
+      [REQUIRED_COMPAT_CI_FAILURE_UPLOAD_STEP_NAME, 'REQUIRED_COMPAT_CI_FAILURE_UPLOAD_STEP_NAME'],
+      [REQUIRED_COMPAT_CI_FAILURE_UPLOAD_CONDITION, 'REQUIRED_COMPAT_CI_FAILURE_UPLOAD_CONDITION'],
+      [REQUIRED_COMPAT_CI_FAILURE_UPLOAD_ARTIFACT_NAME, 'REQUIRED_COMPAT_CI_FAILURE_UPLOAD_ARTIFACT_NAME'],
+      [REQUIRED_COMPAT_CI_FAILURE_UPLOAD_PATH, 'REQUIRED_COMPAT_CI_FAILURE_UPLOAD_PATH'],
+      [REQUIRED_COMPAT_CI_FAILURE_UPLOAD_USES, 'REQUIRED_COMPAT_CI_FAILURE_UPLOAD_USES'],
+      [REQUIRED_COMPAT_CI_FAILURE_UPLOAD_IF_NO_FILES_FOUND, 'REQUIRED_COMPAT_CI_FAILURE_UPLOAD_IF_NO_FILES_FOUND'],
+      [REQUIRED_COMPAT_CI_WORKFLOW_NAME, 'REQUIRED_COMPAT_CI_WORKFLOW_NAME'],
+      [REQUIRED_COMPAT_CI_CHECKOUT_STEP_NAME, 'REQUIRED_COMPAT_CI_CHECKOUT_STEP_NAME'],
+      [REQUIRED_COMPAT_CI_CHECKOUT_USES, 'REQUIRED_COMPAT_CI_CHECKOUT_USES'],
+      [REQUIRED_COMPAT_CI_JOB_NAME, 'REQUIRED_COMPAT_CI_JOB_NAME'],
+      [REQUIRED_COMPAT_CI_JOB_RUNS_ON, 'REQUIRED_COMPAT_CI_JOB_RUNS_ON'],
+      [REQUIRED_COMPAT_CI_JOB_TIMEOUT_MINUTES, 'REQUIRED_COMPAT_CI_JOB_TIMEOUT_MINUTES'],
+      [REQUIRED_COMPAT_CI_SETUP_NODE_STEP_NAME, 'REQUIRED_COMPAT_CI_SETUP_NODE_STEP_NAME'],
+      [REQUIRED_COMPAT_CI_SETUP_NODE_USES, 'REQUIRED_COMPAT_CI_SETUP_NODE_USES'],
+      [REQUIRED_COMPAT_CI_SETUP_NODE_VERSION, 'REQUIRED_COMPAT_CI_SETUP_NODE_VERSION'],
+      [REQUIRED_COMPAT_CI_SETUP_NODE_CACHE, 'REQUIRED_COMPAT_CI_SETUP_NODE_CACHE'],
+      [REQUIRED_COMPAT_CI_INSTALL_STEP_NAME, 'REQUIRED_COMPAT_CI_INSTALL_STEP_NAME'],
+      [REQUIRED_COMPAT_CI_INSTALL_COMMAND, 'REQUIRED_COMPAT_CI_INSTALL_COMMAND'],
+      [REQUIRED_COMPAT_CI_REPORT_DIR_ENV_KEY, 'REQUIRED_COMPAT_CI_REPORT_DIR_ENV_KEY'],
+      [REQUIRED_COMPAT_CI_REPORT_DIR_ENV_VALUE, 'REQUIRED_COMPAT_CI_REPORT_DIR_ENV_VALUE']
+    ];
+    for (const [value, label] of requiredScalarStringContracts) {
+      expectNonEmptyString(value, label);
+    }
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_WORKFLOW_UNIQUE_FIELD_NAMES, 'REQUIRED_COMPAT_CI_WORKFLOW_UNIQUE_FIELD_NAMES');
     expect(REQUIRED_COMPAT_CI_WORKFLOW_UNIQUE_FIELD_NAMES).toEqual(expect.arrayContaining([
       'name',
@@ -169,15 +171,10 @@ describe('compat npm script contracts constants', () => {
     );
     for (const [triggerName, fieldNames] of Object.entries(REQUIRED_COMPAT_CI_TRIGGER_SECTION_FIELD_NAME_SEQUENCES)) {
       expect(REQUIRED_COMPAT_CI_TRIGGER_NAMES).toContain(triggerName);
-      expect(Array.isArray(fieldNames)).toBe(true);
-      expect(new Set(fieldNames).size).toBe(fieldNames.length);
+      expectNonEmptyUniqueStringArray(fieldNames, `REQUIRED_COMPAT_CI_TRIGGER_SECTION_FIELD_NAME_SEQUENCES[${triggerName}]`, {
+        requireNonEmpty: false
+      });
     }
-    expect(typeof REQUIRED_COMPAT_CI_CHECKOUT_STEP_NAME).toBe('string');
-    expect(REQUIRED_COMPAT_CI_CHECKOUT_STEP_NAME.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_CHECKOUT_USES).toBe('string');
-    expect(REQUIRED_COMPAT_CI_CHECKOUT_USES.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_JOB_NAME).toBe('string');
-    expect(REQUIRED_COMPAT_CI_JOB_NAME.length).toBeGreaterThan(0);
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_JOB_NAMES, 'REQUIRED_COMPAT_CI_JOB_NAMES');
     expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(REQUIRED_COMPAT_CI_JOB_NAME);
     expectObjectKeyDomainParity(
@@ -209,14 +206,9 @@ describe('compat npm script contracts constants', () => {
       expect(scalarContracts).toBeTruthy();
       for (const [fieldName, fieldValue] of Object.entries(scalarContracts)) {
         expect(fieldName.length).toBeGreaterThan(0);
-        expect(typeof fieldValue).toBe('string');
-        expect(fieldValue.length).toBeGreaterThan(0);
+        expectNonEmptyString(fieldValue, `REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS[${jobName}].${fieldName}`);
       }
     }
-    expect(typeof REQUIRED_COMPAT_CI_JOB_RUNS_ON).toBe('string');
-    expect(REQUIRED_COMPAT_CI_JOB_RUNS_ON.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_JOB_TIMEOUT_MINUTES).toBe('string');
-    expect(REQUIRED_COMPAT_CI_JOB_TIMEOUT_MINUTES.length).toBeGreaterThan(0);
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAMES, 'REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAMES');
     expect(REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAMES).toEqual(expect.arrayContaining([
       'runs-on',
@@ -225,18 +217,6 @@ describe('compat npm script contracts constants', () => {
     ]));
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_JOB_FIELD_NAMES, 'REQUIRED_COMPAT_CI_JOB_FIELD_NAMES');
     expect(REQUIRED_COMPAT_CI_JOB_FIELD_NAMES).toEqual(REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAMES);
-    expect(typeof REQUIRED_COMPAT_CI_SETUP_NODE_STEP_NAME).toBe('string');
-    expect(REQUIRED_COMPAT_CI_SETUP_NODE_STEP_NAME.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_SETUP_NODE_USES).toBe('string');
-    expect(REQUIRED_COMPAT_CI_SETUP_NODE_USES.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_SETUP_NODE_VERSION).toBe('string');
-    expect(REQUIRED_COMPAT_CI_SETUP_NODE_VERSION.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_SETUP_NODE_CACHE).toBe('string');
-    expect(REQUIRED_COMPAT_CI_SETUP_NODE_CACHE.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_INSTALL_STEP_NAME).toBe('string');
-    expect(REQUIRED_COMPAT_CI_INSTALL_STEP_NAME.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_INSTALL_COMMAND).toBe('string');
-    expect(REQUIRED_COMPAT_CI_INSTALL_COMMAND.length).toBeGreaterThan(0);
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_STEP_SEQUENCE, 'REQUIRED_COMPAT_CI_STEP_SEQUENCE');
     expect(REQUIRED_COMPAT_CI_STEP_SEQUENCE).toEqual(expect.arrayContaining([
       REQUIRED_COMPAT_CI_CHECKOUT_STEP_NAME,
@@ -287,10 +267,6 @@ describe('compat npm script contracts constants', () => {
       expect(REQUIRED_COMPAT_CI_STEP_NAMES).toContain(stepName);
       expectNonEmptyStringRecord(scalarValueContracts, `REQUIRED_COMPAT_CI_STEP_ENV_SCALAR_VALUE_CONTRACTS[${stepName}]`);
     }
-    expect(typeof REQUIRED_COMPAT_CI_REPORT_DIR_ENV_KEY).toBe('string');
-    expect(REQUIRED_COMPAT_CI_REPORT_DIR_ENV_KEY.length).toBeGreaterThan(0);
-    expect(typeof REQUIRED_COMPAT_CI_REPORT_DIR_ENV_VALUE).toBe('string');
-    expect(REQUIRED_COMPAT_CI_REPORT_DIR_ENV_VALUE.length).toBeGreaterThan(0);
     expectArrayOfRecordsWithRequiredStringFields(
       REQUIRED_COMPAT_ARTIFACT_PRODUCER_CONSUMER_CONTRACTS,
       ['scriptName', 'artifactFile', 'producerSegment', 'consumerSegment'],
