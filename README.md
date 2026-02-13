@@ -204,6 +204,9 @@ clawvault doctor
 
 # OpenClaw compatibility check
 clawvault compat
+
+# CI/automation-friendly compatibility gate
+clawvault compat --strict   # exits non-zero on warnings/errors
 ```
 
 
