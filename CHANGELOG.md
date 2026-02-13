@@ -169,6 +169,7 @@
 - `compat-artifact-bundle-manifest-validator-output` runtime/schema contracts now both encode required artifact-name presence (`artifacts` + `schemaContracts`), strengthening standalone validation guarantees for emitted manifest-validator artifacts.
 - Manifest and manifest-validator output contracts now also pin per-artifact `versionField` expectations for required artifacts (`summary.json` → `summarySchemaVersion`, all others → `outputSchemaVersion`) across both runtime shape guards and JSON-schema constraints.
 - Bundle-validator required artifact-name coverage checks now rely on manifest-load guarantees; obsolete duplicate runtime helper logic was removed to reduce dead code and maintenance overhead.
+- Manifest-validator CLI coverage now includes explicit missing-required-artifact manifest scenarios, locking in structured error semantics for incomplete manifest contracts.
 - Compatibility npm workflows are now modularized into composable stack scripts (`test:compat-report-stack:fast`, `test:compat-validator-stack:fast`, `test:compat-artifact-stack:fast`) so `test:compat-summary:fast` remains maintainable as contract gates grow.
 
 ## [1.11.2] - 2026-02-12
