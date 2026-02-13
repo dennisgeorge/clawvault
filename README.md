@@ -110,6 +110,9 @@ clawvault context "what decisions were made" --format json
 
 clawvault context "plan database migration" --profile planning
 # → profile-tuned ordering for planning, incident, handoff, or default
+
+clawvault context "URGENT outage: rollback failed" --profile auto
+# → auto infers incident/planning/handoff/default from prompt intent
 ```
 
 ## Search
