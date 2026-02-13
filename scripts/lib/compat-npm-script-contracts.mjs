@@ -1,4 +1,5 @@
 export const REQUIRED_COMPAT_NPM_SCRIPT_NAMES = Object.freeze([
+  'ci',
   'test:compat-summary:fast',
   'test:compat-report-stack:fast',
   'test:compat-validator-stack:fast',
@@ -29,8 +30,23 @@ export const REQUIRED_COMPAT_REPORT_STACK_SEQUENCE = Object.freeze([
   'npm run test:compat-artifact-stack:fast'
 ]);
 
+export const REQUIRED_COMPAT_VALIDATOR_STACK_SEQUENCE = Object.freeze([
+  'npm run test:compat-validator-result:verify:report',
+  'npm run test:compat-validator-result:schema',
+  'npm run test:compat-schema-validator-result:verify',
+  'npm run test:compat-validator-result:verify:schema'
+]);
+
 export const REQUIRED_COMPAT_SUMMARY_STACK_SEQUENCE = Object.freeze([
   'npm run test:compat-fixtures:fast',
   'node scripts/validate-compat-summary.mjs --out',
   'npm run test:compat-report-stack:fast'
+]);
+
+export const REQUIRED_COMPAT_CI_SEQUENCE = Object.freeze([
+  'npm run typecheck',
+  'npm test',
+  'npm run build',
+  'npm run test:compat-contract:fast',
+  'npm run test:compat-summary:fast'
 ]);

@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
+  REQUIRED_COMPAT_CI_SEQUENCE,
   REQUIRED_COMPAT_ARTIFACT_CLI_DRIFT_PATHS,
   REQUIRED_COMPAT_ARTIFACT_STACK_SEQUENCE,
   REQUIRED_COMPAT_NPM_SCRIPT_NAMES,
   REQUIRED_COMPAT_REPORT_STACK_SEQUENCE,
-  REQUIRED_COMPAT_SUMMARY_STACK_SEQUENCE
+  REQUIRED_COMPAT_SUMMARY_STACK_SEQUENCE,
+  REQUIRED_COMPAT_VALIDATOR_STACK_SEQUENCE
 } from './compat-npm-script-contracts.mjs';
 
 function loadPackageScripts() {
@@ -63,6 +65,17 @@ describe('compat npm script stack contracts', () => {
     );
   });
 
+  it('keeps fast validator stack sequence ordered for verifier/schema gates', () => {
+    const scripts = loadPackageScripts();
+    const validatorStackScript = scripts['test:compat-validator-stack:fast'];
+    expect(typeof validatorStackScript).toBe('string');
+    expectContainsInOrder(
+      validatorStackScript,
+      REQUIRED_COMPAT_VALIDATOR_STACK_SEQUENCE,
+      'test:compat-validator-stack:fast'
+    );
+  });
+
   it('keeps fast summary stack chained through report stack', () => {
     const scripts = loadPackageScripts();
     const summaryFastScript = scripts['test:compat-summary:fast'];
@@ -71,6 +84,17 @@ describe('compat npm script stack contracts', () => {
       summaryFastScript,
       REQUIRED_COMPAT_SUMMARY_STACK_SEQUENCE,
       'test:compat-summary:fast'
+    );
+  });
+
+  it('keeps ci script ordered through core + compat gates', () => {
+    const scripts = loadPackageScripts();
+    const ciScript = scripts.ci;
+    expect(typeof ciScript).toBe('string');
+    expectContainsInOrder(
+      ciScript,
+      REQUIRED_COMPAT_CI_SEQUENCE,
+      'ci'
     );
   });
 });
