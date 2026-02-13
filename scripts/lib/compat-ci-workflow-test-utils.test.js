@@ -16,6 +16,7 @@ import {
   extractNestedSectionFieldNames,
   extractNestedSectionFieldEntries,
   extractNestedSectionListOrMultilineFieldValues,
+  extractNestedSectionScalarFieldMap,
   extractNestedSectionScalarFieldValue,
   extractTopLevelFieldNames,
   extractTopLevelJobNames,
@@ -334,6 +335,11 @@ describe('compat ci workflow test utils', () => {
     ]);
     expect(extractNestedSectionScalarFieldValue(uploadStepBlock, 'with', 'name')).toBe('sample-artifact');
     expect(extractNestedSectionScalarFieldValue(uploadStepBlock, 'with', 'if-no-files-found')).toBe('ignore');
+    expect(extractNestedSectionScalarFieldMap(uploadStepBlock, 'with')).toEqual({
+      name: 'sample-artifact',
+      path: '|',
+      'if-no-files-found': 'ignore'
+    });
     expect(extractScalarField(uploadStepBlock, 'if-no-files-found')).toBe('ignore');
     expect(extractUploadArtifactPaths(uploadStepBlock)).toEqual([
       '${{ runner.temp }}/reports/a.json',
@@ -352,6 +358,10 @@ describe('compat ci workflow test utils', () => {
     ];
     expect(extractUploadArtifactPaths(LIST_STYLE_UPLOAD_STEP_SNIPPET)).toEqual(expectedPaths);
     expect(extractNestedSectionListOrMultilineFieldValues(LIST_STYLE_UPLOAD_STEP_SNIPPET, 'with', 'path')).toEqual(expectedPaths);
+    expect(extractNestedSectionScalarFieldMap(LIST_STYLE_UPLOAD_STEP_SNIPPET, 'with')).toEqual({
+      path: '',
+      'if-no-files-found': 'ignore'
+    });
   });
 
   it('extracts upload artifact paths from scalar path fields and keeps parity with specialized helper', () => {
@@ -370,6 +380,7 @@ describe('compat ci workflow test utils', () => {
     expect(extractStepFieldNames('run: npm test')).toBe(null);
     expect(extractNestedSectionFieldNames('run: npm test', 'env')).toBe(null);
     expect(extractNestedSectionFieldEntries('run: npm test', 'env')).toBe(null);
+    expect(extractNestedSectionScalarFieldMap('run: npm test', 'env')).toBe(null);
     expect(extractNestedSectionScalarFieldValue('run: npm test', 'env', 'SAMPLE_ENV')).toBe(null);
     expect(extractUploadArtifactPaths('- name: Upload\n  uses: actions/upload-artifact@v4')).toBe(null);
     expect(countScalarFieldOccurrences('run: npm test', 'missing')).toBe(0);

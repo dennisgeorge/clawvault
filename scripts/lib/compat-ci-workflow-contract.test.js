@@ -72,7 +72,7 @@ import {
   extractOnTriggerSectionFieldNames,
   extractNestedSectionFieldNames,
   extractNestedSectionListOrMultilineFieldValues,
-  extractNestedSectionScalarFieldValue,
+  extractNestedSectionScalarFieldMap,
   extractStepNames,
   extractUploadArtifactPaths,
   extractUsesField,
@@ -341,22 +341,20 @@ describe('compat ci workflow contract', () => {
     for (const [stepName, scalarValueContracts] of Object.entries(REQUIRED_COMPAT_CI_STEP_WITH_SCALAR_VALUE_CONTRACTS)) {
       const stepBlock = extractStepBlock(ciJobBlock, stepName);
       expect(stepBlock, `missing CI workflow step: ${stepName}`).toBeTruthy();
+      const withFieldMap = extractNestedSectionScalarFieldMap(stepBlock, 'with');
+      expect(withFieldMap, `missing with-section field map for step=${stepName}`).toBeTruthy();
       for (const [fieldName, expectedValue] of Object.entries(scalarValueContracts)) {
-        expect(
-          extractNestedSectionScalarFieldValue(stepBlock, 'with', fieldName),
-          `unexpected nested with-field value for step=${stepName} field=${fieldName}`
-        ).toBe(expectedValue);
+        expect(withFieldMap[fieldName], `unexpected nested with-field value for step=${stepName} field=${fieldName}`).toBe(expectedValue);
       }
     }
 
     for (const [stepName, scalarValueContracts] of Object.entries(REQUIRED_COMPAT_CI_STEP_ENV_SCALAR_VALUE_CONTRACTS)) {
       const stepBlock = extractStepBlock(ciJobBlock, stepName);
       expect(stepBlock, `missing CI workflow step: ${stepName}`).toBeTruthy();
+      const envFieldMap = extractNestedSectionScalarFieldMap(stepBlock, 'env');
+      expect(envFieldMap, `missing env-section field map for step=${stepName}`).toBeTruthy();
       for (const [fieldName, expectedValue] of Object.entries(scalarValueContracts)) {
-        expect(
-          extractNestedSectionScalarFieldValue(stepBlock, 'env', fieldName),
-          `unexpected nested env-field value for step=${stepName} field=${fieldName}`
-        ).toBe(expectedValue);
+        expect(envFieldMap[fieldName], `unexpected nested env-field value for step=${stepName} field=${fieldName}`).toBe(expectedValue);
       }
     }
   });

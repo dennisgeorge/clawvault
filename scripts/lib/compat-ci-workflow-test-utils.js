@@ -337,6 +337,16 @@ export function extractNestedSectionFieldEntries(stepBlock, sectionName) {
     .map(({ fieldName, fieldValue }) => ({ fieldName, fieldValue }));
 }
 
+export function extractNestedSectionScalarFieldMap(stepBlock, sectionName) {
+  const fieldEntries = extractNestedSectionFieldEntries(stepBlock, sectionName);
+  if (!fieldEntries) {
+    return null;
+  }
+  return Object.fromEntries(
+    fieldEntries.map(({ fieldName, fieldValue }) => [fieldName, fieldValue])
+  );
+}
+
 export function countScalarFieldOccurrences(block, fieldName) {
   const fieldPattern = new RegExp(`\\n\\s*${escapeRegex(fieldName)}:\\s*`, 'g');
   return [...block.matchAll(fieldPattern)].length;
