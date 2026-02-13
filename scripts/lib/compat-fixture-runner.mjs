@@ -266,6 +266,23 @@ export function validateDeclaredCheckLabels(expectedLabels, availableLabels) {
   }
 }
 
+export function ensureReportDir(compatReportDir) {
+  if (!compatReportDir) return;
+  fs.mkdirSync(compatReportDir, { recursive: true });
+}
+
+export function writeCaseReport(compatReportDir, testCase, report) {
+  if (!compatReportDir || !report) return;
+  const reportPath = path.join(compatReportDir, `${testCase.name}.json`);
+  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf-8');
+}
+
+export function writeSummaryReport(compatReportDir, summary) {
+  if (!compatReportDir) return;
+  const summaryPath = path.join(compatReportDir, 'summary.json');
+  fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2), 'utf-8');
+}
+
 export function assertFixtureFiles(caseName, fixturePath, requiredPaths = REQUIRED_FIXTURE_FILES, allowMissingFiles = []) {
   const allowedMissing = new Set(allowMissingFiles);
   const missing = requiredPaths

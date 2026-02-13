@@ -5,6 +5,7 @@ import * as path from 'path';
 import {
   COMPAT_FIXTURE_SCHEMA_VERSION,
   assertFixtureFiles,
+  ensureReportDir,
   evaluateCaseReport,
   ensureCompatReportShape,
   loadCaseManifest,
@@ -14,7 +15,9 @@ import {
   validateDeclaredCheckLabels,
   validateExpectedCheckLabels,
   validateFixtureDirectoryCoverage,
-  validateFixtureReadmeCoverage
+  validateFixtureReadmeCoverage,
+  writeCaseReport,
+  writeSummaryReport
 } from './compat-fixture-runner.mjs';
 
 function makeTempDir(prefix) {
@@ -227,6 +230,30 @@ describe('compat fixture runner utilities', () => {
       ['openclaw CLI available', 'hook handler safety'],
       ['hook handler safety', 'openclaw CLI available']
     )).toThrow('order mismatch');
+  });
+
+  it('writes optional compat report artifacts when report directory is provided', () => {
+    const root = makeTempDir('compat-report-artifacts-');
+    try {
+      const summary = { generatedAt: new Date().toISOString(), total: 1, failures: 0, results: [] };
+      const report = { generatedAt: new Date().toISOString(), checks: [], warnings: 0, errors: 0 };
+      ensureReportDir(root);
+      writeCaseReport(root, { name: 'healthy' }, report);
+      writeSummaryReport(root, summary);
+
+      const casePath = path.join(root, 'healthy.json');
+      const summaryPath = path.join(root, 'summary.json');
+      expect(fs.existsSync(casePath)).toBe(true);
+      expect(fs.existsSync(summaryPath)).toBe(true);
+      expect(JSON.parse(fs.readFileSync(casePath, 'utf-8'))).toEqual(report);
+      expect(JSON.parse(fs.readFileSync(summaryPath, 'utf-8'))).toEqual(summary);
+
+      expect(() => ensureReportDir('')).not.toThrow();
+      expect(() => writeCaseReport('', { name: 'healthy' }, report)).not.toThrow();
+      expect(() => writeSummaryReport('', summary)).not.toThrow();
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('evaluates expected report signals and surfaces mismatches', () => {

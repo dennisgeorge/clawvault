@@ -5,6 +5,7 @@ import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import {
   assertFixtureFiles,
+  ensureReportDir,
   evaluateCaseReport,
   loadCaseManifest,
   parseCompatReport,
@@ -12,7 +13,9 @@ import {
   validateDeclaredCheckLabels,
   validateExpectedCheckLabels,
   validateFixtureDirectoryCoverage,
-  validateFixtureReadmeCoverage
+  validateFixtureReadmeCoverage,
+  writeCaseReport,
+  writeSummaryReport
 } from './lib/compat-fixture-runner.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -32,23 +35,6 @@ function createOpenClawShim() {
   fs.writeFileSync(shimPath, '#!/usr/bin/env bash\nexit 0\n', 'utf-8');
   fs.chmodSync(shimPath, 0o755);
   return { shimDir, shimPath };
-}
-
-function ensureReportDir() {
-  if (!compatReportDir) return;
-  fs.mkdirSync(compatReportDir, { recursive: true });
-}
-
-function writeCaseReport(testCase, report) {
-  if (!compatReportDir || !report) return;
-  const reportPath = path.join(compatReportDir, `${testCase.name}.json`);
-  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf-8');
-}
-
-function writeSummaryReport(summary) {
-  if (!compatReportDir) return;
-  const summaryPath = path.join(compatReportDir, 'summary.json');
-  fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2), 'utf-8');
 }
 
 function runCase(testCase, env) {
@@ -74,7 +60,7 @@ function runCase(testCase, env) {
 
   try {
     report = parseCompatReport(result.stdout, testCase.name);
-    writeCaseReport(testCase, report);
+    writeCaseReport(compatReportDir, testCase, report);
     evaluation = evaluateCaseReport(testCase, report, actualExitCode);
   } catch (err) {
     outputError = err;
@@ -138,7 +124,7 @@ function main() {
   validateFixtureDirectoryCoverage(fixturesRoot, allCases);
   validateFixtureReadmeCoverage(fixtureReadmePath, allCases);
   const cases = selectCases(allCases, process.env.COMPAT_CASES);
-  ensureReportDir();
+  ensureReportDir(compatReportDir);
   const { shimDir } = createOpenClawShim();
   const env = {
     ...process.env,
@@ -150,7 +136,7 @@ function main() {
     validateDeclaredCheckLabels(manifest.expectedCheckLabels, availableLabels);
     validateExpectedCheckLabels(allCases, manifest.expectedCheckLabels);
     if (validateOnly) {
-      writeSummaryReport({
+      writeSummaryReport(compatReportDir, {
         generatedAt: new Date().toISOString(),
         mode: 'contract',
         schemaVersion: manifest.schemaVersion,
@@ -163,7 +149,7 @@ function main() {
       return;
     }
     const results = cases.map((testCase) => runCase(testCase, env));
-    writeSummaryReport({
+    writeSummaryReport(compatReportDir, {
       generatedAt: new Date().toISOString(),
       mode: 'fixtures',
       schemaVersion: manifest.schemaVersion,
