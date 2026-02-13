@@ -54,6 +54,7 @@
 - Compatibility fixture runner now emits `summary.json` alongside per-case reports for faster CI artifact triage.
 - Compatibility fixture manifest now includes explicit `schemaVersion` validation to make contract changes intentional and reviewable.
 - Compatibility unit tests now assert expected diagnostic detail substrings from declarative cases, not only status/count outputs.
+- Added `npm run test:compat-smoke` for fast healthy-fixture compatibility checks during local iteration.
 
 ## [1.11.2] - 2026-02-12
 

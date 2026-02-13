@@ -217,6 +217,9 @@ npm run test:compat-fixtures
 # fixture expectations are defined in tests/compat-fixtures/cases.json
 # fixture manifest includes schemaVersion for explicit contract evolution
 
+# Quick smoke check (healthy fixture only)
+npm run test:compat-smoke
+
 # Run full local CI gate (typecheck + tests + compat fixtures)
 npm run ci
 
