@@ -15,6 +15,7 @@
 - **Expanded CLI registration smoke coverage** across maintenance/resilience/session-lifecycle/template modules, including duplicate-command detection.
 - **CLI help contract tests** to lock command/option surface (including `context --profile auto` and `compat --strict`).
 - **CLI runtime helper tests** covering shared vault resolution and qmd missing-binary error mapping.
+- Runtime helper coverage now also validates qmd non-zero exit propagation and consistent qmd-missing user guidance output.
 - CLI test harness now uses shared fixture helpers to reduce duplicated stubs and keep command-surface contract tests maintainable.
 - Doctor now includes an **OpenClaw compatibility** check summary.
 - Dashboard graph parser now emits:
