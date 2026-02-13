@@ -140,9 +140,15 @@ describe('validate-compat-summary script', () => {
       expect(result.status).toBe(0);
       expect(result.stdout).toContain(`reportDir=${reportRoot}`);
 
-      const jsonResult = runSummaryValidator(['--summary', summaryPath, '--report-dir', reportRoot, '--json']);
+      const outputPath = path.join(root, 'validator-output.json');
+      const jsonResult = runSummaryValidator([
+        '--summary', summaryPath,
+        '--report-dir', reportRoot,
+        '--json',
+        '--out', outputPath
+      ]);
       expect(jsonResult.status).toBe(0);
-      expect(parseJsonLine(jsonResult.stdout)).toEqual({
+      const expectedPayload = {
         outputSchemaVersion: 1,
         status: 'ok',
         summarySchemaVersion: 1,
@@ -153,7 +159,9 @@ describe('validate-compat-summary script', () => {
         summaryPath,
         reportDir: reportRoot,
         caseReportMode: 'validated-case-reports'
-      });
+      };
+      expect(parseJsonLine(jsonResult.stdout)).toEqual(expectedPayload);
+      expect(JSON.parse(fs.readFileSync(outputPath, 'utf-8'))).toEqual(expectedPayload);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -177,13 +185,18 @@ describe('validate-compat-summary script', () => {
     expect(missingReportDirResult.status).toBe(1);
     expect(missingReportDirResult.stderr).toContain('Missing value for --report-dir');
 
-    const jsonMissingValueResult = runSummaryValidator(['--json', '--report-dir']);
+    const root = makeTempDir('compat-summary-script-');
+    const outputPath = path.join(root, 'validator-error-output.json');
+    const jsonMissingValueResult = runSummaryValidator(['--json', '--report-dir', '--out', outputPath]);
     expect(jsonMissingValueResult.status).toBe(1);
-    expect(parseJsonLine(jsonMissingValueResult.stdout)).toEqual({
+    const expectedErrorPayload = {
       outputSchemaVersion: 1,
       status: 'error',
       error: 'Missing value for --report-dir'
-    });
+    };
+    expect(parseJsonLine(jsonMissingValueResult.stdout)).toEqual(expectedErrorPayload);
+    expect(JSON.parse(fs.readFileSync(outputPath, 'utf-8'))).toEqual(expectedErrorPayload);
+    fs.rmSync(root, { recursive: true, force: true });
   });
 
   it('prints usage help and exits successfully for --help', () => {
