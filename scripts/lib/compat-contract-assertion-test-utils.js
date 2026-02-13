@@ -79,6 +79,30 @@ export function expectKeyedStringArrayDomains(valuesByKey, keyDomain, label, opt
   }
 }
 
+export function expectKeyedStringRecordDomains(valuesByKey, keyDomain, label, options = {}) {
+  const {
+    requireExactKeyDomain = false,
+    allowEmptyKeys = []
+  } = options;
+  expect(valuesByKey && typeof valuesByKey === 'object', `${label} must be an object`).toBe(true);
+  expect(Array.isArray(valuesByKey), `${label} must not be an array`).toBe(false);
+  expectNonEmptyUniqueStringArray(keyDomain, `${label} key domain`);
+  expectNonEmptyUniqueStringArray(allowEmptyKeys, `${label} allow-empty key domain`, { requireNonEmpty: false });
+  const keyDomainSet = new Set(keyDomain);
+  for (const allowEmptyKey of allowEmptyKeys) {
+    expect(keyDomainSet.has(allowEmptyKey), `${label} allow-empty key must belong to key domain: ${allowEmptyKey}`).toBe(true);
+  }
+  if (requireExactKeyDomain) {
+    expectObjectKeyDomainParity(valuesByKey, keyDomain, `${label} exact key-domain`);
+  }
+  for (const [domainKey, values] of Object.entries(valuesByKey)) {
+    expect(keyDomainSet.has(domainKey), `${label} key must belong to key domain: ${domainKey}`).toBe(true);
+    expectNonEmptyStringRecord(values, `${label}[${domainKey}]`, {
+      requireNonEmpty: !allowEmptyKeys.includes(domainKey)
+    });
+  }
+}
+
 export function expectArrayOfRecordsWithRequiredStringFields(records, requiredFields, label, options = {}) {
   const { requireNonEmpty = true } = options;
   expect(Array.isArray(records), `${label} must be an array`).toBe(true);

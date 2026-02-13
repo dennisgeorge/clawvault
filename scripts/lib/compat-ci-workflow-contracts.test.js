@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   expectKeyedStringArrayDomains,
+  expectKeyedStringRecordDomains,
   expectNonEmptyString,
-  expectNonEmptyStringRecord,
   expectObjectKeyDomainParity,
   expectNonEmptyUniqueStringArray
 } from './compat-contract-assertion-test-utils.js';
@@ -121,15 +121,12 @@ describe('compat ci workflow contracts constants', () => {
       'REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES',
       { requireExactKeyDomain: true }
     );
-    expectObjectKeyDomainParity(
+    expectKeyedStringRecordDomains(
       REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS,
       REQUIRED_COMPAT_CI_JOB_NAMES,
-      'REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS'
+      'REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS',
+      { requireExactKeyDomain: true }
     );
-    for (const [jobName, scalarValueContracts] of Object.entries(REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS)) {
-      expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
-      expectNonEmptyStringRecord(scalarValueContracts, `job scalar-value contracts ${jobName}`);
-    }
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAMES, 'REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAMES');
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_JOB_FIELD_NAMES, 'REQUIRED_COMPAT_CI_JOB_FIELD_NAMES');
     expect(REQUIRED_COMPAT_CI_JOB_FIELD_NAMES).toEqual(REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAMES);
@@ -162,18 +159,22 @@ describe('compat ci workflow contracts constants', () => {
       REQUIRED_COMPAT_CI_STEP_NAMES,
       'REQUIRED_COMPAT_CI_STEP_ENV_FIELD_NAME_SEQUENCES'
     );
-    for (const [stepName, scalarValueContracts] of Object.entries(REQUIRED_COMPAT_CI_STEP_TOP_LEVEL_SCALAR_VALUE_CONTRACTS)) {
-      expect(REQUIRED_COMPAT_CI_STEP_NAMES).toContain(stepName);
-      expectNonEmptyStringRecord(scalarValueContracts, `step top-level scalar-value contracts ${stepName}`);
-    }
-    for (const [stepName, scalarValueContracts] of Object.entries(REQUIRED_COMPAT_CI_STEP_WITH_SCALAR_VALUE_CONTRACTS)) {
-      expect(REQUIRED_COMPAT_CI_STEP_NAMES).toContain(stepName);
-      expectNonEmptyStringRecord(scalarValueContracts, `step with scalar-value contracts ${stepName}`);
-    }
-    for (const [stepName, scalarValueContracts] of Object.entries(REQUIRED_COMPAT_CI_STEP_ENV_SCALAR_VALUE_CONTRACTS)) {
-      expect(REQUIRED_COMPAT_CI_STEP_NAMES).toContain(stepName);
-      expectNonEmptyStringRecord(scalarValueContracts, `step env scalar-value contracts ${stepName}`);
-    }
+    expectKeyedStringRecordDomains(
+      REQUIRED_COMPAT_CI_STEP_TOP_LEVEL_SCALAR_VALUE_CONTRACTS,
+      REQUIRED_COMPAT_CI_STEP_NAMES,
+      'REQUIRED_COMPAT_CI_STEP_TOP_LEVEL_SCALAR_VALUE_CONTRACTS',
+      { requireExactKeyDomain: true }
+    );
+    expectKeyedStringRecordDomains(
+      REQUIRED_COMPAT_CI_STEP_WITH_SCALAR_VALUE_CONTRACTS,
+      REQUIRED_COMPAT_CI_STEP_NAMES,
+      'REQUIRED_COMPAT_CI_STEP_WITH_SCALAR_VALUE_CONTRACTS'
+    );
+    expectKeyedStringRecordDomains(
+      REQUIRED_COMPAT_CI_STEP_ENV_SCALAR_VALUE_CONTRACTS,
+      REQUIRED_COMPAT_CI_STEP_NAMES,
+      'REQUIRED_COMPAT_CI_STEP_ENV_SCALAR_VALUE_CONTRACTS'
+    );
   });
 
   it('keeps required upload artifact file domain unique and non-empty', () => {
