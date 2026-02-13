@@ -205,7 +205,10 @@ function main() {
       process.exit(1);
     }
 
-    console.log(`Compatibility fixtures runtime: preflight=${telemetry.preflightDurationMs}ms total=${telemetry.totalDurationMs}ms avg=${telemetry.averageDurationMs}ms overall=${telemetry.overallDurationMs}ms`);
+    const slowestSummary = telemetry.slowestCases
+      .map((entry) => `${entry.name}:${entry.durationMs}ms`)
+      .join(', ');
+    console.log(`Compatibility fixtures runtime: preflight=${telemetry.preflightDurationMs}ms total=${telemetry.totalDurationMs}ms avg=${telemetry.averageDurationMs}ms overall=${telemetry.overallDurationMs}ms slowest=[${slowestSummary}]`);
     console.log('Compatibility fixture check passed.');
   } finally {
     fs.rmSync(shimDir, { recursive: true, force: true });

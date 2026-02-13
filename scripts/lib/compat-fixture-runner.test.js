@@ -583,21 +583,27 @@ describe('compat fixture runner utilities', () => {
 
   it('builds fixture runtime telemetry from per-case durations', () => {
     expect(buildFixtureRunTelemetry([
-      { durationMs: 10 },
-      { durationMs: 21 },
-      { durationMs: 9 }
+      { name: 'a', durationMs: 10 },
+      { name: 'b', durationMs: 21 },
+      { name: 'c', durationMs: 9 }
     ], 5)).toEqual({
       preflightDurationMs: 5,
       totalDurationMs: 40,
       averageDurationMs: 13,
-      overallDurationMs: 45
+      overallDurationMs: 45,
+      slowestCases: [
+        { name: 'b', durationMs: 21 },
+        { name: 'a', durationMs: 10 },
+        { name: 'c', durationMs: 9 }
+      ]
     });
 
     expect(buildFixtureRunTelemetry([], -10)).toEqual({
       preflightDurationMs: 0,
       totalDurationMs: 0,
       averageDurationMs: 0,
-      overallDurationMs: 0
+      overallDurationMs: 0,
+      slowestCases: []
     });
   });
 

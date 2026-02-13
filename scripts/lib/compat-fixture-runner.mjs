@@ -361,12 +361,20 @@ export function buildFixtureRunTelemetry(results, preflightDurationMs) {
     ? Math.round(totalDurationMs / results.length)
     : 0;
   const overallDurationMs = normalizedPreflight + totalDurationMs;
+  const slowestCases = [...results]
+    .map((result) => ({
+      name: String(result.name ?? ''),
+      durationMs: Math.max(0, Number(result.durationMs) || 0)
+    }))
+    .sort((left, right) => right.durationMs - left.durationMs)
+    .slice(0, 3);
 
   return {
     preflightDurationMs: normalizedPreflight,
     totalDurationMs,
     averageDurationMs,
-    overallDurationMs
+    overallDurationMs,
+    slowestCases
   };
 }
 
