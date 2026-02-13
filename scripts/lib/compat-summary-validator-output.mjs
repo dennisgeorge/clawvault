@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+
 export const COMPAT_SUMMARY_VALIDATOR_OUTPUT_SCHEMA_VERSION = 1;
 
 const VALID_SUMMARY_MODES = new Set(['contract', 'fixtures']);
@@ -79,4 +81,15 @@ export function buildSummaryValidatorErrorPayload(error) {
   };
   ensureSummaryValidatorPayloadShape(payload);
   return payload;
+}
+
+export function loadSummaryValidatorPayload(payloadPath) {
+  try {
+    const raw = fs.readFileSync(payloadPath, 'utf-8');
+    const parsed = JSON.parse(raw);
+    ensureSummaryValidatorPayloadShape(parsed);
+    return parsed;
+  } catch (err) {
+    throw new Error(`Unable to read validator result payload at ${payloadPath}: ${err?.message || String(err)}`);
+  }
 }

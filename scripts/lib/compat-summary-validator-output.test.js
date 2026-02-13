@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import {
   buildSummaryValidatorErrorPayload,
   buildSummaryValidatorSuccessPayload,
   COMPAT_SUMMARY_VALIDATOR_OUTPUT_SCHEMA_VERSION,
-  ensureSummaryValidatorPayloadShape
+  ensureSummaryValidatorPayloadShape,
+  loadSummaryValidatorPayload
 } from './compat-summary-validator-output.mjs';
 
 describe('compat summary validator output payload contracts', () => {
@@ -55,5 +59,20 @@ describe('compat summary validator output payload contracts', () => {
       reportDir: '/tmp',
       caseReportMode: 'unknown'
     })).toThrow('caseReportMode');
+  });
+
+  it('loads and validates payloads from disk', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compat-validator-payload-'));
+    const payloadPath = path.join(root, 'validator-result.json');
+    try {
+      const payload = buildSummaryValidatorErrorPayload('bad');
+      fs.writeFileSync(payloadPath, JSON.stringify(payload, null, 2), 'utf-8');
+      expect(loadSummaryValidatorPayload(payloadPath)).toEqual(payload);
+
+      fs.writeFileSync(payloadPath, '{"status":"ok"', 'utf-8');
+      expect(() => loadSummaryValidatorPayload(payloadPath)).toThrow('Unable to read validator result payload');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 });
