@@ -57,6 +57,7 @@
 - Added `npm run test:compat-smoke` for fast healthy-fixture compatibility checks during local iteration.
 - Compatibility fixture matrix now covers missing `SKILL.md` OpenClaw metadata as an explicit warning-drift scenario.
 - Compatibility fixture matrix now also covers unsafe hook handler conventions (`execSync` and missing `--profile auto` delegation) as warning-drift scenarios.
+- Compatibility fixture runner now enforces one-to-one coverage between declarative cases and fixture directories (missing/unreferenced fixture detection).
 
 ## [1.11.2] - 2026-02-12
 
