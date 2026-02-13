@@ -228,6 +228,44 @@ describe('compat ci workflow contract', () => {
     });
   });
 
+  it('matches canonical CI step-domain snapshot map via discovered step extraction', () => {
+    const workflowYaml = loadCiWorkflowYaml();
+    const jobSnapshotsByName = buildWorkflowJobsContractSnapshot({
+      workflowYaml,
+      jobNames: REQUIRED_COMPAT_CI_JOB_NAMES
+    });
+
+    expect({
+      stepNamesByJobName: Object.fromEntries(
+        Object.entries(jobSnapshotsByName).map(([jobName, snapshot]) => [jobName, snapshot.stepNames])
+      ),
+      stepTopLevelFieldNamesByJobName: Object.fromEntries(
+        Object.entries(jobSnapshotsByName).map(([jobName, snapshot]) => [jobName, snapshot.stepTopLevelFieldNamesByName])
+      ),
+      stepWithFieldNamesByJobName: compactDefinedSectionMapByJob(
+        Object.fromEntries(
+          Object.entries(jobSnapshotsByName).map(([jobName, snapshot]) => [jobName, snapshot.stepWithFieldNamesByName])
+        )
+      ),
+      stepEnvFieldNamesByJobName: compactDefinedSectionMapByJob(
+        Object.fromEntries(
+          Object.entries(jobSnapshotsByName).map(([jobName, snapshot]) => [jobName, snapshot.stepEnvFieldNamesByName])
+        )
+      )
+    }).toEqual({
+      stepNamesByJobName: REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES,
+      stepTopLevelFieldNamesByJobName: {
+        [REQUIRED_COMPAT_CI_JOB_NAME]: REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES
+      },
+      stepWithFieldNamesByJobName: {
+        [REQUIRED_COMPAT_CI_JOB_NAME]: REQUIRED_COMPAT_CI_STEP_WITH_FIELD_NAME_SEQUENCES
+      },
+      stepEnvFieldNamesByJobName: {
+        [REQUIRED_COMPAT_CI_JOB_NAME]: REQUIRED_COMPAT_CI_STEP_ENV_FIELD_NAME_SEQUENCES
+      }
+    });
+  });
+
   it('keeps required CI job declarations unique in workflow', () => {
     const workflowYaml = loadCiWorkflowYaml();
     expect(extractTopLevelJobNames(workflowYaml)).toEqual(REQUIRED_COMPAT_CI_JOB_NAMES);
