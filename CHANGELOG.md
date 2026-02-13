@@ -74,6 +74,7 @@
 - Compatibility smoke workflow now runs fast contract validation before the healthy fixture case, improving early drift detection during local iteration.
 - Compatibility fixture summary artifacts now include execution metadata (`mode`, `schemaVersion`, `selectedCases`) for clearer CI triage across contract-only and full fixture runs.
 - Compatibility report artifact writing (`summary.json`, per-case JSON) is now centralized in fixture-runner library utilities with dedicated unit coverage.
+- Fixture contract validation now enforces coverage of every declared compatibility check label in `expectedCheckStatuses` (healthy case provides full-label baseline assertions).
 
 ## [1.11.2] - 2026-02-12
 

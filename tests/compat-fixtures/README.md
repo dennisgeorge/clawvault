@@ -17,6 +17,7 @@ Current fixture scenarios:
 
 - order is intentionally kept in sync with `cases.json` and validated by the fixture runner.
 - `healthy` — expected strict pass.
+  - also asserts `ok` status for every declared compatibility check label.
 - `missing-requires-bin` — warning for missing metadata.openclaw.requires.bins.
 - `non-auto-profile` — warning for missing --profile auto delegation.
 - `missing-events` — error for missing required hook events.
