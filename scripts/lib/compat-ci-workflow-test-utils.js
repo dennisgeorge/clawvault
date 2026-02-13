@@ -263,7 +263,7 @@ function computeLineStartIndexes(lines) {
   return lineStartIndexes;
 }
 
-export function extractNestedSectionFieldNames(stepBlock, sectionName) {
+function extractNestedSectionContext(stepBlock, sectionName) {
   const lines = stepBlock.split('\n');
   const sectionLineIndex = lines.findIndex((line) => {
     const trimmedLine = line.trim();
@@ -272,50 +272,69 @@ export function extractNestedSectionFieldNames(stepBlock, sectionName) {
   if (sectionLineIndex < 0) {
     return null;
   }
-  const sectionIndent = countLeadingSpaces(lines[sectionLineIndex]);
-  const sectionFieldNames = [];
+  return {
+    lines,
+    sectionLineIndex,
+    sectionIndent: countLeadingSpaces(lines[sectionLineIndex])
+  };
+}
+
+function collectNestedSectionEntries(sectionContext) {
+  const {
+    lines,
+    sectionLineIndex,
+    sectionIndent
+  } = sectionContext;
+  const sectionEntries = [];
   for (let index = sectionLineIndex + 1; index < lines.length; index += 1) {
     const line = lines[index];
-    if (!line.trim()) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) {
       continue;
     }
     const lineIndent = countLeadingSpaces(line);
     if (lineIndent <= sectionIndent) {
       break;
     }
-    const fieldMatch = /^\s*([A-Za-z0-9_-]+):\s*/.exec(line.trim());
-    if (fieldMatch) {
-      sectionFieldNames.push(fieldMatch[1]);
+    const fieldMatch = /^\s*([A-Za-z0-9_-]+):\s*(.*)$/.exec(trimmedLine);
+    if (!fieldMatch) {
+      continue;
     }
+    sectionEntries.push({
+      fieldName: fieldMatch[1],
+      fieldValue: fieldMatch[2].trim(),
+      lineIndex: index,
+      lineIndent
+    });
   }
-  return sectionFieldNames;
+  return sectionEntries;
+}
+
+export function extractNestedSectionFieldNames(stepBlock, sectionName) {
+  const sectionContext = extractNestedSectionContext(stepBlock, sectionName);
+  if (!sectionContext) {
+    return null;
+  }
+  return collectNestedSectionEntries(sectionContext)
+    .map((entry) => entry.fieldName);
 }
 
 export function extractNestedSectionScalarFieldValue(stepBlock, sectionName, fieldName) {
-  const lines = stepBlock.split('\n');
-  const sectionLineIndex = lines.findIndex((line) => {
-    const trimmedLine = line.trim();
-    return trimmedLine === `${sectionName}:` || trimmedLine === `${sectionName}: |`;
-  });
-  if (sectionLineIndex < 0) {
+  const sectionContext = extractNestedSectionContext(stepBlock, sectionName);
+  if (!sectionContext) {
     return null;
   }
-  const sectionIndent = countLeadingSpaces(lines[sectionLineIndex]);
-  for (let index = sectionLineIndex + 1; index < lines.length; index += 1) {
-    const line = lines[index];
-    if (!line.trim()) {
-      continue;
-    }
-    const lineIndent = countLeadingSpaces(line);
-    if (lineIndent <= sectionIndent) {
-      break;
-    }
-    const fieldMatch = /^\s*([A-Za-z0-9_-]+):\s*(.*)$/.exec(line.trim());
-    if (fieldMatch && fieldMatch[1] === fieldName) {
-      return fieldMatch[2].trim();
-    }
+  return collectNestedSectionEntries(sectionContext)
+    .find((entry) => entry.fieldName === fieldName)?.fieldValue ?? null;
+}
+
+export function extractNestedSectionFieldEntries(stepBlock, sectionName) {
+  const sectionContext = extractNestedSectionContext(stepBlock, sectionName);
+  if (!sectionContext) {
+    return null;
   }
-  return null;
+  return collectNestedSectionEntries(sectionContext)
+    .map(({ fieldName, fieldValue }) => ({ fieldName, fieldValue }));
 }
 
 export function countScalarFieldOccurrences(block, fieldName) {
@@ -401,53 +420,31 @@ export function extractUploadArtifactPaths(stepBlock) {
 }
 
 export function extractNestedSectionListOrMultilineFieldValues(stepBlock, sectionName, fieldName) {
-  const lines = stepBlock.split('\n');
-  const sectionLineIndex = lines.findIndex((line) => {
-    const trimmedLine = line.trim();
-    return trimmedLine === `${sectionName}:` || trimmedLine === `${sectionName}: |`;
-  });
-  if (sectionLineIndex < 0) {
+  const sectionContext = extractNestedSectionContext(stepBlock, sectionName);
+  if (!sectionContext) {
     return null;
   }
-  const sectionIndent = countLeadingSpaces(lines[sectionLineIndex]);
-  const fieldHeaderPattern = new RegExp(`^${escapeRegex(fieldName)}:\\s*(.*)$`);
-  let fieldLineIndex = -1;
-  let fieldLineRemainder = '';
-  for (let index = sectionLineIndex + 1; index < lines.length; index += 1) {
-    const line = lines[index];
-    const trimmedLine = line.trim();
-    if (!trimmedLine) {
-      continue;
-    }
-    const lineIndent = countLeadingSpaces(line);
-    if (lineIndent <= sectionIndent) {
-      break;
-    }
-    const fieldMatch = fieldHeaderPattern.exec(trimmedLine);
-    if (fieldMatch) {
-      fieldLineIndex = index;
-      fieldLineRemainder = fieldMatch[1].trim();
-      break;
-    }
-  }
-  if (fieldLineIndex < 0) {
+  const fieldEntry = collectNestedSectionEntries(sectionContext)
+    .find((entry) => entry.fieldName === fieldName);
+  if (!fieldEntry) {
     return null;
   }
-
-  if (fieldLineRemainder && fieldLineRemainder !== '|') {
-    return [fieldLineRemainder];
+  if (fieldEntry.fieldValue && fieldEntry.fieldValue !== '|') {
+    return [fieldEntry.fieldValue];
   }
 
-  const fieldIndent = countLeadingSpaces(lines[fieldLineIndex]);
+  const {
+    lines
+  } = sectionContext;
   const fieldValues = [];
-  for (let index = fieldLineIndex + 1; index < lines.length; index += 1) {
+  for (let index = fieldEntry.lineIndex + 1; index < lines.length; index += 1) {
     const line = lines[index];
     const trimmedLine = line.trim();
     if (!trimmedLine) {
       continue;
     }
     const lineIndent = countLeadingSpaces(line);
-    if (lineIndent <= fieldIndent) {
+    if (lineIndent <= fieldEntry.lineIndent) {
       break;
     }
     fieldValues.push(trimmedLine.startsWith('- ') ? trimmedLine.slice(2).trim() : trimmedLine);

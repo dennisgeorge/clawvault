@@ -34,6 +34,7 @@
 - Upload-artifact path extraction helpers now support both multiline scalar and YAML list-style `with.path` forms, with regression tests to prevent parser drift across equivalent workflow encodings.
 - CI workflow parser internals now expose a reusable nested section list/multiline field extractor used by upload-path parsing, reducing format-specific logic duplication and adding scalar/list/multiline path regression coverage.
 - Live CI workflow contract assertions now verify nested path-field extraction parity through both specialized and generic nested-field helpers for summary/failure upload steps, protecting real-workflow wiring from helper drift.
+- Nested-section parsing in CI workflow utilities is now centralized through shared section-context/entry extraction helpers (field names, scalar values, and list/multiline values), reducing duplicated traversal logic and increasing parser maintainability.
 - Dashboard edge diffing now includes edge type/label, enabling reliable live updates when relation type changes.
 - Hook event matching now supports alias payload shapes (`event`, `eventName`, etc.) for better OpenClaw compatibility.
 - `link` and `entities` commands now consistently respect `--vault` without requiring `CLAWVAULT_PATH`.

@@ -14,6 +14,7 @@ import {
   extractOnTriggerSectionFieldNames,
   extractPushBranches,
   extractNestedSectionFieldNames,
+  extractNestedSectionFieldEntries,
   extractNestedSectionListOrMultilineFieldValues,
   extractNestedSectionScalarFieldValue,
   extractTopLevelFieldNames,
@@ -326,6 +327,11 @@ describe('compat ci workflow test utils', () => {
       'path',
       'if-no-files-found'
     ]);
+    expect(extractNestedSectionFieldEntries(uploadStepBlock, 'with')).toEqual([
+      { fieldName: 'name', fieldValue: 'sample-artifact' },
+      { fieldName: 'path', fieldValue: '|' },
+      { fieldName: 'if-no-files-found', fieldValue: 'ignore' }
+    ]);
     expect(extractNestedSectionScalarFieldValue(uploadStepBlock, 'with', 'name')).toBe('sample-artifact');
     expect(extractNestedSectionScalarFieldValue(uploadStepBlock, 'with', 'if-no-files-found')).toBe('ignore');
     expect(extractScalarField(uploadStepBlock, 'if-no-files-found')).toBe('ignore');
@@ -363,6 +369,7 @@ describe('compat ci workflow test utils', () => {
     expect(extractScalarField('run: npm test', 'missing')).toBe(null);
     expect(extractStepFieldNames('run: npm test')).toBe(null);
     expect(extractNestedSectionFieldNames('run: npm test', 'env')).toBe(null);
+    expect(extractNestedSectionFieldEntries('run: npm test', 'env')).toBe(null);
     expect(extractNestedSectionScalarFieldValue('run: npm test', 'env', 'SAMPLE_ENV')).toBe(null);
     expect(extractUploadArtifactPaths('- name: Upload\n  uses: actions/upload-artifact@v4')).toBe(null);
     expect(countScalarFieldOccurrences('run: npm test', 'missing')).toBe(0);
