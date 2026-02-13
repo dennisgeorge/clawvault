@@ -1,6 +1,4 @@
-import * as fs from 'fs';
 import * as path from 'path';
-import Ajv2020 from 'ajv/dist/2020.js';
 import {
   loadCompatSummary
 } from './lib/compat-fixture-runner.mjs';
@@ -29,6 +27,14 @@ import {
   isJsonModeRequestedFromArgv,
   writeValidatedJsonPayload
 } from './lib/validator-cli-utils.mjs';
+import {
+  compileSchemaFromPath,
+  createJsonSchemaAjv,
+  getSchemaConst,
+  getSchemaId,
+  loadJsonObject,
+  validateWithCompiledSchema
+} from './lib/json-schema-utils.mjs';
 
 function parseCliArgs(argv) {
   const parsed = {
@@ -123,53 +129,6 @@ function resolveManifestPath(args) {
   return path.resolve(process.cwd(), 'schemas', 'compat-artifact-bundle.manifest.json');
 }
 
-function loadJsonObject(payloadPath, label) {
-  try {
-    const raw = fs.readFileSync(payloadPath, 'utf-8');
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error(`${label} must be a JSON object`);
-    }
-    return parsed;
-  } catch (err) {
-    throw new Error(`Unable to read ${label} at ${payloadPath}: ${err?.message || String(err)}`);
-  }
-}
-
-function formatSchemaErrors(errors, label) {
-  return (errors ?? [])
-    .map((entry) => `${label} [${entry.keyword}] ${entry.instancePath || '/'} ${entry.message || ''}`.trim());
-}
-
-function validateWithCompiledSchema(validate, schemaPath, payload, label) {
-  const valid = validate(payload);
-  if (!valid) {
-    const details = formatSchemaErrors(validate.errors, label);
-    throw new Error(`Schema validation failed for ${label} using ${schemaPath}: ${details.join('; ')}`);
-  }
-}
-
-function getSchemaConst(schema, fieldPath, label) {
-  let cursor = schema;
-  for (const segment of fieldPath) {
-    if (!cursor || typeof cursor !== 'object' || !(segment in cursor)) {
-      throw new Error(`Schema ${label} is missing field path ${fieldPath.join('.')}`);
-    }
-    cursor = cursor[segment];
-  }
-  if (!Number.isInteger(cursor) || cursor < 0) {
-    throw new Error(`Schema ${label} has invalid non-integer const at ${fieldPath.join('.')}`);
-  }
-  return cursor;
-}
-
-function getSchemaId(schema, label) {
-  if (!schema || typeof schema !== 'object' || typeof schema.$id !== 'string' || schema.$id.length === 0) {
-    throw new Error(`Schema ${label} missing non-empty $id`);
-  }
-  return schema.$id;
-}
-
 function main() {
   const args = parseCliArgs(process.argv.slice(2));
   if (args.help) {
@@ -232,15 +191,12 @@ function main() {
   const schemaValidatorPayload = artifactPayloadsByName.get('schema-validator-result.json');
   const validatorResultVerifierPayload = artifactPayloadsByName.get('validator-result-verifier-result.json');
 
+  const ajv = createJsonSchemaAjv();
   const schemasByArtifactName = new Map(
-    artifactContracts.map((entry) => [
-      entry.artifactName,
-      loadJsonObject(entry.schemaPathResolved, `${entry.artifactName} schema`)
-    ])
+    artifactContracts.map((entry) => [entry.artifactName, compileSchemaFromPath(ajv, entry.schemaPathResolved, entry.artifactName)])
   );
-  const ajv = new Ajv2020({ allErrors: true, strict: false });
   const validatorsByArtifactName = new Map(
-    artifactContracts.map((entry) => [entry.artifactName, ajv.compile(schemasByArtifactName.get(entry.artifactName))])
+    artifactContracts.map((entry) => [entry.artifactName, schemasByArtifactName.get(entry.artifactName).validate])
   );
   for (const entry of artifactContracts) {
     validateWithCompiledSchema(
@@ -297,7 +253,7 @@ function main() {
     }
   }
   const artifactContractEntries = artifactContracts.map((entry) => {
-    const schema = schemasByArtifactName.get(entry.artifactName);
+    const schema = schemasByArtifactName.get(entry.artifactName).schema;
     const payload = artifactPayloadsByName.get(entry.artifactName);
     const expectedSchemaVersion = entry.versionField === 'summarySchemaVersion'
       ? getSchemaConst(schema, ['properties', 'summarySchemaVersion', 'const'], entry.artifactName)

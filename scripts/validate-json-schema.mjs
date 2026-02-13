@@ -1,6 +1,4 @@
-import * as fs from 'fs';
 import * as path from 'path';
-import Ajv2020 from 'ajv/dist/2020.js';
 import {
   buildJsonSchemaValidatorErrorPayload,
   buildJsonSchemaValidatorSuccessPayload,
@@ -10,6 +8,11 @@ import {
   bestEffortOutPath,
   writeValidatedJsonPayload
 } from './lib/validator-cli-utils.mjs';
+import {
+  compileSchemaFromPath,
+  createJsonSchemaAjv,
+  loadJsonValue
+} from './lib/json-schema-utils.mjs';
 
 function parseCliArgs(argv) {
   const parsed = {
@@ -91,14 +94,6 @@ function resolvePathOrThrow(value, fieldName) {
   return path.resolve(process.cwd(), value);
 }
 
-function loadJson(pathName, label) {
-  try {
-    return JSON.parse(fs.readFileSync(pathName, 'utf-8'));
-  } catch (err) {
-    throw new Error(`Unable to read ${label} at ${pathName}: ${err?.message || String(err)}`);
-  }
-}
-
 function normalizeValidationErrors(errors = []) {
   return errors.map((entry) => ({
     instancePath: String(entry.instancePath ?? ''),
@@ -121,11 +116,9 @@ function main() {
 
   const schemaPath = resolvePathOrThrow(args.schemaPath, 'schema');
   const dataPath = resolvePathOrThrow(args.dataPath, 'data');
-  const schema = loadJson(schemaPath, 'schema');
-  const data = loadJson(dataPath, 'data');
-
-  const ajv = new Ajv2020({ allErrors: true, strict: false });
-  const validate = ajv.compile(schema);
+  const data = loadJsonValue(dataPath, 'data');
+  const ajv = createJsonSchemaAjv();
+  const { validate } = compileSchemaFromPath(ajv, schemaPath, 'schema');
   const isValid = validate(data);
   if (!isValid) {
     const validationErrors = normalizeValidationErrors(validate.errors);

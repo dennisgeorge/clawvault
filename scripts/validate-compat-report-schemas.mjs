@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import Ajv2020 from 'ajv/dist/2020.js';
 import {
   buildCompatReportSchemaValidatorErrorPayload,
   buildCompatReportSchemaValidatorSuccessPayload,
@@ -11,6 +10,12 @@ import {
   isJsonModeRequestedFromArgv,
   writeValidatedJsonPayload
 } from './lib/validator-cli-utils.mjs';
+import {
+  compileSchemaFromPath,
+  createJsonSchemaAjv,
+  loadJsonObject,
+  validateWithCompiledSchema
+} from './lib/json-schema-utils.mjs';
 
 function parseCliArgs(argv) {
   const parsed = {
@@ -157,32 +162,6 @@ function resolveSchemaPath(value, fallback) {
   return path.resolve(process.cwd(), fallback);
 }
 
-function loadJsonObject(payloadPath, label) {
-  try {
-    const raw = fs.readFileSync(payloadPath, 'utf-8');
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error(`${label} must be a JSON object`);
-    }
-    return parsed;
-  } catch (err) {
-    throw new Error(`Unable to read ${label} at ${payloadPath}: ${err?.message || String(err)}`);
-  }
-}
-
-function formatSchemaErrors(errors, label) {
-  return (errors ?? [])
-    .map((entry) => `${label} [${entry.keyword}] ${entry.instancePath || '/'} ${entry.message || ''}`.trim());
-}
-
-function validateWithCompiledSchema(validate, schemaPath, payload, label) {
-  const valid = validate(payload);
-  if (!valid) {
-    const details = formatSchemaErrors(validate.errors, label);
-    throw new Error(`Schema validation failed for ${label} using ${schemaPath}: ${details.join('; ')}`);
-  }
-}
-
 function main() {
   const args = parseCliArgs(process.argv.slice(2));
   if (args.help) {
@@ -194,12 +173,9 @@ function main() {
   const summarySchemaPath = resolveSchemaPath(args.summarySchemaPath, path.join('schemas', 'compat-summary.schema.json'));
   const caseSchemaPath = resolveSchemaPath(args.caseSchemaPath, path.join('schemas', 'compat-case-report.schema.json'));
   const summary = loadJsonObject(summaryPath, 'compat summary');
-  const summarySchema = loadJsonObject(summarySchemaPath, 'compat summary schema');
-  const caseSchema = loadJsonObject(caseSchemaPath, 'compat case-report schema');
-
-  const ajv = new Ajv2020({ allErrors: true, strict: false });
-  const validateSummary = ajv.compile(summarySchema);
-  const validateCaseReport = ajv.compile(caseSchema);
+  const ajv = createJsonSchemaAjv();
+  const { validate: validateSummary } = compileSchemaFromPath(ajv, summarySchemaPath, 'compat summary');
+  const { validate: validateCaseReport } = compileSchemaFromPath(ajv, caseSchemaPath, 'compat case-report');
   validateWithCompiledSchema(validateSummary, summarySchemaPath, summary, 'compat summary');
 
   let validatedCaseReports = 0;
