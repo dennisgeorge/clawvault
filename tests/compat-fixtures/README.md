@@ -13,6 +13,7 @@ This directory contains declarative fixtures used by `npm run test:compat-fixtur
 
 Current fixture scenarios:
 
+- order is intentionally kept in sync with `cases.json` and validated by the fixture runner.
 - `healthy` — expected strict pass.
 - `missing-requires-bin` — warning for missing metadata.openclaw.requires.bins.
 - `non-auto-profile` — warning for missing --profile auto delegation.

@@ -66,6 +66,7 @@
 - Declarative fixture cases can now assert compatibility diagnostic `hint` snippets (`expectedHintIncludes`) in addition to statuses/details.
 - Compatibility fixture manifest now includes per-case descriptions, and fixture README coverage enforces description parity with declarative contracts.
 - Compatibility fixture runner now validates declarative expected check labels against the live `compat` report schema (healthy fixture) to catch stale/typoed label contracts early.
+- Compatibility fixture README coverage now also enforces scenario ordering parity with declarative `cases.json` to prevent review confusion and drift.
 
 ## [1.11.2] - 2026-02-12
 
