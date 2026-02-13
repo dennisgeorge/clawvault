@@ -425,6 +425,23 @@ export function buildCompatSummaryHeader({
   expectedCheckLabels,
   runtimeCheckLabels
 }) {
+  const fields = [
+    ['selectedCases', selectedCases],
+    ['expectedCheckLabels', expectedCheckLabels],
+    ['runtimeCheckLabels', runtimeCheckLabels]
+  ];
+  for (const [fieldName, values] of fields) {
+    if (!Array.isArray(values) || values.some((value) => typeof value !== 'string' || value.length === 0)) {
+      throw new Error(`Invalid summary header field: ${fieldName}`);
+    }
+    const duplicates = values
+      .filter((value, index, array) => array.indexOf(value) !== index)
+      .filter((value, index, array) => array.indexOf(value) === index);
+    if (duplicates.length > 0) {
+      throw new Error(`Duplicate summary header entries in ${fieldName}: ${duplicates.join(', ')}`);
+    }
+  }
+
   if (mode !== 'contract' && mode !== 'fixtures') {
     throw new Error(`Unsupported summary mode: ${String(mode)}`);
   }

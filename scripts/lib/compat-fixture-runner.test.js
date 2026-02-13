@@ -727,6 +727,24 @@ describe('compat fixture runner utilities', () => {
       expectedCheckLabels: [],
       runtimeCheckLabels: []
     })).toThrow('Unsupported summary mode');
+
+    expect(() => buildCompatSummaryHeader({
+      generatedAt: '',
+      mode: 'fixtures',
+      schemaVersion: COMPAT_FIXTURE_SCHEMA_VERSION,
+      selectedCases: ['healthy', 'healthy'],
+      expectedCheckLabels: ['openclaw CLI available'],
+      runtimeCheckLabels: ['openclaw CLI available']
+    })).toThrow('Duplicate summary header entries in selectedCases');
+
+    expect(() => buildCompatSummaryHeader({
+      generatedAt: '',
+      mode: 'fixtures',
+      schemaVersion: COMPAT_FIXTURE_SCHEMA_VERSION,
+      selectedCases: ['healthy'],
+      expectedCheckLabels: ['openclaw CLI available'],
+      runtimeCheckLabels: [123]
+    })).toThrow('Invalid summary header field');
   });
 
   it('validates build freshness for compatibility checks', () => {
