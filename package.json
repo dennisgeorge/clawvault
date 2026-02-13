@@ -40,7 +40,7 @@
     "test:compat-contract": "npm run build && COMPAT_VALIDATE_ONLY=1 node scripts/check-compat-fixtures.mjs",
     "test:compat-contract:fast": "COMPAT_VALIDATE_ONLY=1 node scripts/check-compat-fixtures.mjs",
     "test:compat-summary:verify": "node scripts/validate-compat-summary.mjs",
-    "test:compat-validator-result:verify": "node scripts/validate-compat-validator-result.mjs",
+    "test:compat-validator-result:verify": "node scripts/validate-compat-validator-result.mjs --require-ok",
     "test:compat-summary": "COMPAT_REPORT_DIR=${COMPAT_REPORT_DIR:-.compat-reports} npm run test:compat-fixtures && COMPAT_REPORT_DIR=${COMPAT_REPORT_DIR:-.compat-reports} node scripts/validate-compat-summary.mjs --out ${COMPAT_REPORT_DIR:-.compat-reports}/validator-result.json",
     "test:compat-summary:fast": "COMPAT_REPORT_DIR=${COMPAT_REPORT_DIR:-.compat-reports} npm run test:compat-fixtures:fast && COMPAT_REPORT_DIR=${COMPAT_REPORT_DIR:-.compat-reports} node scripts/validate-compat-summary.mjs --out ${COMPAT_REPORT_DIR:-.compat-reports}/validator-result.json && COMPAT_REPORT_DIR=${COMPAT_REPORT_DIR:-.compat-reports} npm run test:compat-validator-result:verify",
     "test:compat-smoke": "npm run test:compat-contract:fast && COMPAT_CASES=healthy npm run test:compat-fixtures:fast",
