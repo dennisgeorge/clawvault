@@ -316,6 +316,16 @@ describe('validate-compat-artifact-bundle script', () => {
         ...manifestValidatorPayload.artifacts.slice(0, -1),
         'drifted-artifact.json'
       ];
+      manifestValidatorPayload.schemaContracts = manifestValidatorPayload.schemaContracts.map((entry, index, allEntries) => {
+        if (index !== allEntries.length - 1) {
+          return entry;
+        }
+        return {
+          ...entry,
+          artifactName: 'drifted-artifact.json',
+          artifactFile: 'drifted-artifact.json'
+        };
+      });
       fs.writeFileSync(manifestValidatorResultPath, JSON.stringify(manifestValidatorPayload, null, 2), 'utf-8');
 
       const result = runArtifactBundleValidator([], { COMPAT_REPORT_DIR: root });

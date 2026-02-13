@@ -53,6 +53,58 @@ describe('compat artifact bundle manifest validator output payload contracts', (
 
     expect(() => ensureCompatArtifactBundleManifestValidatorPayloadShape({
       outputSchemaVersion: COMPAT_ARTIFACT_BUNDLE_MANIFEST_VALIDATOR_OUTPUT_SCHEMA_VERSION,
+      status: 'ok',
+      manifestPath: '/tmp/manifest.json',
+      artifactCount: 2,
+      artifacts: ['summary.json', 'validator-result.json'],
+      schemaContracts: [
+        {
+          artifactName: 'validator-result.json',
+          artifactFile: 'validator-result.json',
+          schemaPath: '/tmp/schemas/compat-summary-validator-output.schema.json',
+          schemaId: 'https://clawvault.dev/schemas/compat-summary-validator-output.schema.json',
+          versionField: 'outputSchemaVersion',
+          expectedSchemaVersion: 1
+        },
+        {
+          artifactName: 'summary.json',
+          artifactFile: 'summary.json',
+          schemaPath: '/tmp/schemas/compat-summary.schema.json',
+          schemaId: 'https://clawvault.dev/schemas/compat-summary.schema.json',
+          versionField: 'summarySchemaVersion',
+          expectedSchemaVersion: 1
+        }
+      ]
+    })).toThrow('artifactName order must match artifacts');
+
+    expect(() => ensureCompatArtifactBundleManifestValidatorPayloadShape({
+      outputSchemaVersion: COMPAT_ARTIFACT_BUNDLE_MANIFEST_VALIDATOR_OUTPUT_SCHEMA_VERSION,
+      status: 'ok',
+      manifestPath: '/tmp/manifest.json',
+      artifactCount: 2,
+      artifacts: ['summary.json', 'validator-result.json'],
+      schemaContracts: [
+        {
+          artifactName: 'summary.json',
+          artifactFile: 'summary.json',
+          schemaPath: '/tmp/schemas/compat-summary.schema.json',
+          schemaId: 'https://clawvault.dev/schemas/compat-summary.schema.json',
+          versionField: 'summarySchemaVersion',
+          expectedSchemaVersion: 1
+        },
+        {
+          artifactName: 'summary.json',
+          artifactFile: 'summary-v2.json',
+          schemaPath: '/tmp/schemas/compat-summary.schema.json',
+          schemaId: 'https://clawvault.dev/schemas/compat-summary.schema.json',
+          versionField: 'summarySchemaVersion',
+          expectedSchemaVersion: 1
+        }
+      ]
+    })).toThrow('duplicate artifactName values');
+
+    expect(() => ensureCompatArtifactBundleManifestValidatorPayloadShape({
+      outputSchemaVersion: COMPAT_ARTIFACT_BUNDLE_MANIFEST_VALIDATOR_OUTPUT_SCHEMA_VERSION,
       status: 'error',
       error: ''
     })).toThrow('field "error"');

@@ -60,11 +60,36 @@ export function ensureCompatArtifactBundleManifestValidatorPayloadShape(payload)
     if (!Array.isArray(payload.schemaContracts)) {
       throw new Error('compat artifact bundle manifest validator payload field "schemaContracts" must be an array');
     }
+    const schemaContractArtifactNames = [];
+    const schemaContractArtifactFiles = [];
     for (const [index, entry] of payload.schemaContracts.entries()) {
       ensureSchemaContractEntryShape(entry, index);
+      schemaContractArtifactNames.push(entry.artifactName);
+      schemaContractArtifactFiles.push(entry.artifactFile);
     }
     if (payload.schemaContracts.length !== payload.artifactCount) {
       throw new Error('compat artifact bundle manifest validator payload schemaContracts.length must match artifactCount');
+    }
+    const duplicateContractArtifactNames = schemaContractArtifactNames
+      .filter((value, index, allValues) => allValues.indexOf(value) !== index)
+      .filter((value, index, allValues) => allValues.indexOf(value) === index);
+    if (duplicateContractArtifactNames.length > 0) {
+      throw new Error(
+        `compat artifact bundle manifest validator payload schemaContracts contains duplicate artifactName values: ${duplicateContractArtifactNames.join(', ')}`
+      );
+    }
+    const duplicateContractArtifactFiles = schemaContractArtifactFiles
+      .filter((value, index, allValues) => allValues.indexOf(value) !== index)
+      .filter((value, index, allValues) => allValues.indexOf(value) === index);
+    if (duplicateContractArtifactFiles.length > 0) {
+      throw new Error(
+        `compat artifact bundle manifest validator payload schemaContracts contains duplicate artifactFile values: ${duplicateContractArtifactFiles.join(', ')}`
+      );
+    }
+    if (schemaContractArtifactNames.some((value, index) => value !== payload.artifacts[index])) {
+      throw new Error(
+        'compat artifact bundle manifest validator payload schemaContracts artifactName order must match artifacts'
+      );
     }
     return;
   }
