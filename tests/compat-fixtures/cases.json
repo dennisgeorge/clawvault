@@ -1,5 +1,13 @@
 {
   "schemaVersion": 1,
+  "expectedCheckLabels": [
+    "openclaw CLI available",
+    "package hook registration",
+    "hook manifest events",
+    "hook manifest requirements",
+    "hook handler safety",
+    "skill metadata"
+  ],
   "cases": [
   {
     "name": "healthy",

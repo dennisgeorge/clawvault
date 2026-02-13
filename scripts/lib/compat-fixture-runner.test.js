@@ -7,9 +7,11 @@ import {
   assertFixtureFiles,
   evaluateCaseReport,
   ensureCompatReportShape,
+  loadCaseManifest,
   loadCases,
   parseCompatReport,
   selectCases,
+  validateDeclaredCheckLabels,
   validateExpectedCheckLabels,
   validateFixtureDirectoryCoverage,
   validateFixtureReadmeCoverage
@@ -25,6 +27,7 @@ describe('compat fixture runner utilities', () => {
     const file = path.join(root, 'cases.json');
     fs.writeFileSync(file, JSON.stringify({
       schemaVersion: COMPAT_FIXTURE_SCHEMA_VERSION,
+      expectedCheckLabels: ['hook handler safety'],
       cases: [
         {
           name: 'healthy',
@@ -40,6 +43,8 @@ describe('compat fixture runner utilities', () => {
       const loaded = loadCases(file);
       expect(loaded).toHaveLength(1);
       expect(loaded[0].name).toBe('healthy');
+      const manifest = loadCaseManifest(file);
+      expect(manifest.expectedCheckLabels).toEqual(['hook handler safety']);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -50,6 +55,7 @@ describe('compat fixture runner utilities', () => {
     const file = path.join(root, 'cases.json');
     fs.writeFileSync(file, JSON.stringify({
       schemaVersion: COMPAT_FIXTURE_SCHEMA_VERSION,
+      expectedCheckLabels: ['hook handler safety'],
       cases: [
         {
           name: 'bad-status',
@@ -73,6 +79,7 @@ describe('compat fixture runner utilities', () => {
     const file = path.join(root, 'cases.json');
     fs.writeFileSync(file, JSON.stringify({
       schemaVersion: COMPAT_FIXTURE_SCHEMA_VERSION,
+      expectedCheckLabels: ['hook handler safety'],
       cases: [
         {
           name: 'bad-allow-missing',
@@ -97,6 +104,7 @@ describe('compat fixture runner utilities', () => {
     const file = path.join(root, 'cases.json');
     fs.writeFileSync(file, JSON.stringify({
       schemaVersion: COMPAT_FIXTURE_SCHEMA_VERSION,
+      expectedCheckLabels: ['hook handler safety'],
       cases: [
         {
           name: 'bad-hint-metadata',
@@ -121,10 +129,25 @@ describe('compat fixture runner utilities', () => {
     const file = path.join(root, 'cases.json');
     fs.writeFileSync(file, JSON.stringify({
       schemaVersion: 999,
+      expectedCheckLabels: ['hook handler safety'],
       cases: []
     }), 'utf-8');
     try {
       expect(() => loadCases(file)).toThrow('schemaVersion');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects missing expectedCheckLabels metadata', () => {
+    const root = makeTempDir('compat-cases-');
+    const file = path.join(root, 'cases.json');
+    fs.writeFileSync(file, JSON.stringify({
+      schemaVersion: COMPAT_FIXTURE_SCHEMA_VERSION,
+      cases: []
+    }), 'utf-8');
+    try {
+      expect(() => loadCaseManifest(file)).toThrow('expectedCheckLabels');
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -135,6 +158,7 @@ describe('compat fixture runner utilities', () => {
     const file = path.join(root, 'cases.json');
     fs.writeFileSync(file, JSON.stringify({
       schemaVersion: COMPAT_FIXTURE_SCHEMA_VERSION,
+      expectedCheckLabels: ['hook handler safety'],
       cases: [
         {
           name: 'missing-description',
@@ -185,6 +209,23 @@ describe('compat fixture runner utilities', () => {
     ];
     expect(() => validateExpectedCheckLabels(cases, ['hook handler safety'])).not.toThrow();
     expect(() => validateExpectedCheckLabels(cases, ['skill metadata'])).toThrow('unknown check labels');
+  });
+
+  it('validates declared compat label contract against runtime labels', () => {
+    expect(() => validateDeclaredCheckLabels(
+      ['openclaw CLI available', 'hook handler safety'],
+      ['openclaw CLI available', 'hook handler safety']
+    )).not.toThrow();
+
+    expect(() => validateDeclaredCheckLabels(
+      ['openclaw CLI available', 'hook handler safety'],
+      ['openclaw CLI available']
+    )).toThrow('contract mismatch');
+
+    expect(() => validateDeclaredCheckLabels(
+      ['openclaw CLI available', 'hook handler safety'],
+      ['hook handler safety', 'openclaw CLI available']
+    )).toThrow('order mismatch');
   });
 
   it('evaluates expected report signals and surfaces mismatches', () => {

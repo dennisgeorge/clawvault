@@ -10,7 +10,7 @@ export const REQUIRED_FIXTURE_FILES = [
   path.join('hooks', 'clawvault', 'handler.js')
 ];
 
-export function loadCases(casesPath) {
+export function loadCaseManifest(casesPath) {
   const raw = fs.readFileSync(casesPath, 'utf-8');
   const parsed = JSON.parse(raw);
 
@@ -22,6 +22,21 @@ export function loadCases(casesPath) {
     throw new Error(
       `compat fixture schemaVersion must be ${COMPAT_FIXTURE_SCHEMA_VERSION} (received ${String(parsed.schemaVersion)})`
     );
+  }
+
+  const expectedCheckLabels = parsed.expectedCheckLabels;
+  if (!Array.isArray(expectedCheckLabels) || expectedCheckLabels.length === 0) {
+    throw new Error('compat fixture expectedCheckLabels must be a non-empty array');
+  }
+  const expectedCheckLabelSet = new Set();
+  for (const [index, label] of expectedCheckLabels.entries()) {
+    if (typeof label !== 'string' || label.length === 0) {
+      throw new Error(`compat fixture expectedCheckLabels[${index}] must be a non-empty string`);
+    }
+    if (expectedCheckLabelSet.has(label)) {
+      throw new Error(`compat fixture expectedCheckLabels contains duplicate "${label}"`);
+    }
+    expectedCheckLabelSet.add(label);
   }
 
   const cases = parsed.cases;
@@ -94,7 +109,14 @@ export function loadCases(casesPath) {
     }
   }
 
-  return cases;
+  return {
+    expectedCheckLabels,
+    cases
+  };
+}
+
+export function loadCases(casesPath) {
+  return loadCaseManifest(casesPath).cases;
 }
 
 export function selectCases(cases, rawSelection) {
@@ -219,6 +241,27 @@ export function validateExpectedCheckLabels(cases, availableLabels) {
       .map((entry) => `${entry.caseName}: ${entry.labels.join(', ')}`)
       .join('; ');
     throw new Error(`compat fixture cases reference unknown check labels: ${formatted}`);
+  }
+}
+
+export function validateDeclaredCheckLabels(expectedLabels, availableLabels) {
+  const missing = expectedLabels.filter((label) => !availableLabels.includes(label));
+  const unexpected = availableLabels.filter((label) => !expectedLabels.includes(label));
+
+  if (missing.length > 0 || unexpected.length > 0) {
+    const parts = [];
+    if (missing.length > 0) {
+      parts.push(`missing: ${missing.join(', ')}`);
+    }
+    if (unexpected.length > 0) {
+      parts.push(`unexpected: ${unexpected.join(', ')}`);
+    }
+    throw new Error(`compat check label contract mismatch (${parts.join('; ')})`);
+  }
+
+  const orderMismatch = expectedLabels.some((label, index) => label !== availableLabels[index]);
+  if (orderMismatch) {
+    throw new Error('compat check label order mismatch between manifest and runtime output');
   }
 }
 

@@ -6,9 +6,10 @@ import { fileURLToPath } from 'url';
 import {
   assertFixtureFiles,
   evaluateCaseReport,
-  loadCases,
+  loadCaseManifest,
   parseCompatReport,
   selectCases,
+  validateDeclaredCheckLabels,
   validateExpectedCheckLabels,
   validateFixtureDirectoryCoverage,
   validateFixtureReadmeCoverage
@@ -131,7 +132,8 @@ function main() {
     throw new Error('Missing dist/index.js. Run `npm run build` before running compatibility fixture checks.');
   }
 
-  const allCases = loadCases(fixtureCasesPath);
+  const manifest = loadCaseManifest(fixtureCasesPath);
+  const allCases = manifest.cases;
   validateFixtureDirectoryCoverage(fixturesRoot, allCases);
   validateFixtureReadmeCoverage(fixtureReadmePath, allCases);
   const cases = selectCases(allCases, process.env.COMPAT_CASES);
@@ -144,7 +146,8 @@ function main() {
 
   try {
     const availableLabels = discoverCompatCheckLabels(env);
-    validateExpectedCheckLabels(allCases, availableLabels);
+    validateDeclaredCheckLabels(manifest.expectedCheckLabels, availableLabels);
+    validateExpectedCheckLabels(allCases, manifest.expectedCheckLabels);
     const results = cases.map((testCase) => runCase(testCase, env));
     writeSummaryReport({
       generatedAt: new Date().toISOString(),
