@@ -73,6 +73,17 @@ export function loadCases(casesPath) {
       }
     }
 
+    if (testCase.expectedHintIncludes !== undefined) {
+      if (!testCase.expectedHintIncludes || typeof testCase.expectedHintIncludes !== 'object') {
+        throw new Error(`compat fixture case[${index}] expectedHintIncludes must be an object`);
+      }
+      for (const [label, snippet] of Object.entries(testCase.expectedHintIncludes)) {
+        if (typeof label !== 'string' || !label || typeof snippet !== 'string' || !snippet) {
+          throw new Error(`compat fixture case[${index}] has invalid hint expectation`);
+        }
+      }
+    }
+
     if (testCase.allowMissingFiles !== undefined) {
       if (!Array.isArray(testCase.allowMissingFiles) || testCase.allowMissingFiles.some((value) => typeof value !== 'string' || !value)) {
         throw new Error(`compat fixture case[${index}] allowMissingFiles must be an array of non-empty strings`);
@@ -161,6 +172,17 @@ export function evaluateCaseReport(testCase, report, actualExitCode) {
     }
     if (typeof check.detail !== 'string' || !check.detail.includes(expectedSnippet)) {
       mismatches.push(`check "${label}" detail missing snippet "${expectedSnippet}"`);
+    }
+  }
+
+  for (const [label, expectedSnippet] of Object.entries(testCase.expectedHintIncludes ?? {})) {
+    const check = report.checks.find((candidate) => candidate?.label === label);
+    if (!check) {
+      mismatches.push(`missing check "${label}" for hint assertion`);
+      continue;
+    }
+    if (typeof check.hint !== 'string' || !check.hint.includes(expectedSnippet)) {
+      mismatches.push(`check "${label}" hint missing snippet "${expectedSnippet}"`);
     }
   }
 

@@ -22,6 +22,9 @@
     },
     "expectedDetailIncludes": {
       "hook manifest requirements": "Missing required hook bin"
+    },
+    "expectedHintIncludes": {
+      "hook manifest requirements": "requires.bins"
     }
   },
   {
@@ -33,6 +36,9 @@
       "hook handler safety": "warn"
     },
     "expectedDetailIncludes": {
+      "hook handler safety": "--profile auto"
+    },
+    "expectedHintIncludes": {
       "hook handler safety": "--profile auto"
     }
   },
@@ -82,6 +88,9 @@
     },
     "expectedDetailIncludes": {
       "hook handler safety": "execFileSync-only execution path"
+    },
+    "expectedHintIncludes": {
+      "hook handler safety": "execFileSync"
     }
   },
   {
@@ -94,6 +103,9 @@
     },
     "expectedDetailIncludes": {
       "skill metadata": "SKILL.md not found"
+    },
+    "expectedHintIncludes": {
+      "skill metadata": "Ensure SKILL.md is present"
     },
     "allowMissingFiles": [
       "SKILL.md"

@@ -88,6 +88,29 @@ describe('compat fixture runner utilities', () => {
     }
   });
 
+  it('rejects invalid expectedHintIncludes metadata', () => {
+    const root = makeTempDir('compat-cases-');
+    const file = path.join(root, 'cases.json');
+    fs.writeFileSync(file, JSON.stringify({
+      schemaVersion: COMPAT_FIXTURE_SCHEMA_VERSION,
+      cases: [
+        {
+          name: 'bad-hint-metadata',
+          expectedExitCode: 0,
+          expectedWarnings: 0,
+          expectedErrors: 0,
+          expectedCheckStatuses: { 'hook handler safety': 'ok' },
+          expectedHintIncludes: [123]
+        }
+      ]
+    }), 'utf-8');
+    try {
+      expect(() => loadCases(file)).toThrow('hint expectation');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('rejects unsupported fixture schema version', () => {
     const root = makeTempDir('compat-cases-');
     const file = path.join(root, 'cases.json');
@@ -129,14 +152,20 @@ describe('compat fixture runner utilities', () => {
       expectedWarnings: 1,
       expectedErrors: 0,
       expectedCheckStatuses: { 'hook handler safety': 'warn' },
-      expectedDetailIncludes: { 'hook handler safety': '--profile auto' }
+      expectedDetailIncludes: { 'hook handler safety': '--profile auto' },
+      expectedHintIncludes: { 'hook handler safety': 'execFileSync' }
     };
     const matchingReport = {
       generatedAt: new Date().toISOString(),
       warnings: 1,
       errors: 0,
       checks: [
-        { label: 'hook handler safety', status: 'warn', detail: 'Missing --profile auto' }
+        {
+          label: 'hook handler safety',
+          status: 'warn',
+          detail: 'Missing --profile auto',
+          hint: 'Use execFileSync and --profile auto'
+        }
       ]
     };
     const mismatchReport = {
@@ -144,7 +173,7 @@ describe('compat fixture runner utilities', () => {
       warnings: 0,
       errors: 0,
       checks: [
-        { label: 'hook handler safety', status: 'ok', detail: 'all good' }
+        { label: 'hook handler safety', status: 'ok', detail: 'all good', hint: 'n/a' }
       ]
     };
 
