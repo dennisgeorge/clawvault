@@ -260,6 +260,33 @@ function assertUniqueNonEmptyStringArray(values, fieldName) {
   }
 }
 
+function ensureSummaryResultEntryShape(entry, index) {
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+    throw new Error(`compat summary results[${index}] must be an object`);
+  }
+  if (typeof entry.name !== 'string' || entry.name.length === 0) {
+    throw new Error(`compat summary results[${index}] missing name`);
+  }
+  if (!Number.isInteger(entry.expectedExitCode) || (entry.expectedExitCode !== 0 && entry.expectedExitCode !== 1)) {
+    throw new Error(`compat summary results[${index}] has invalid expectedExitCode`);
+  }
+  if (!Number.isInteger(entry.actualExitCode) || (entry.actualExitCode !== 0 && entry.actualExitCode !== 1)) {
+    throw new Error(`compat summary results[${index}] has invalid actualExitCode`);
+  }
+  if (typeof entry.passed !== 'boolean') {
+    throw new Error(`compat summary results[${index}] missing passed flag`);
+  }
+  if (!Number.isFinite(entry.durationMs) || entry.durationMs < 0) {
+    throw new Error(`compat summary results[${index}] has invalid durationMs`);
+  }
+  if (!Array.isArray(entry.mismatches) || entry.mismatches.some((value) => typeof value !== 'string' || value.length === 0)) {
+    throw new Error(`compat summary results[${index}] has invalid mismatches[]`);
+  }
+  if (entry.passed && entry.mismatches.length > 0) {
+    throw new Error(`compat summary results[${index}] passed cases must not include mismatches`);
+  }
+}
+
 export function evaluateCaseReport(testCase, report, actualExitCode) {
   const mismatches = [];
 
@@ -522,9 +549,43 @@ export function ensureCompatSummaryShape(summary) {
 
   assertUniqueNonEmptyStringArray(summary.passedCases, 'passedCases');
   assertUniqueNonEmptyStringArray(summary.failedCases, 'failedCases');
+  const selectedCaseSet = new Set(summary.selectedCases);
+  const passedCaseSet = new Set(summary.passedCases);
+  const failedCaseSet = new Set(summary.failedCases);
+  for (const name of summary.passedCases) {
+    if (!selectedCaseSet.has(name)) {
+      throw new Error(`compat summary passedCases contains case outside selection: ${name}`);
+    }
+    if (failedCaseSet.has(name)) {
+      throw new Error(`compat summary case cannot be both passed and failed: ${name}`);
+    }
+  }
+  for (const name of summary.failedCases) {
+    if (!selectedCaseSet.has(name)) {
+      throw new Error(`compat summary failedCases contains case outside selection: ${name}`);
+    }
+  }
 
   if (!Array.isArray(summary.results)) {
     throw new Error('compat summary missing results[]');
+  }
+  const resultNameSet = new Set();
+  for (const [index, result] of summary.results.entries()) {
+    ensureSummaryResultEntryShape(result, index);
+    if (resultNameSet.has(result.name)) {
+      throw new Error(`compat summary results contains duplicate case: ${result.name}`);
+    }
+    resultNameSet.add(result.name);
+
+    if (!selectedCaseSet.has(result.name)) {
+      throw new Error(`compat summary results contains case outside selection: ${result.name}`);
+    }
+    if (result.passed && !passedCaseSet.has(result.name)) {
+      throw new Error(`compat summary result marked passed but absent from passedCases: ${result.name}`);
+    }
+    if (!result.passed && !failedCaseSet.has(result.name)) {
+      throw new Error(`compat summary result marked failed but absent from failedCases: ${result.name}`);
+    }
   }
   if (summary.failures !== summary.failedCases.length) {
     throw new Error('compat summary failures must equal failedCases.length');
@@ -549,6 +610,11 @@ export function ensureCompatSummaryShape(summary) {
   } else {
     if (summary.total !== summary.selectedTotal) {
       throw new Error('fixtures summary total must equal selectedTotal');
+    }
+    const resultNamesInSelectionOrder = summary.results.map((result) => result.name);
+    const orderMismatch = resultNamesInSelectionOrder.some((name, index) => name !== summary.selectedCases[index]);
+    if (orderMismatch) {
+      throw new Error('fixtures summary results order must match selectedCases order');
     }
     if (summary.slowestCases.length > Math.min(3, summary.total)) {
       throw new Error('fixtures summary slowestCases length exceeds allowed limit');

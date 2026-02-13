@@ -767,7 +767,14 @@ describe('compat fixture runner utilities', () => {
       failures: 0,
       passedCases: ['healthy'],
       failedCases: [],
-      results: [{ name: 'healthy', passed: true }]
+      results: [{
+        name: 'healthy',
+        expectedExitCode: 0,
+        actualExitCode: 0,
+        passed: true,
+        durationMs: 20,
+        mismatches: []
+      }]
     };
     expect(() => ensureCompatSummaryShape(summary)).not.toThrow();
 
@@ -790,6 +797,38 @@ describe('compat fixture runner utilities', () => {
       selectedCases: ['healthy', 'missing-events'],
       selectedTotal: 2
     })).toThrow('fixtures summary total must equal selectedTotal');
+    expect(() => ensureCompatSummaryShape({
+      ...summary,
+      passedCases: [],
+      failedCases: []
+    })).toThrow('result marked passed but absent from passedCases');
+    expect(() => ensureCompatSummaryShape({
+      ...summary,
+      selectedCases: ['healthy', 'missing-events'],
+      selectedTotal: 2,
+      total: 2,
+      passedCases: ['healthy', 'missing-events'],
+      results: [
+        {
+          name: 'missing-events',
+          expectedExitCode: 1,
+          actualExitCode: 1,
+          passed: true,
+          durationMs: 15,
+          mismatches: []
+        },
+        {
+          ...summary.results[0]
+        }
+      ]
+    })).toThrow('results order must match selectedCases order');
+    expect(() => ensureCompatSummaryShape({
+      ...summary,
+      results: [{
+        ...summary.results[0],
+        mismatches: ['unexpected mismatch']
+      }]
+    })).toThrow('passed cases must not include mismatches');
 
     const contractSummary = {
       ...buildCompatSummaryHeader({
@@ -815,7 +854,14 @@ describe('compat fixture runner utilities', () => {
     expect(() => ensureCompatSummaryShape({
       ...contractSummary,
       total: 1,
-      results: [{ name: 'healthy', passed: true }],
+      results: [{
+        name: 'healthy',
+        expectedExitCode: 0,
+        actualExitCode: 0,
+        passed: true,
+        durationMs: 20,
+        mismatches: []
+      }],
       passedCases: ['healthy']
     })).toThrow('contract summary must report zero total/failures');
   });
