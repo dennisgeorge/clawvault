@@ -11,6 +11,7 @@ Standalone summary artifact validation is available via `scripts/validate-compat
 - `slowestCases` is contract-validated against emitted fixture results (exact `min(3,total)` length, descending order, and duration parity).
 - Result semantics are validated: passed entries must have no mismatches and matched expected/actual exits; failed entries must include mismatch details.
 - Summary shape validation is centralized at summary write time, so any future reporter writing `summary.json` inherits the same contract checks.
+- Per-case JSON report artifacts are also shape-validated at write time to keep case-report and summary-report contracts aligned.
 
 - `cases.json` is the source of truth for expected outcomes.
   - includes `schemaVersion` for explicit contract evolution (current: `2`).

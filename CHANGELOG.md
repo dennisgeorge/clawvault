@@ -113,6 +113,7 @@
 - Fixture manifest validation now requires `expectedCheckStatuses` labels to be declared in `expectedCheckLabels`, tightening declarative contract integrity.
 - Added standalone compatibility summary artifact validator script (`scripts/validate-compat-summary.mjs`) plus convenience workflows (`test:compat-summary`, `test:compat-summary:fast`) for post-run/CI artifact contract checks.
 - Consolidated `npm run ci` now uses standalone compatibility summary validation after fixture execution, adding artifact-level contract checks to the core local/CI gate.
+- Case-report artifact writing now centrally validates compatibility report shape in `writeCaseReport`, aligning per-case artifact enforcement with summary writer safeguards.
 
 ## [1.11.2] - 2026-02-12
 
