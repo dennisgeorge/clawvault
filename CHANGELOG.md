@@ -105,6 +105,7 @@
 - Summary header metadata now includes `selectedTotal` alongside `selectedCases` for easier targeted-run accounting in downstream tooling.
 - Shared summary-header builder now validates array-field shape and duplicate entries (`selectedCases`, expected/runtime label lists), hardening report contract generation.
 - Compatibility fixture runner now validates full summary artifact shape/invariants before writing, preventing malformed schema output from leaking into CI/report consumers.
+- Summary validation now enforces mode-specific invariants: contract mode must remain zero-result metadata, while fixtures mode totals must match selected-case counts with bounded slowest-case lists.
 - Fixture manifest validation now requires `expectedCheckStatuses` labels to be declared in `expectedCheckLabels`, tightening declarative contract integrity.
 
 ## [1.11.2] - 2026-02-12

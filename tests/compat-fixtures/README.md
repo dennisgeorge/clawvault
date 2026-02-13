@@ -5,6 +5,7 @@ Use `npm run test:compat-contract` when you only need contract validation (manif
 Summary artifacts include `summarySchemaVersion` to support stable downstream parsing as telemetry fields evolve.
 Summary header generation rejects malformed/duplicate array entries for case and check-label lists, keeping report metadata contract-safe.
 Fixture runner validates full summary artifact shape/invariants before writing (schema version, totals/failures coherence, telemetry/result array structure).
+- Additional mode rules are enforced: `contract` summaries cannot contain case results, and `fixtures` summaries must keep totals aligned with selected cases.
 
 - `cases.json` is the source of truth for expected outcomes.
   - includes `schemaVersion` for explicit contract evolution (current: `2`).
