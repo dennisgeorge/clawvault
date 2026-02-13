@@ -67,6 +67,7 @@ export {
   QMD_INSTALL_COMMAND,
   QMD_INSTALL_URL
 } from './lib/search.js';
+export { getVaultPath, findNearestVaultPath, resolveVaultPath } from './lib/config.js';
 export {
   MEMORY_GRAPH_SCHEMA_VERSION,
   buildOrUpdateMemoryGraphIndex,
