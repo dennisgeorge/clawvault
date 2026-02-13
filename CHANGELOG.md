@@ -126,6 +126,7 @@
 - Standalone summary validator now supports `--allow-missing-case-reports` for summary-only validation contexts where per-case report files are unavailable.
 - Standalone summary validator now supports `--json` output for machine-readable automation workflows.
 - Validator JSON mode now emits schema-versioned success payloads and structured error payloads (`status:error`) for automation-friendly failure handling.
+- Validator success JSON payloads now include summary/fixture schema version metadata, enabling downstream tooling to enforce schema compatibility explicitly.
 
 ## [1.11.2] - 2026-02-12
 

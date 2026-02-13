@@ -11,6 +11,7 @@ Use `--help` to print usage and argument resolution rules.
 Use `--allow-missing-case-reports` when validating a standalone summary artifact without accompanying per-case JSON files.
 Use `--json` when downstream automation needs machine-readable validator success output.
 JSON mode now emits schema-versioned payloads for both success and failure outcomes.
+Success JSON payloads include both summary and fixture schema version fields for explicit downstream contract gating.
 Use `npm run test:compat-summary:verify -- <path-to-summary.json>` to validate existing summary artifacts without re-running fixture generation.
 Standalone validator behavior is unit-tested in `scripts/validate-compat-summary.test.js` (success/failure/env fallback paths).
 Summary workflow scripts respect `COMPAT_REPORT_DIR` from the caller environment (falling back to `.compat-reports` when unset).

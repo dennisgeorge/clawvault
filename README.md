@@ -269,6 +269,7 @@ node scripts/validate-compat-summary.mjs --summary /tmp/summary.json --allow-mis
 # machine-readable success output for automation
 node scripts/validate-compat-summary.mjs --summary /tmp/summary.json --json
 # json output is schema-versioned and also used for machine-readable error payloads
+# success payload includes summary/fixture schema versions for downstream compatibility checks
 # see validator usage/help
 node scripts/validate-compat-summary.mjs --help
 # equivalent npm wrapper (supports arg passthrough, env fallback)
