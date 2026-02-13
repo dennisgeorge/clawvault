@@ -41,6 +41,13 @@ function parseArtifactsList(line, linePrefix) {
     .filter((entry) => entry.length > 0);
 }
 
+function countExactLineOccurrences(content, expectedLine) {
+  return content
+    .split('\n')
+    .filter((line) => line.trimEnd() === expectedLine)
+    .length;
+}
+
 describe('compat readme contract', () => {
   it('keeps ci artifact documentation list aligned with canonical upload artifact contracts', () => {
     const readmeContent = loadReadmeContent();
@@ -62,6 +69,10 @@ describe('compat readme contract', () => {
         readmeContent.includes(`\n${commandLine}\n`) || readmeContent.startsWith(`${commandLine}\n`),
         `README is missing required compat command reference: ${commandLine}`
       ).toBe(true);
+      expect(
+        countExactLineOccurrences(readmeContent, commandLine),
+        `README must include exactly one canonical compat command reference line: ${commandLine}`
+      ).toBe(1);
     }
   });
 });

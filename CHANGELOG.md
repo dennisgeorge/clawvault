@@ -26,6 +26,7 @@
 ### Changed
 - Added README governance contracts for compatibility automation docs: CI artifact-list documentation is now required to match canonical upload-artifact contract order/domain, and required compatibility stack command references are now drift-checked from centralized script-reference contracts.
 - CI workflow contract domain constants now include job-keyed field/scalar/step sequence maps, and parser utilities now expose reusable multi-job snapshot builders so governance can scale to future matrix/multi-job workflows without duplicating assertion logic.
+- README compatibility command-reference governance now enforces exact-once canonical command lines for required stack/documentation entrypoints, preventing duplicate or missing contract command guidance drift.
 - Dashboard edge diffing now includes edge type/label, enabling reliable live updates when relation type changes.
 - Hook event matching now supports alias payload shapes (`event`, `eventName`, etc.) for better OpenClaw compatibility.
 - `link` and `entities` commands now consistently respect `--vault` without requiring `CLAWVAULT_PATH`.
