@@ -59,6 +59,18 @@
     "expectedDetailIncludes": {
       "package hook registration": "Missing ./hooks/clawvault"
     }
+  },
+  {
+    "name": "missing-skill-openclaw",
+    "expectedExitCode": 1,
+    "expectedWarnings": 1,
+    "expectedErrors": 0,
+    "expectedCheckStatuses": {
+      "skill metadata": "warn"
+    },
+    "expectedDetailIncludes": {
+      "skill metadata": "Missing metadata.openclaw"
+    }
   }
   ]
 }
