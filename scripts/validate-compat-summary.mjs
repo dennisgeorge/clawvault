@@ -131,6 +131,8 @@ function main() {
     console.log(JSON.stringify({
       outputSchemaVersion: COMPAT_SUMMARY_VALIDATION_OUTPUT_SCHEMA_VERSION,
       status: 'ok',
+      summarySchemaVersion: summary.summarySchemaVersion,
+      fixtureSchemaVersion: summary.schemaVersion,
       mode: summary.mode,
       selectedTotal: summary.selectedTotal,
       resultCount,

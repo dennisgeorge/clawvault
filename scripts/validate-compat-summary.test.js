@@ -145,6 +145,8 @@ describe('validate-compat-summary script', () => {
       expect(parseJsonLine(jsonResult.stdout)).toEqual({
         outputSchemaVersion: 1,
         status: 'ok',
+        summarySchemaVersion: 1,
+        fixtureSchemaVersion: 2,
         mode: 'fixtures',
         selectedTotal: 1,
         resultCount: 1,
