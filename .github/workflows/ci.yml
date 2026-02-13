@@ -38,3 +38,11 @@ jobs:
           name: compat-reports
           path: ${{ runner.temp }}/compat-reports
           if-no-files-found: ignore
+
+      - name: Upload compatibility summary artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compat-summary
+          path: ${{ runner.temp }}/compat-reports/summary.json
+          if-no-files-found: ignore
