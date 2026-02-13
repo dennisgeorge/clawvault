@@ -50,6 +50,7 @@
 - Added shared “exactly-once domain occurrence” assertion helper (`expectEachDomainValueOccursExactlyOnce`) and refactored CI workflow contract uniqueness checks (top-level fields, job declarations, job-level fields, and required steps) to use standardized domain-occurrence assertions.
 - Added unique-domain count-map assertion helpers (`expectUniqueDomainCountMapParity`, `expectUniqueDomainCountMapByKeyParity`) with negative-path coverage, and refactored workflow utility/contract tests to use these helpers for combined uniqueness + count-map parity semantics.
 - Added reusable unique string-array assertion helper (`expectNonEmptyUniqueStringArray`, with optional empty-domain allowance) and refactored npm/CI contract constant suites to use shared array-domain semantics instead of duplicated inline checks.
+- Added reusable string-record assertion helper (`expectNonEmptyStringRecord`, with optional empty-record allowance) and refactored npm/CI scalar-value contract loops to use shared key/value-domain semantics instead of duplicated inline object-entry checks.
 - Dashboard edge diffing now includes edge type/label, enabling reliable live updates when relation type changes.
 - Hook event matching now supports alias payload shapes (`event`, `eventName`, etc.) for better OpenClaw compatibility.
 - `link` and `entities` commands now consistently respect `--vault` without requiring `CLAWVAULT_PATH`.

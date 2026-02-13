@@ -27,6 +27,22 @@ export function expectNonEmptyUniqueStringArray(values, label, options = {}) {
   expect(new Set(values).size, `${label} must be unique`).toBe(values.length);
 }
 
+export function expectNonEmptyStringRecord(valuesByKey, label, options = {}) {
+  const { requireNonEmpty = false } = options;
+  expect(valuesByKey && typeof valuesByKey === 'object', `${label} must be an object`).toBe(true);
+  expect(Array.isArray(valuesByKey), `${label} must not be an array`).toBe(false);
+  const entries = Object.entries(valuesByKey);
+  if (requireNonEmpty) {
+    expect(entries.length, `${label} must not be empty`).toBeGreaterThan(0);
+  }
+  for (const [key, value] of entries) {
+    expect(typeof key, `${label} keys must be strings`).toBe('string');
+    expect(key.length, `${label} keys must be non-empty strings`).toBeGreaterThan(0);
+    expect(typeof value, `${label} values must be strings`).toBe('string');
+    expect(value.length, `${label} values must be non-empty strings`).toBeGreaterThan(0);
+  }
+}
+
 export function expectEachDomainValueOccursExactlyOnce(values, resolveCount, label) {
   expect(Array.isArray(values), `${label} must receive array values`).toBe(true);
   for (const value of values) {

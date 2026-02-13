@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { expectNonEmptyUniqueStringArray } from './compat-contract-assertion-test-utils.js';
+import {
+  expectNonEmptyStringRecord,
+  expectNonEmptyUniqueStringArray
+} from './compat-contract-assertion-test-utils.js';
 import {
   REQUIRED_COMPAT_CI_JOB_NAME,
   REQUIRED_COMPAT_CI_JOB_NAMES,
@@ -130,13 +133,7 @@ describe('compat ci workflow contracts constants', () => {
     );
     for (const [jobName, scalarValueContracts] of Object.entries(REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS)) {
       expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
-      expect(typeof scalarValueContracts).toBe('object');
-      expect(scalarValueContracts).toBeTruthy();
-      for (const [fieldName, fieldValue] of Object.entries(scalarValueContracts)) {
-        expect(fieldName.length).toBeGreaterThan(0);
-        expect(typeof fieldValue).toBe('string');
-        expect(fieldValue.length).toBeGreaterThan(0);
-      }
+      expectNonEmptyStringRecord(scalarValueContracts, `job scalar-value contracts ${jobName}`);
     }
     expect(typeof REQUIRED_COMPAT_CI_JOB_RUNS_ON).toBe('string');
     expect(REQUIRED_COMPAT_CI_JOB_RUNS_ON.length).toBeGreaterThan(0);
@@ -184,33 +181,15 @@ describe('compat ci workflow contracts constants', () => {
     }
     for (const [stepName, scalarValueContracts] of Object.entries(REQUIRED_COMPAT_CI_STEP_TOP_LEVEL_SCALAR_VALUE_CONTRACTS)) {
       expect(REQUIRED_COMPAT_CI_STEP_NAMES).toContain(stepName);
-      expect(typeof scalarValueContracts).toBe('object');
-      expect(scalarValueContracts).toBeTruthy();
-      for (const [fieldName, fieldValue] of Object.entries(scalarValueContracts)) {
-        expect(fieldName.length).toBeGreaterThan(0);
-        expect(typeof fieldValue).toBe('string');
-        expect(fieldValue.length).toBeGreaterThan(0);
-      }
+      expectNonEmptyStringRecord(scalarValueContracts, `step top-level scalar-value contracts ${stepName}`);
     }
     for (const [stepName, scalarValueContracts] of Object.entries(REQUIRED_COMPAT_CI_STEP_WITH_SCALAR_VALUE_CONTRACTS)) {
       expect(REQUIRED_COMPAT_CI_STEP_NAMES).toContain(stepName);
-      expect(typeof scalarValueContracts).toBe('object');
-      expect(scalarValueContracts).toBeTruthy();
-      for (const [fieldName, fieldValue] of Object.entries(scalarValueContracts)) {
-        expect(fieldName.length).toBeGreaterThan(0);
-        expect(typeof fieldValue).toBe('string');
-        expect(fieldValue.length).toBeGreaterThan(0);
-      }
+      expectNonEmptyStringRecord(scalarValueContracts, `step with scalar-value contracts ${stepName}`);
     }
     for (const [stepName, scalarValueContracts] of Object.entries(REQUIRED_COMPAT_CI_STEP_ENV_SCALAR_VALUE_CONTRACTS)) {
       expect(REQUIRED_COMPAT_CI_STEP_NAMES).toContain(stepName);
-      expect(typeof scalarValueContracts).toBe('object');
-      expect(scalarValueContracts).toBeTruthy();
-      for (const [fieldName, fieldValue] of Object.entries(scalarValueContracts)) {
-        expect(fieldName.length).toBeGreaterThan(0);
-        expect(typeof fieldValue).toBe('string');
-        expect(fieldValue.length).toBeGreaterThan(0);
-      }
+      expectNonEmptyStringRecord(scalarValueContracts, `step env scalar-value contracts ${stepName}`);
     }
   });
 
