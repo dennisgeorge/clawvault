@@ -8,7 +8,8 @@ import {
   ensureCompatReportShape,
   loadCases,
   parseCompatReport,
-  selectCases
+  selectCases,
+  validateFixtureDirectoryCoverage
 } from './compat-fixture-runner.mjs';
 
 function makeTempDir(prefix) {
@@ -108,6 +109,24 @@ describe('compat fixture runner utilities', () => {
       expect(() => assertFixtureFiles('healthy', root)).not.toThrow();
       fs.rmSync(path.join(root, 'hooks', 'clawvault', 'handler.js'));
       expect(() => assertFixtureFiles('healthy', root)).toThrow('missing required files');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('validates fixture directory coverage against declarative cases', () => {
+    const root = makeTempDir('compat-fixtures-root-');
+    fs.mkdirSync(path.join(root, 'healthy'));
+    fs.mkdirSync(path.join(root, 'missing-events'));
+    try {
+      expect(() => validateFixtureDirectoryCoverage(root, [
+        { name: 'healthy' },
+        { name: 'missing-events' }
+      ])).not.toThrow();
+      expect(() => validateFixtureDirectoryCoverage(root, [{ name: 'healthy' }]))
+        .toThrow('Unreferenced fixture directories');
+      expect(() => validateFixtureDirectoryCoverage(root, [{ name: 'healthy' }, { name: 'missing-package-hook' }]))
+        .toThrow('Missing fixture directories');
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

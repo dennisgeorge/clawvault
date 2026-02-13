@@ -127,3 +127,24 @@ export function assertFixtureFiles(caseName, fixturePath, requiredPaths = REQUIR
     throw new Error(`fixture=${caseName} missing required files: ${missing.join(', ')}`);
   }
 }
+
+export function validateFixtureDirectoryCoverage(fixturesRoot, cases) {
+  const entries = fs.readdirSync(fixturesRoot, { withFileTypes: true });
+  const fixtureDirs = entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+
+  const caseNames = cases.map((testCase) => testCase.name);
+  const caseNameSet = new Set(caseNames);
+  const fixtureDirSet = new Set(fixtureDirs);
+
+  const missingFixtureDirs = caseNames.filter((name) => !fixtureDirSet.has(name));
+  if (missingFixtureDirs.length > 0) {
+    throw new Error(`Missing fixture directories for cases: ${missingFixtureDirs.join(', ')}`);
+  }
+
+  const unreferencedDirs = fixtureDirs.filter((name) => !caseNameSet.has(name));
+  if (unreferencedDirs.length > 0) {
+    throw new Error(`Unreferenced fixture directories found: ${unreferencedDirs.join(', ')}`);
+  }
+}

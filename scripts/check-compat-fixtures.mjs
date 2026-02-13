@@ -7,7 +7,8 @@ import {
   assertFixtureFiles,
   loadCases,
   parseCompatReport,
-  selectCases
+  selectCases,
+  validateFixtureDirectoryCoverage
 } from './lib/compat-fixture-runner.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -105,7 +106,9 @@ function runCase(testCase, env) {
 }
 
 function main() {
-  const cases = selectCases(loadCases(fixtureCasesPath), process.env.COMPAT_CASES);
+  const allCases = loadCases(fixtureCasesPath);
+  validateFixtureDirectoryCoverage(fixturesRoot, allCases);
+  const cases = selectCases(allCases, process.env.COMPAT_CASES);
   ensureReportDir();
   const { shimDir } = createOpenClawShim();
   const env = {
