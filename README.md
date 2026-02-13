@@ -272,7 +272,7 @@ node scripts/validate-compat-summary.mjs --summary /tmp/summary.json --json
 # success payload includes summary/fixture schema versions for downstream compatibility checks
 # write validator result payload (success/error) to a file
 node scripts/validate-compat-summary.mjs --summary /tmp/summary.json --json --out /tmp/validator-result.json
-# in CI, compat-summary artifacts now include summary.json + report-schema-validator-result.json + validator-result.json + schema-validator-result.json + validator-result-verifier-result.json + artifact-bundle-validator-result.json
+# in CI, compat-summary artifacts now include summary.json + report-schema-validator-result.json + validator-result.json + schema-validator-result.json + validator-result-verifier-result.json + artifact-bundle-manifest-validator-result.json + artifact-bundle-validator-result.json
 # validator payload schema/validation is centralized in scripts/lib/compat-summary-validator-output.mjs
 # JSON schema artifacts for payload contracts live in /schemas (including json-schema-validator-output)
 # generic schema checker CLI lives at scripts/validate-json-schema.mjs
@@ -305,7 +305,7 @@ npm run test:compat-artifact-bundle:manifest:schema
 npm run test:compat-artifact-bundle:manifest:verify
 npm run test:compat-artifact-bundle:manifest:verify:report
 npm run test:compat-artifact-bundle:manifest:verify:schema
-# bundle result now includes an artifactContracts manifest (artifact path + schema id + expected/actual schema version)
+# bundle result now includes an artifactContracts manifest (artifact path + schema id + expected/actual schema version), now including artifact-bundle-manifest-validator-result.json
 # bundle validator supports --manifest <path> to override the default contract manifest
 # manifest verifier emits artifact-bundle-manifest-validator-result.json with schemaId/version-field contract checks
 # explicit verifier CLI options:

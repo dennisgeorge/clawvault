@@ -21,6 +21,7 @@ Use `npm run test:compat-report-schemas:verify:report` + `npm run test:compat-re
 Use `npm run test:compat-validator-result:verify:report` + `npm run test:compat-validator-result:verify:schema` to emit and schema-validate the verifier output payload (`validator-result-verifier-result.json`).
 Use `npm run test:compat-artifact-bundle:verify` to verify cross-artifact coherence across summary + validator payload outputs, and `test:compat-artifact-bundle:verify:report` + `test:compat-artifact-bundle:verify:schema` to emit/schema-validate `artifact-bundle-validator-result.json`.
 `artifact-bundle-validator-result.json` now includes `artifactContracts` entries that declare artifact path, schema path/ID, version field, and expected/actual schema version for release-grade contract auditability.
+Bundle-level contract verification now includes `artifact-bundle-manifest-validator-result.json` in addition to summary/report/validator payload artifacts.
 Artifact bundle mapping is now declarative via `schemas/compat-artifact-bundle.manifest.json` (validated by `schemas/compat-artifact-bundle.manifest.schema.json` and `npm run test:compat-artifact-bundle:manifest:schema`).
 Use `test:compat-artifact-bundle:manifest:verify` to run semantic manifest validation (schema file existence, schema `$id` parity, and version-field const checks), and `test:compat-artifact-bundle:manifest:verify:report` + `test:compat-artifact-bundle:manifest:verify:schema` to emit/schema-validate `artifact-bundle-manifest-validator-result.json`.
 The validator-result verifier also supports explicit CLI options (`--validator-result`, `--json`, `--out`, `--help`) with structured output contracts and tests.
@@ -32,7 +33,7 @@ Standalone validator behavior is unit-tested in `scripts/validate-compat-summary
 Summary workflow scripts respect `COMPAT_REPORT_DIR` from the caller environment (falling back to `.compat-reports` when unset).
 Runner utility tests also cover malformed summary-loading paths and fixtures-summary case-report failure validation for artifact-level error contracts.
 CI publishes the generated summary artifact (`compat-summary`) for each run, with full per-case report bundles uploaded on failures.
-`compat-summary` now includes `summary.json`, `report-schema-validator-result.json`, `validator-result.json`, `schema-validator-result.json`, `validator-result-verifier-result.json`, and `artifact-bundle-validator-result.json` for richer downstream CI artifact consumers.
+`compat-summary` now includes `summary.json`, `report-schema-validator-result.json`, `validator-result.json`, `schema-validator-result.json`, `validator-result-verifier-result.json`, `artifact-bundle-manifest-validator-result.json`, and `artifact-bundle-validator-result.json` for richer downstream CI artifact consumers.
 Compatibility report parsing now enforces per-check schema and warning/error tally coherence to catch malformed check output early.
 Validator result payload schema generation/validation is centralized in `scripts/lib/compat-summary-validator-output.mjs` with dedicated unit tests.
 Validator CLI tests also assert that `--out` still captures structured error payloads during argument-parse failures (e.g., unknown/missing-value options).
