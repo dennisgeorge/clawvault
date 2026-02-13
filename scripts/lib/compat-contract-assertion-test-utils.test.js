@@ -3,6 +3,7 @@ import {
   expectEachDomainValueOccursExactlyOnce,
   expectNonEmptyStringRecord,
   expectNonEmptyUniqueStringArray,
+  expectObjectKeyDomainParity,
   expectUniqueDomainCountMapByKeyParity,
   expectUniqueDomainCountMapParity,
   expectUnitCountMapByKeyParity,
@@ -195,6 +196,29 @@ describe('compat contract assertion test utils', () => {
     }).toThrow();
     expect(() => {
       expectNonEmptyStringRecord({}, 'empty-required string-record domain', { requireNonEmpty: true });
+    }).toThrow();
+  });
+
+  it('asserts object key-domain parity', () => {
+    expectObjectKeyDomainParity(
+      {
+        alpha: 1,
+        beta: 2
+      },
+      ['alpha', 'beta'],
+      'object key-domain parity'
+    );
+  });
+
+  it('throws when object key-domain parity mismatches expected keys', () => {
+    expect(() => {
+      expectObjectKeyDomainParity(
+        {
+          alpha: 1
+        },
+        ['alpha', 'beta'],
+        'mismatched object key-domain parity'
+      );
     }).toThrow();
   });
 });

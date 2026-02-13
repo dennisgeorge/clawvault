@@ -43,6 +43,13 @@ export function expectNonEmptyStringRecord(valuesByKey, label, options = {}) {
   }
 }
 
+export function expectObjectKeyDomainParity(valuesByKey, expectedKeys, label) {
+  expect(valuesByKey && typeof valuesByKey === 'object', `${label} must be an object`).toBe(true);
+  expect(Array.isArray(valuesByKey), `${label} must not be an array`).toBe(false);
+  expectNonEmptyUniqueStringArray(expectedKeys, `${label} expected key domain`);
+  expect(Object.keys(valuesByKey).sort(), `${label} key-domain parity mismatch`).toEqual([...expectedKeys].sort());
+}
+
 export function expectEachDomainValueOccursExactlyOnce(values, resolveCount, label) {
   expect(Array.isArray(values), `${label} must receive array values`).toBe(true);
   for (const value of values) {

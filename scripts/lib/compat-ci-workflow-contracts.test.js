@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   expectNonEmptyStringRecord,
+  expectObjectKeyDomainParity,
   expectNonEmptyUniqueStringArray
 } from './compat-contract-assertion-test-utils.js';
 import {
@@ -99,8 +100,10 @@ describe('compat ci workflow contracts constants', () => {
     expect(REQUIRED_COMPAT_CI_WORKFLOW_FIELD_NAMES).toEqual(REQUIRED_COMPAT_CI_WORKFLOW_UNIQUE_FIELD_NAMES);
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_TRIGGER_PUSH_BRANCHES, 'REQUIRED_COMPAT_CI_TRIGGER_PUSH_BRANCHES');
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_TRIGGER_NAMES, 'REQUIRED_COMPAT_CI_TRIGGER_NAMES');
-    expect(Object.keys(REQUIRED_COMPAT_CI_TRIGGER_SECTION_FIELD_NAME_SEQUENCES).sort()).toEqual(
-      [...REQUIRED_COMPAT_CI_TRIGGER_NAMES].sort()
+    expectObjectKeyDomainParity(
+      REQUIRED_COMPAT_CI_TRIGGER_SECTION_FIELD_NAME_SEQUENCES,
+      REQUIRED_COMPAT_CI_TRIGGER_NAMES,
+      'REQUIRED_COMPAT_CI_TRIGGER_SECTION_FIELD_NAME_SEQUENCES'
     );
     for (const [triggerName, fieldNames] of Object.entries(REQUIRED_COMPAT_CI_TRIGGER_SECTION_FIELD_NAME_SEQUENCES)) {
       expect(REQUIRED_COMPAT_CI_TRIGGER_NAMES).toContain(triggerName);
@@ -114,22 +117,28 @@ describe('compat ci workflow contracts constants', () => {
     expect(REQUIRED_COMPAT_CI_JOB_NAME.length).toBeGreaterThan(0);
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_JOB_NAMES, 'REQUIRED_COMPAT_CI_JOB_NAMES');
     expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(REQUIRED_COMPAT_CI_JOB_NAME);
-    expect(Object.keys(REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAME_SEQUENCES).sort()).toEqual(
-      [...REQUIRED_COMPAT_CI_JOB_NAMES].sort()
+    expectObjectKeyDomainParity(
+      REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAME_SEQUENCES,
+      REQUIRED_COMPAT_CI_JOB_NAMES,
+      'REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAME_SEQUENCES'
     );
     for (const [jobName, fieldNames] of Object.entries(REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAME_SEQUENCES)) {
       expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
       expectNonEmptyUniqueStringArray(fieldNames, `job unique field-name sequence ${jobName}`);
     }
-    expect(Object.keys(REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES).sort()).toEqual(
-      [...REQUIRED_COMPAT_CI_JOB_NAMES].sort()
+    expectObjectKeyDomainParity(
+      REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES,
+      REQUIRED_COMPAT_CI_JOB_NAMES,
+      'REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES'
     );
     for (const [jobName, fieldNames] of Object.entries(REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES)) {
       expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
       expectNonEmptyUniqueStringArray(fieldNames, `job field-name sequence ${jobName}`);
     }
-    expect(Object.keys(REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS).sort()).toEqual(
-      [...REQUIRED_COMPAT_CI_JOB_NAMES].sort()
+    expectObjectKeyDomainParity(
+      REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS,
+      REQUIRED_COMPAT_CI_JOB_NAMES,
+      'REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS'
     );
     for (const [jobName, scalarValueContracts] of Object.entries(REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS)) {
       expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
@@ -157,15 +166,19 @@ describe('compat ci workflow contracts constants', () => {
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_STEP_SEQUENCE, 'REQUIRED_COMPAT_CI_STEP_SEQUENCE');
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_STEP_NAMES, 'REQUIRED_COMPAT_CI_STEP_NAMES');
     expect(REQUIRED_COMPAT_CI_STEP_NAMES).toEqual(REQUIRED_COMPAT_CI_STEP_SEQUENCE);
-    expect(Object.keys(REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES).sort()).toEqual(
-      [...REQUIRED_COMPAT_CI_JOB_NAMES].sort()
+    expectObjectKeyDomainParity(
+      REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES,
+      REQUIRED_COMPAT_CI_JOB_NAMES,
+      'REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES'
     );
     for (const [jobName, stepNames] of Object.entries(REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES)) {
       expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
       expectNonEmptyUniqueStringArray(stepNames, `job step-name sequence ${jobName}`);
     }
-    expect(Object.keys(REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES).sort()).toEqual(
-      [...REQUIRED_COMPAT_CI_STEP_NAMES].sort()
+    expectObjectKeyDomainParity(
+      REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES,
+      REQUIRED_COMPAT_CI_STEP_NAMES,
+      'REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES'
     );
     for (const fieldNameSequence of Object.values(REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES)) {
       expectNonEmptyUniqueStringArray(fieldNameSequence, 'step field-name sequence');

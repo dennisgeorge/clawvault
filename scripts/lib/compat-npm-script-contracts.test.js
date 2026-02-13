@@ -71,6 +71,7 @@ import {
 } from './compat-npm-script-contracts.mjs';
 import {
   expectNonEmptyStringRecord,
+  expectObjectKeyDomainParity,
   expectNonEmptyUniqueStringArray
 } from './compat-contract-assertion-test-utils.js';
 
@@ -158,8 +159,10 @@ describe('compat npm script contracts constants', () => {
       'push',
       'pull_request'
     ]));
-    expect(Object.keys(REQUIRED_COMPAT_CI_TRIGGER_SECTION_FIELD_NAME_SEQUENCES).sort()).toEqual(
-      [...REQUIRED_COMPAT_CI_TRIGGER_NAMES].sort()
+    expectObjectKeyDomainParity(
+      REQUIRED_COMPAT_CI_TRIGGER_SECTION_FIELD_NAME_SEQUENCES,
+      REQUIRED_COMPAT_CI_TRIGGER_NAMES,
+      'REQUIRED_COMPAT_CI_TRIGGER_SECTION_FIELD_NAME_SEQUENCES'
     );
     for (const [triggerName, fieldNames] of Object.entries(REQUIRED_COMPAT_CI_TRIGGER_SECTION_FIELD_NAME_SEQUENCES)) {
       expect(REQUIRED_COMPAT_CI_TRIGGER_NAMES).toContain(triggerName);
@@ -174,22 +177,28 @@ describe('compat npm script contracts constants', () => {
     expect(REQUIRED_COMPAT_CI_JOB_NAME.length).toBeGreaterThan(0);
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_JOB_NAMES, 'REQUIRED_COMPAT_CI_JOB_NAMES');
     expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(REQUIRED_COMPAT_CI_JOB_NAME);
-    expect(Object.keys(REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAME_SEQUENCES).sort()).toEqual(
-      [...REQUIRED_COMPAT_CI_JOB_NAMES].sort()
+    expectObjectKeyDomainParity(
+      REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAME_SEQUENCES,
+      REQUIRED_COMPAT_CI_JOB_NAMES,
+      'REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAME_SEQUENCES'
     );
     for (const [jobName, fieldNames] of Object.entries(REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAME_SEQUENCES)) {
       expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
       expectNonEmptyUniqueStringArray(fieldNames, `REQUIRED_COMPAT_CI_JOB_UNIQUE_FIELD_NAME_SEQUENCES[${jobName}]`);
     }
-    expect(Object.keys(REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES).sort()).toEqual(
-      [...REQUIRED_COMPAT_CI_JOB_NAMES].sort()
+    expectObjectKeyDomainParity(
+      REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES,
+      REQUIRED_COMPAT_CI_JOB_NAMES,
+      'REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES'
     );
     for (const [jobName, fieldNames] of Object.entries(REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES)) {
       expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
       expectNonEmptyUniqueStringArray(fieldNames, `REQUIRED_COMPAT_CI_JOB_FIELD_NAME_SEQUENCES[${jobName}]`);
     }
-    expect(Object.keys(REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS).sort()).toEqual(
-      [...REQUIRED_COMPAT_CI_JOB_NAMES].sort()
+    expectObjectKeyDomainParity(
+      REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS,
+      REQUIRED_COMPAT_CI_JOB_NAMES,
+      'REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS'
     );
     for (const [jobName, scalarContracts] of Object.entries(REQUIRED_COMPAT_CI_JOB_TOP_LEVEL_SCALAR_VALUE_CONTRACTS)) {
       expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
@@ -236,15 +245,19 @@ describe('compat npm script contracts constants', () => {
     ]));
     expectNonEmptyUniqueStringArray(REQUIRED_COMPAT_CI_STEP_NAMES, 'REQUIRED_COMPAT_CI_STEP_NAMES');
     expect(REQUIRED_COMPAT_CI_STEP_NAMES).toEqual(REQUIRED_COMPAT_CI_STEP_SEQUENCE);
-    expect(Object.keys(REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES).sort()).toEqual(
-      [...REQUIRED_COMPAT_CI_JOB_NAMES].sort()
+    expectObjectKeyDomainParity(
+      REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES,
+      REQUIRED_COMPAT_CI_JOB_NAMES,
+      'REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES'
     );
     for (const [jobName, stepNames] of Object.entries(REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES)) {
       expect(REQUIRED_COMPAT_CI_JOB_NAMES).toContain(jobName);
       expectNonEmptyUniqueStringArray(stepNames, `REQUIRED_COMPAT_CI_JOB_STEP_NAME_SEQUENCES[${jobName}]`);
     }
-    expect(Object.keys(REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES).sort()).toEqual(
-      [...REQUIRED_COMPAT_CI_STEP_NAMES].sort()
+    expectObjectKeyDomainParity(
+      REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES,
+      REQUIRED_COMPAT_CI_STEP_NAMES,
+      'REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES'
     );
     for (const [stepName, fieldNameSequence] of Object.entries(REQUIRED_COMPAT_CI_STEP_FIELD_NAME_SEQUENCES)) {
       expect(stepName.length).toBeGreaterThan(0);
