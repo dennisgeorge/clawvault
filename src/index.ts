@@ -73,6 +73,12 @@ export {
   getMemoryGraph,
   loadMemoryGraphIndex
 } from './lib/memory-graph.js';
+export {
+  inferContextProfile,
+  normalizeContextProfileInput,
+  resolveContextProfile
+} from './lib/context-profile.js';
+export type { ContextProfileInput, ResolvedContextProfile } from './lib/context-profile.js';
 export type {
   MemoryGraph,
   MemoryGraphNode,
