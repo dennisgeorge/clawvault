@@ -110,8 +110,52 @@ export class ClawVault {
     };
     fs.writeFileSync(configPath, JSON.stringify(meta, null, 2));
 
+    // Generate Obsidian Bases files for task management views
+    this.createBasesFiles();
+
     await this.syncMemoryGraphIndex({ forceFull: true });
     this.initialized = true;
+  }
+
+  private createBasesFiles(): void {
+    const vaultPath = this.config.path;
+    const basesFiles: Record<string, string> = {
+      'all-tasks.base': [
+        'filters:', '  and:', '    - file.inFolder("tasks")', '    - status != "done"',
+        'formulas:', '  age: (now() - file.ctime).days',
+        '  status_icon: if(status == "blocked", "🔴", if(status == "in-progress", "🔨", if(status == "open", "⚪", "✅")))',
+        'views:', '  - type: table', '    name: All Active Tasks', '    groupBy:', '      property: status',
+        '      direction: ASC', '    order:', '      - formula.status_icon', '      - file.name',
+        '      - status', '      - owner', '      - project', '      - priority', '      - blocked_by', '      - formula.age',
+        '  - type: cards', '    name: Task Board', '    groupBy:', '      property: status',
+        '      direction: ASC', '    order:', '      - file.name', '      - owner', '      - project', '      - priority',
+      ].join('\n'),
+      'blocked.base': [
+        'filters:', '  and:', '    - file.inFolder("tasks")', '    - status == "blocked"',
+        'formulas:', '  days_blocked: (now() - file.ctime).days',
+        'views:', '  - type: table', '    name: Blocked Tasks', '    order:',
+        '      - file.name', '      - owner', '      - project', '      - blocked_by', '      - formula.days_blocked', '      - priority',
+      ].join('\n'),
+      'by-project.base': [
+        'filters:', '  and:', '    - file.inFolder("tasks")', '    - status != "done"',
+        'formulas:', '  status_icon: if(status == "blocked", "🔴", if(status == "in-progress", "🔨", "⚪"))',
+        'views:', '  - type: table', '    name: By Project', '    groupBy:', '      property: project',
+        '      direction: ASC', '    order:', '      - formula.status_icon', '      - file.name',
+        '      - status', '      - owner', '      - priority',
+      ].join('\n'),
+      'backlog.base': [
+        'filters:', '  and:', '    - file.inFolder("backlog")',
+        'views:', '  - type: table', '    name: Backlog', '    order:',
+        '      - file.name', '      - source', '      - project', '      - file.ctime',
+      ].join('\n'),
+    };
+
+    for (const [filename, content] of Object.entries(basesFiles)) {
+      const filePath = path.join(vaultPath, filename);
+      if (!fs.existsSync(filePath)) {
+        fs.writeFileSync(filePath, content);
+      }
+    }
   }
 
   /**
