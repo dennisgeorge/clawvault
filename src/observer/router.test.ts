@@ -11,6 +11,42 @@ function makeTempVault(): string {
 }
 
 describe('Router', () => {
+  it('applies custom routes before default entity slug routing', () => {
+    const vaultPath = makeTempVault();
+    fs.writeFileSync(
+      path.join(vaultPath, '.clawvault.json'),
+      JSON.stringify({
+        name: 'test',
+        routes: [
+          {
+            pattern: 'Pedro',
+            target: 'people/high-touch/pedro',
+            priority: 100
+          }
+        ]
+      })
+    );
+    const router = new Router(vaultPath);
+
+    const markdown = [
+      '## 2026-02-11',
+      '',
+      '- [relationship|c=0.90|i=0.80] 09:00 talked to Pedro about enterprise renewal'
+    ].join('\n');
+
+    try {
+      router.route(markdown);
+
+      const customFile = path.join(vaultPath, 'people', 'high-touch', 'pedro', '2026-02-11.md');
+      const defaultFile = path.join(vaultPath, 'people', 'pedro', '2026-02-11.md');
+      expect(fs.existsSync(customFile)).toBe(true);
+      expect(fs.existsSync(defaultFile)).toBe(false);
+      expect(fs.readFileSync(customFile, 'utf-8')).toContain('talked to [[Pedro]]');
+    } finally {
+      fs.rmSync(vaultPath, { recursive: true, force: true });
+    }
+  });
+
   it('routes people observations to entity-slug subfolders', () => {
     const vaultPath = makeTempVault();
     const router = new Router(vaultPath);

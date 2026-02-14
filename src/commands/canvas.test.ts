@@ -313,7 +313,7 @@ describe('canvas command', () => {
 
       expect(fs.existsSync(outputPath)).toBe(true);
       const parsed = JSON.parse(fs.readFileSync(outputPath, 'utf-8')) as {
-        nodes: Array<{ type: string; file?: string }>;
+        nodes: Array<{ type: string; file?: string; text?: string }>;
       };
       // Project-board uses text cards — verify by content
       const allText = parsed.nodes

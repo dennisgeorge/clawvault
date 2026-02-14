@@ -39,6 +39,7 @@ const CLAWVAULT_DIR = '.clawvault';
 const CHECKPOINT_FILE = 'last-checkpoint.json';
 const SESSION_STATE_FILE = 'session-state.json';
 const DIRTY_DEATH_FLAG = 'dirty-death.flag';
+const CHECKPOINT_HISTORY_DIR = 'checkpoints';
 
 let pendingCheckpoint: NodeJS.Timeout | null = null;
 let pendingData: { dir: string; data: CheckpointData } | null = null;
@@ -54,6 +55,12 @@ function ensureClawvaultDir(vaultPath: string): string {
 function writeCheckpointToDisk(dir: string, data: CheckpointData): void {
   const checkpointPath = path.join(dir, CHECKPOINT_FILE);
   fs.writeFileSync(checkpointPath, JSON.stringify(data, null, 2));
+
+  const historyDir = path.join(dir, CHECKPOINT_HISTORY_DIR);
+  fs.mkdirSync(historyDir, { recursive: true });
+  const historyFileName = `${data.timestamp.replace(/[:.]/g, '-')}.json`;
+  const historyPath = path.join(historyDir, historyFileName);
+  fs.writeFileSync(historyPath, JSON.stringify(data, null, 2));
 
   const flagPath = path.join(dir, DIRTY_DEATH_FLAG);
   fs.writeFileSync(flagPath, data.timestamp);

@@ -87,6 +87,25 @@ export {
 } from './lib/search.js';
 export { getVaultPath, findNearestVaultPath, resolveVaultPath } from './lib/config.js';
 export {
+  SUPPORTED_CONFIG_KEYS,
+  listConfig,
+  getConfigValue,
+  setConfigValue,
+  resetConfig,
+  listRouteRules,
+  addRouteRule,
+  removeRouteRule,
+  matchRouteRule,
+  testRouteRule
+} from './lib/config-manager.js';
+export type {
+  ManagedConfigKey,
+  RouteRule,
+  ObserveProvider,
+  Theme,
+  ContextProfile as ConfigDefaultProfile
+} from './lib/config-manager.js';
+export {
   MEMORY_GRAPH_SCHEMA_VERSION,
   buildOrUpdateMemoryGraphIndex,
   getMemoryGraph,

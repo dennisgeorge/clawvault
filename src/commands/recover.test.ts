@@ -13,7 +13,14 @@ vi.mock('./checkpoint.js', () => ({
   clearDirtyFlag: clearDirtyFlagMock
 }));
 
-import { formatRecoveryInfo, recover } from './recover.js';
+import {
+  formatRecoveryInfo,
+  recover,
+  checkRecoveryStatus,
+  formatCheckpointList,
+  formatRecoveryCheckStatus,
+  listCheckpoints
+} from './recover.js';
 
 function makeTempVaultDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'clawvault-recover-'));
@@ -62,6 +69,72 @@ describe('recover', () => {
       expect(info.handoffContent).toBe('latest handoff');
       expect(info.recoveryMessage).toContain('CONTEXT DEATH DETECTED');
       expect(clearDirtyFlagMock).toHaveBeenCalledWith(vaultPath);
+    } finally {
+      fs.rmSync(vaultPath, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('recover --check helpers', () => {
+  it('returns status without mutating dirty death flag', async () => {
+    checkDirtyDeathMock.mockResolvedValue({
+      died: true,
+      checkpoint: {
+        timestamp: '2024-03-01T12:00:00Z',
+        workingOn: 'incident triage',
+        focus: 'api',
+        blocked: null
+      },
+      deathTime: '2024-03-01T12:05:00Z'
+    });
+
+    const status = await checkRecoveryStatus('/tmp/vault');
+    expect(status.died).toBe(true);
+    expect(status.deathTime).toBe('2024-03-01T12:05:00Z');
+    expect(status.checkpoint?.workingOn).toBe('incident triage');
+    expect(clearDirtyFlagMock).not.toHaveBeenCalled();
+
+    const formatted = formatRecoveryCheckStatus(status);
+    expect(formatted).toContain('Dirty death flag is set');
+    expect(formatted).toContain('Death time: 2024-03-01T12:05:00Z');
+  });
+});
+
+describe('recover --list helpers', () => {
+  it('lists checkpoints newest-first from checkpoint history directory', () => {
+    const vaultPath = makeTempVaultDir();
+    try {
+      const checkpointsDir = path.join(vaultPath, '.clawvault', 'checkpoints');
+      fs.mkdirSync(checkpointsDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(checkpointsDir, '2024-01-01T00-00-00-000Z.json'),
+        JSON.stringify({
+          timestamp: '2024-01-01T00:00:00.000Z',
+          workingOn: 'first',
+          focus: 'setup',
+          blocked: null
+        })
+      );
+      fs.writeFileSync(
+        path.join(checkpointsDir, '2024-01-02T00-00-00-000Z.json'),
+        JSON.stringify({
+          timestamp: '2024-01-02T00:00:00.000Z',
+          workingOn: 'second',
+          focus: 'tests',
+          blocked: null
+        })
+      );
+
+      const checkpoints = listCheckpoints(vaultPath);
+      expect(checkpoints).toHaveLength(2);
+      expect(checkpoints[0].workingOn).toBe('second');
+      expect(checkpoints[1].workingOn).toBe('first');
+
+      const rendered = formatCheckpointList(checkpoints);
+      expect(rendered).toContain('TIMESTAMP');
+      expect(rendered).toContain('WORKING_ON');
+      expect(rendered).toContain('second');
+      expect(rendered).toContain('tests');
     } finally {
       fs.rmSync(vaultPath, { recursive: true, force: true });
     }

@@ -12,6 +12,8 @@ describe('CLI help contract', () => {
     expect(help).toContain('replay');
     expect(help).toContain('repair-session');
     expect(help).toContain('template');
+    expect(help).toContain('config');
+    expect(help).toContain('route');
   });
 
   it('documents context auto profile and compat strict options', () => {

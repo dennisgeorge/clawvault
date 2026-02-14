@@ -8,6 +8,8 @@ import { registerResilienceCommands } from '../register-resilience-commands.js';
 import { registerSessionLifecycleCommands } from '../register-session-lifecycle-commands.js';
 import { registerTemplateCommands } from '../register-template-commands.js';
 import { registerVaultOperationsCommands } from '../register-vault-operations-commands.js';
+import { registerConfigCommands } from '../register-config-commands.js';
+import { registerRouteCommands } from '../register-route-commands.js';
 
 export const chalkStub = {
   cyan: (value) => value,
@@ -89,6 +91,14 @@ export function registerAllCommandModules(program = new Command()) {
     runQmd: async () => {}
   });
   registerTemplateCommands(program, { chalk: chalkStub });
+  registerConfigCommands(program, {
+    chalk: chalkStub,
+    resolveVaultPath: stubResolveVaultPath
+  });
+  registerRouteCommands(program, {
+    chalk: chalkStub,
+    resolveVaultPath: stubResolveVaultPath
+  });
 
   return program;
 }

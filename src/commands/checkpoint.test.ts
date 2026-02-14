@@ -44,6 +44,7 @@ describe('checkpoint debounce', () => {
     const vaultPath = makeTempVaultDir();
     try {
       const checkpointPath = path.join(vaultPath, '.clawvault', 'last-checkpoint.json');
+      const historyDir = path.join(vaultPath, '.clawvault', 'checkpoints');
 
       await checkpoint({ vaultPath, workingOn: 'a' });
       await vi.advanceTimersByTimeAsync(500);
@@ -60,6 +61,9 @@ describe('checkpoint debounce', () => {
 
       const saved = JSON.parse(fs.readFileSync(checkpointPath, 'utf-8'));
       expect(saved.workingOn).toBe('c');
+      expect(fs.existsSync(historyDir)).toBe(true);
+      const historyFiles = fs.readdirSync(historyDir).filter((entry) => entry.endsWith('.json'));
+      expect(historyFiles.length).toBe(1);
     } finally {
       fs.rmSync(vaultPath, { recursive: true, force: true });
     }
@@ -95,12 +99,14 @@ describe('checkpoint debounce', () => {
     try {
       const checkpointPath = path.join(vaultPath, '.clawvault', 'last-checkpoint.json');
       const flagPath = path.join(vaultPath, '.clawvault', 'dirty-death.flag');
+      const historyDir = path.join(vaultPath, '.clawvault', 'checkpoints');
 
       const data = await checkpoint({ vaultPath, workingOn: 'urgent', urgent: true });
 
       expect(data.urgent).toBe(true);
       expect(fs.existsSync(checkpointPath)).toBe(true);
       expect(fs.existsSync(flagPath)).toBe(true);
+      expect(fs.existsSync(historyDir)).toBe(true);
       expect(execFileSyncMock).toHaveBeenCalledWith(
         'openclaw',
         expect.arrayContaining(['gateway', 'wake', '--mode', 'now']),

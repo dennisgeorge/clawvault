@@ -325,14 +325,16 @@ function decodeLineBuffer(lineBuffer: Buffer): string {
 async function readIncrementalMessages(filePath: string, startOffset: number): Promise<IncrementalReadResult> {
   const messages: string[] = [];
   let nextOffset = startOffset;
-  let remainder = Buffer.alloc(0);
+  let remainder: Buffer<ArrayBufferLike> = Buffer.alloc(0);
 
   const stream = fs.createReadStream(filePath, {
     start: startOffset
   });
 
   for await (const chunk of stream) {
-    const chunkBuffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
+    const chunkBuffer: Buffer<ArrayBufferLike> = Buffer.isBuffer(chunk)
+      ? chunk
+      : Buffer.from(chunk as string);
     const combined = remainder.length > 0
       ? Buffer.concat([remainder, chunkBuffer])
       : chunkBuffer;
