@@ -50,8 +50,29 @@ function extractJsonPayload(raw: string): string | null {
   return raw.slice(start, end + 1);
 }
 
+/**
+ * Strip non-JSON noise from qmd stdout (e.g. node-llama-cpp fallback
+ * warnings, query expansion progress lines, and tree-drawing characters).
+ * These appear before the JSON payload on systems without GPU support or
+ * during first-run model downloads and break JSON.parse.
+ */
+function stripQmdNoise(raw: string): string {
+  return raw
+    .split('\n')
+    .filter(line => {
+      const t = line.trim();
+      if (!t) return true;
+      if (t.startsWith('[node-llama-cpp]')) return false;
+      if (t.startsWith('Expanding query')) return false;
+      if (t.startsWith('Searching ') && t.endsWith('queries...')) return false;
+      if (/^[├└─│]/.test(t)) return false;
+      return true;
+    })
+    .join('\n');
+}
+
 function parseQmdOutput(raw: string): QmdResult[] {
-  const trimmed = raw.trim();
+  const trimmed = stripQmdNoise(raw).trim();
   if (!trimmed) return [];
 
   const direct = tryParseJson(trimmed);
