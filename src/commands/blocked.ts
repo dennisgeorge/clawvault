@@ -20,13 +20,18 @@ import {
 export interface BlockedOptions {
   project?: string;
   json?: boolean;
+  escalated?: boolean;
 }
 
 /**
  * Get blocked tasks
  */
 export function blockedList(vaultPath: string, options: BlockedOptions = {}): Task[] {
-  return getBlockedTasks(vaultPath, options.project);
+  let tasks = getBlockedTasks(vaultPath, options.project);
+  if (options.escalated) {
+    tasks = tasks.filter(t => (t.frontmatter as any).escalation === true);
+  }
+  return tasks;
 }
 
 /**

@@ -16,6 +16,16 @@ import {
   type TaskPriority,
   type TaskFilterOptions
 } from '../lib/task-utils.js';
+import {
+  buildTransitionEvent,
+  appendTransition,
+  countBlockedTransitions,
+  queryTransitions,
+  formatTransitionsTable,
+  isRegression,
+} from '../lib/transition-ledger.js';
+import matter from 'gray-matter';
+import * as fs from 'fs';
 
 export interface TaskAddOptions {
   owner?: string;
@@ -41,6 +51,14 @@ export interface TaskUpdateOptions {
   priority?: TaskPriority;
   blockedBy?: string;
   due?: string;
+  confidence?: number;
+  reason?: string;
+}
+
+export interface TaskTransitionsOptions {
+  agent?: string;
+  failed?: boolean;
+  json?: boolean;
 }
 
 export interface TaskShowOptions {
@@ -82,10 +100,14 @@ export function taskList(vaultPath: string, options: TaskListOptions = {}): Task
 }
 
 /**
- * Update a task
+ * Update a task (with transition logging when status changes)
  */
 export function taskUpdate(vaultPath: string, slug: string, options: TaskUpdateOptions): Task {
-  return updateTask(vaultPath, slug, {
+  // Read current task to detect status change
+  const before = readTask(vaultPath, slug);
+  const oldStatus = before?.frontmatter.status;
+
+  const task = updateTask(vaultPath, slug, {
     status: options.status,
     owner: options.owner,
     project: options.project,
@@ -93,13 +115,88 @@ export function taskUpdate(vaultPath: string, slug: string, options: TaskUpdateO
     blocked_by: options.blockedBy,
     due: options.due
   });
+
+  // Emit transition event if status changed
+  if (options.status && oldStatus && options.status !== oldStatus) {
+    emitTransition(vaultPath, slug, oldStatus, options.status, options);
+  }
+
+  return task;
 }
 
 /**
- * Mark a task as done
+ * Mark a task as done (with transition logging)
  */
-export function taskDone(vaultPath: string, slug: string): Task {
-  return completeTask(vaultPath, slug);
+export function taskDone(vaultPath: string, slug: string, options: { confidence?: number; reason?: string } = {}): Task {
+  const before = readTask(vaultPath, slug);
+  const oldStatus = before?.frontmatter.status;
+
+  const task = completeTask(vaultPath, slug);
+
+  if (oldStatus && oldStatus !== 'done') {
+    emitTransition(vaultPath, slug, oldStatus, 'done', options);
+  }
+
+  return task;
+}
+
+/**
+ * Emit a transition event and handle escalation detection
+ */
+function emitTransition(
+  vaultPath: string,
+  slug: string,
+  fromStatus: TaskStatus,
+  toStatus: TaskStatus,
+  options: { confidence?: number; reason?: string } = {}
+): void {
+  const event = buildTransitionEvent(slug, fromStatus, toStatus, {
+    confidence: options.confidence,
+    reason: options.reason,
+  });
+  appendTransition(vaultPath, event);
+
+  // Check for escalation: 3+ blocked transitions
+  if (toStatus === 'blocked') {
+    const blockedCount = countBlockedTransitions(vaultPath, slug);
+    if (blockedCount >= 3) {
+      markEscalation(vaultPath, slug);
+    }
+  }
+}
+
+/**
+ * Mark a task with escalation: true in frontmatter
+ */
+function markEscalation(vaultPath: string, slug: string): void {
+  const task = readTask(vaultPath, slug);
+  if (!task) return;
+
+  const raw = fs.readFileSync(task.path, 'utf-8');
+  const { data, content } = matter(raw);
+  if (data.escalation) return; // already marked
+  data.escalation = true;
+  fs.writeFileSync(task.path, matter.stringify(content, data));
+}
+
+/**
+ * Query task transitions
+ */
+export function taskTransitions(
+  vaultPath: string,
+  taskId?: string,
+  options: TaskTransitionsOptions = {}
+): string {
+  const events = queryTransitions(vaultPath, {
+    taskId,
+    agent: options.agent,
+    failed: options.failed,
+  });
+
+  if (options.json) {
+    return JSON.stringify(events, null, 2);
+  }
+  return formatTransitionsTable(events);
 }
 
 /**
@@ -203,11 +300,11 @@ export function formatTaskDetails(task: Task): string {
  */
 export async function taskCommand(
   vaultPath: string,
-  action: 'add' | 'list' | 'update' | 'done' | 'show',
+  action: 'add' | 'list' | 'update' | 'done' | 'show' | 'transitions',
   args: {
     title?: string;
     slug?: string;
-    options?: TaskAddOptions & TaskListOptions & TaskUpdateOptions & TaskShowOptions;
+    options?: TaskAddOptions & TaskListOptions & TaskUpdateOptions & TaskShowOptions & TaskTransitionsOptions;
   }
 ): Promise<void> {
   const options = args.options || {};
@@ -246,8 +343,21 @@ export async function taskCommand(
       if (!args.slug) {
         throw new Error('Task slug is required for done');
       }
-      const task = taskDone(vaultPath, args.slug);
+      const task = taskDone(vaultPath, args.slug, {
+        confidence: options.confidence,
+        reason: options.reason,
+      });
       console.log(`✓ Completed task: ${task.slug}`);
+      break;
+    }
+
+    case 'transitions': {
+      const output = taskTransitions(vaultPath, args.slug, {
+        agent: (options as TaskTransitionsOptions).agent,
+        failed: (options as TaskTransitionsOptions).failed,
+        json: options.json,
+      });
+      console.log(output);
       break;
     }
 

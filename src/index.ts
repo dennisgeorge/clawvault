@@ -107,6 +107,18 @@ export type {
   MemoryGraphIndex,
   MemoryGraphStats
 } from './lib/memory-graph.js';
+// Transition ledger exports
+export {
+  appendTransition,
+  buildTransitionEvent,
+  readAllTransitions,
+  queryTransitions,
+  countBlockedTransitions,
+  isRegression,
+  formatTransitionsTable,
+} from './lib/transition-ledger.js';
+export type { TransitionEvent } from './lib/transition-ledger.js';
+
 export { Observer } from './observer/observer.js';
 export type { ObserverOptions, ObserverCompressor, ObserverReflector } from './observer/observer.js';
 export { Compressor } from './observer/compressor.js';

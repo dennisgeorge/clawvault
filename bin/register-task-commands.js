@@ -80,6 +80,8 @@ export function registerTaskCommands(
     .option('--priority <priority>', 'New priority')
     .option('--blocked-by <blocker>', 'What is blocking this task')
     .option('--due <date>', 'New due date')
+    .option('--confidence <value>', 'Transition confidence (0-1)', parseFloat)
+    .option('--reason <reason>', 'Reason for status change')
     .action(async (slug, options) => {
       try {
         const vaultPath = resolveVaultPath(options.vault);
@@ -92,7 +94,9 @@ export function registerTaskCommands(
             project: options.project,
             priority: options.priority,
             blockedBy: options.blockedBy,
-            due: options.due
+            due: options.due,
+            confidence: options.confidence,
+            reason: options.reason
           }
         });
       } catch (err) {
@@ -106,11 +110,45 @@ export function registerTaskCommands(
     .command('done <slug>')
     .description('Mark a task as done')
     .option('-v, --vault <path>', 'Vault path')
+    .option('--confidence <value>', 'Transition confidence (0-1)', parseFloat)
+    .option('--reason <reason>', 'Reason for completion')
     .action(async (slug, options) => {
       try {
         const vaultPath = resolveVaultPath(options.vault);
         const { taskCommand } = await import('../dist/commands/task.js');
-        await taskCommand(vaultPath, 'done', { slug });
+        await taskCommand(vaultPath, 'done', {
+          slug,
+          options: {
+            confidence: options.confidence,
+            reason: options.reason
+          }
+        });
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err.message}`));
+        process.exit(1);
+      }
+    });
+
+  // task transitions
+  taskCmd
+    .command('transitions [task_id]')
+    .description('Show transition history')
+    .option('-v, --vault <path>', 'Vault path')
+    .option('--agent <id>', 'Filter by agent')
+    .option('--failed', 'Show only regression transitions')
+    .option('--json', 'Output as JSON')
+    .action(async (taskId, options) => {
+      try {
+        const vaultPath = resolveVaultPath(options.vault);
+        const { taskCommand } = await import('../dist/commands/task.js');
+        await taskCommand(vaultPath, 'transitions', {
+          slug: taskId,
+          options: {
+            agent: options.agent,
+            failed: options.failed,
+            json: options.json
+          }
+        });
       } catch (err) {
         console.error(chalk.red(`Error: ${err.message}`));
         process.exit(1);
@@ -221,6 +259,7 @@ export function registerTaskCommands(
     .description('View blocked tasks')
     .option('-v, --vault <path>', 'Vault path')
     .option('--project <project>', 'Filter by project')
+    .option('--escalated', 'Show only escalated tasks (3+ blocked transitions)')
     .option('--json', 'Output as JSON')
     .action(async (options) => {
       try {
@@ -228,6 +267,7 @@ export function registerTaskCommands(
         const { blockedCommand } = await import('../dist/commands/blocked.js');
         await blockedCommand(vaultPath, {
           project: options.project,
+          escalated: options.escalated,
           json: options.json
         });
       } catch (err) {
