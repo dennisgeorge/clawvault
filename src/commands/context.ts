@@ -575,6 +575,16 @@ function applyTokenBudget(items: PrioritizedContextItem[], task: string, budget?
     })
     .filter((entry): entry is ContextEntry => Boolean(entry));
 
+  // Preserve at least one top-ranked signal when the budget is too tight
+  // to fit any fully rendered entry block.
+  if (selectedEntries.length === 0 && items.length > 0) {
+    const topEntry = items[0].entry;
+    return {
+      context: [topEntry],
+      markdown: truncateToBudget(formatContextMarkdown(task, [topEntry]), normalizedBudget)
+    };
+  }
+
   const markdown = truncateToBudget(formatContextMarkdown(task, selectedEntries), normalizedBudget);
   return {
     context: selectedEntries,

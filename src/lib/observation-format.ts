@@ -40,7 +40,7 @@ const SCORED_LINE_RE =
   /^(?:-\s*)?\[(decision|preference|fact|commitment|milestone|lesson|relationship|project)\|c=(0(?:\.\d+)?|1(?:\.0+)?)\|i=(0(?:\.\d+)?|1(?:\.0+)?)\]\s+(.+)$/i;
 const EMOJI_LINE_RE = /^(?:-\s*)?(🔴|🟡|🟢)\s+(\d{2}:\d{2})?\s*(.+)$/u;
 
-const DECISION_RE = /\b(decid(?:e|ed|ing|ion)|chose|selected|opted|went with|picked)\b/i;
+const DECISION_RE = /\b(decis(?:ion|ions)?|decid(?:e|ed|ing)|chose|selected|opted|went with|picked)\b/i;
 const PREFERENCE_RE = /\b(prefer(?:ence|s|red)?|likes?|dislikes?|default to|always use|never use)\b/i;
 const COMMITMENT_RE = /\b(commit(?:ment|ted)?|promised|deadline|due|scheduled|will deliver|agreed to)\b/i;
 const MILESTONE_RE = /\b(released?|shipped|launched|merged|published|milestone|v\d+\.\d+)\b/i;
