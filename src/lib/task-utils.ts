@@ -6,6 +6,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import matter from 'gray-matter';
+import {
+  appendTransition,
+  buildTransitionEvent,
+  countBlockedTransitions,
+  isRegression,
+} from './transition-ledger.js';
 
 // Task status types
 export type TaskStatus = 'open' | 'in-progress' | 'blocked' | 'done';
@@ -75,6 +81,12 @@ export interface TaskFilterOptions {
 export interface BacklogFilterOptions {
   project?: string;
   source?: string;
+}
+
+export interface TaskTransitionOptions {
+  skipTransition?: boolean;
+  confidence?: number;
+  reason?: string | null;
 }
 
 /**
@@ -157,6 +169,50 @@ function parseDueDate(value?: string): number | null {
 function startOfToday(): number {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+}
+
+interface LogStatusTransitionParams {
+  vaultPath: string;
+  task: Task;
+  fromStatus: TaskStatus;
+  toStatus: TaskStatus;
+  frontmatter: TaskFrontmatter;
+  options: Pick<TaskTransitionOptions, 'confidence' | 'reason'>;
+}
+
+function logStatusTransition({
+  vaultPath,
+  task,
+  fromStatus,
+  toStatus,
+  frontmatter,
+  options,
+}: LogStatusTransitionParams): TaskFrontmatter {
+  const normalizedReason = typeof options.reason === 'string' ? options.reason.trim() : '';
+  const reason = normalizedReason || (isRegression(fromStatus, toStatus) ? `regression: ${fromStatus} -> ${toStatus}` : undefined);
+
+  const event = buildTransitionEvent(task.slug, fromStatus, toStatus, {
+    confidence: options.confidence,
+    reason,
+  });
+  appendTransition(vaultPath, event);
+
+  if (toStatus !== 'blocked' || frontmatter.escalation) {
+    return frontmatter;
+  }
+
+  // Escalate tasks that have been blocked 3+ times.
+  const blockedCount = countBlockedTransitions(vaultPath, task.slug);
+  if (blockedCount < 3) {
+    return frontmatter;
+  }
+
+  const escalatedFrontmatter: TaskFrontmatter = {
+    ...frontmatter,
+    escalation: true,
+  };
+  fs.writeFileSync(task.path, matter.stringify(task.content, escalatedFrontmatter));
+  return escalatedFrontmatter;
 }
 
 /**
@@ -416,15 +472,17 @@ export function updateTask(
     estimate?: string | null;
     parent?: string | null;
     depends_on?: string[] | null;
-  }
+  },
+  options: TaskTransitionOptions = {}
 ): Task {
   const task = readTask(vaultPath, slug);
   if (!task) {
     throw new Error(`Task not found: ${slug}`);
   }
+  const previousStatus = task.frontmatter.status;
 
   const now = new Date().toISOString();
-  const newFrontmatter: TaskFrontmatter = {
+  let newFrontmatter: TaskFrontmatter = {
     ...task.frontmatter,
     updated: now
   };
@@ -575,6 +633,23 @@ export function updateTask(
   const fileContent = matter.stringify(task.content, newFrontmatter);
   fs.writeFileSync(task.path, fileContent);
 
+  const nextStatus = newFrontmatter.status;
+  if (!options.skipTransition && previousStatus !== nextStatus) {
+    const confidence = options.confidence ?? (typeof updates.confidence === 'number' ? updates.confidence : undefined);
+    const reason = options.reason ?? updates.reason ?? null;
+    newFrontmatter = logStatusTransition({
+      vaultPath,
+      task,
+      fromStatus: previousStatus,
+      toStatus: nextStatus,
+      frontmatter: newFrontmatter,
+      options: {
+        confidence,
+        reason,
+      },
+    });
+  }
+
   return {
     ...task,
     frontmatter: newFrontmatter
@@ -584,14 +659,15 @@ export function updateTask(
 /**
  * Mark a task as done
  */
-export function completeTask(vaultPath: string, slug: string): Task {
+export function completeTask(vaultPath: string, slug: string, options: TaskTransitionOptions = {}): Task {
   const task = readTask(vaultPath, slug);
   if (!task) {
     throw new Error(`Task not found: ${slug}`);
   }
+  const previousStatus = task.frontmatter.status;
 
   const now = new Date().toISOString();
-  const newFrontmatter: TaskFrontmatter = {
+  let newFrontmatter: TaskFrontmatter = {
     ...task.frontmatter,
     status: 'done',
     updated: now,
@@ -603,6 +679,20 @@ export function completeTask(vaultPath: string, slug: string): Task {
 
   const fileContent = matter.stringify(task.content, newFrontmatter);
   fs.writeFileSync(task.path, fileContent);
+
+  if (!options.skipTransition && previousStatus !== 'done') {
+    newFrontmatter = logStatusTransition({
+      vaultPath,
+      task,
+      fromStatus: previousStatus,
+      toStatus: 'done',
+      frontmatter: newFrontmatter,
+      options: {
+        confidence: options.confidence,
+        reason: options.reason ?? null,
+      },
+    });
+  }
 
   return {
     ...task,

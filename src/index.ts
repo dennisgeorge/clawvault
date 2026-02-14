@@ -229,6 +229,8 @@ export {
 } from './lib/template-engine.js';
 export type { TemplateVariables } from './lib/template-engine.js';
 export {
+  updateTask,
+  completeTask,
   listSubtasks,
   listDependentTasks
 } from './lib/task-utils.js';

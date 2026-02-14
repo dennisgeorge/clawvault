@@ -27,6 +27,7 @@ import {
   getStatusIcon,
   getStatusDisplay
 } from './task-utils.js';
+import { readAllTransitions } from './transition-ledger.js';
 
 function makeTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'clawvault-task-utils-'));
@@ -246,6 +247,27 @@ describe('task-utils', () => {
       expect(() => updateTask(tempDir, 'non-existent', { status: 'done' })).toThrow('Task not found');
     });
 
+    it('logs status transitions to the transition ledger', () => {
+      createTask(tempDir, 'Transition Logging');
+      updateTask(tempDir, 'transition-logging', { status: 'in-progress' });
+
+      const events = readAllTransitions(tempDir);
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({
+        task_id: 'transition-logging',
+        from_status: 'open',
+        to_status: 'in-progress'
+      });
+    });
+
+    it('supports opting out of transition logging', () => {
+      createTask(tempDir, 'Skip Transition');
+      updateTask(tempDir, 'skip-transition', { status: 'in-progress' }, { skipTransition: true });
+
+      const events = readAllTransitions(tempDir);
+      expect(events).toHaveLength(0);
+    });
+
     it('sets and clears enriched frontmatter fields', () => {
       createTask(tempDir, 'Enriched Update');
       const updated = updateTask(tempDir, 'enriched-update', {
@@ -293,6 +315,20 @@ describe('task-utils', () => {
       const completed = completeTask(tempDir, 'complete-blocked');
 
       expect(completed.frontmatter.blocked_by).toBeUndefined();
+    });
+
+    it('logs status transition when marking task done', () => {
+      createTask(tempDir, 'Complete Transition');
+      completeTask(tempDir, 'complete-transition', { reason: 'shipped' });
+
+      const events = readAllTransitions(tempDir);
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({
+        task_id: 'complete-transition',
+        from_status: 'open',
+        to_status: 'done',
+        reason: 'shipped'
+      });
     });
   });
 

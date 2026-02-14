@@ -17,15 +17,9 @@ import {
   type TaskFilterOptions
 } from '../lib/task-utils.js';
 import {
-  buildTransitionEvent,
-  appendTransition,
-  countBlockedTransitions,
   queryTransitions,
   formatTransitionsTable,
-  isRegression,
 } from '../lib/transition-ledger.js';
-import matter from 'gray-matter';
-import * as fs from 'fs';
 
 export interface TaskAddOptions {
   owner?: string;
@@ -121,14 +115,10 @@ export function taskList(vaultPath: string, options: TaskListOptions = {}): Task
 }
 
 /**
- * Update a task (with transition logging when status changes)
+ * Update a task
  */
 export function taskUpdate(vaultPath: string, slug: string, options: TaskUpdateOptions): Task {
-  // Read current task to detect status change
-  const before = readTask(vaultPath, slug);
-  const oldStatus = before?.frontmatter.status;
-
-  const task = updateTask(vaultPath, slug, {
+  return updateTask(vaultPath, slug, {
     status: options.status,
     owner: options.owner,
     project: options.project,
@@ -143,71 +133,16 @@ export function taskUpdate(vaultPath: string, slug: string, options: TaskUpdateO
     confidence: options.confidence,
     reason: options.reason
   });
-
-  // Emit transition event if status changed
-  if (options.status && oldStatus && options.status !== oldStatus) {
-    emitTransition(vaultPath, slug, oldStatus, options.status, {
-      confidence: options.confidence,
-      reason: options.reason ?? undefined
-    });
-  }
-
-  return task;
 }
 
 /**
- * Mark a task as done (with transition logging)
+ * Mark a task as done
  */
 export function taskDone(vaultPath: string, slug: string, options: { confidence?: number; reason?: string } = {}): Task {
-  const before = readTask(vaultPath, slug);
-  const oldStatus = before?.frontmatter.status;
-
-  const task = completeTask(vaultPath, slug);
-
-  if (oldStatus && oldStatus !== 'done') {
-    emitTransition(vaultPath, slug, oldStatus, 'done', options);
-  }
-
-  return task;
-}
-
-/**
- * Emit a transition event and handle escalation detection
- */
-function emitTransition(
-  vaultPath: string,
-  slug: string,
-  fromStatus: TaskStatus,
-  toStatus: TaskStatus,
-  options: { confidence?: number; reason?: string } = {}
-): void {
-  const event = buildTransitionEvent(slug, fromStatus, toStatus, {
+  return completeTask(vaultPath, slug, {
     confidence: options.confidence,
-    reason: options.reason,
+    reason: options.reason ?? undefined,
   });
-  appendTransition(vaultPath, event);
-
-  // Check for escalation: 3+ blocked transitions
-  if (toStatus === 'blocked') {
-    const blockedCount = countBlockedTransitions(vaultPath, slug);
-    if (blockedCount >= 3) {
-      markEscalation(vaultPath, slug);
-    }
-  }
-}
-
-/**
- * Mark a task with escalation: true in frontmatter
- */
-function markEscalation(vaultPath: string, slug: string): void {
-  const task = readTask(vaultPath, slug);
-  if (!task) return;
-
-  const raw = fs.readFileSync(task.path, 'utf-8');
-  const { data, content } = matter(raw);
-  if (data.escalation) return; // already marked
-  data.escalation = true;
-  fs.writeFileSync(task.path, matter.stringify(content, data));
 }
 
 /**
