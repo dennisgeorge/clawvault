@@ -16,6 +16,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
 import * as https from 'https';
+import { createWebDAVHandler, WEBDAV_PREFIX } from './webdav.js';
 
 // ============================================================================
 // Types
@@ -76,6 +77,11 @@ export interface TailscaleServeConfig {
   funnel?: boolean;
   /** Path prefix for the serve endpoint */
   pathPrefix?: string;
+  /** Optional WebDAV Basic Auth credentials */
+  webdavAuth?: {
+    username: string;
+    password: string;
+  };
 }
 
 export interface TailscaleSyncOptions {
@@ -472,6 +478,7 @@ export interface ServeInstance {
 
 /**
  * Start serving a vault over HTTP for Tailscale sync
+ * Includes WebDAV support at /webdav/ for Obsidian mobile sync
  */
 export function serveVault(
   vaultPath: string,
@@ -484,8 +491,30 @@ export function serveVault(
     throw new Error(`Not a ClawVault: ${vaultPath}`);
   }
   
-  const server = http.createServer((req, res) => {
-    // CORS headers for Tailscale access
+  // Create WebDAV handler
+  const webdavHandler = createWebDAVHandler({
+    rootPath: vaultPath,
+    prefix: WEBDAV_PREFIX,
+    auth: options.webdavAuth
+  });
+  
+  const server = http.createServer(async (req, res) => {
+    const url = new URL(req.url || '/', `http://localhost:${port}`);
+    const pathname = url.pathname;
+    
+    // Route WebDAV requests first
+    if (pathname.startsWith(WEBDAV_PREFIX)) {
+      try {
+        const handled = await webdavHandler(req, res);
+        if (handled) return;
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
+        res.end(`WebDAV Error: ${err}`);
+        return;
+      }
+    }
+    
+    // CORS headers for Tailscale access (for non-WebDAV routes)
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -495,9 +524,6 @@ export function serveVault(
       res.end();
       return;
     }
-    
-    const url = new URL(req.url || '/', `http://localhost:${port}`);
-    const pathname = url.pathname;
     
     // Health check
     if (pathname === `${pathPrefix}/health`) {
@@ -604,7 +630,8 @@ export function serveVault(
           health: `${pathPrefix}/health`,
           manifest: `${pathPrefix}/manifest`,
           files: `${pathPrefix}/files/<path>`,
-          upload: `${pathPrefix}/upload/<path>`
+          upload: `${pathPrefix}/upload/<path>`,
+          webdav: `${WEBDAV_PREFIX}/`
         }
       }));
       return;
