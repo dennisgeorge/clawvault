@@ -7,6 +7,10 @@ import * as path from 'path';
 import { checkDirtyDeath, clearDirtyFlag, CheckpointData } from './checkpoint.js';
 import { formatAge } from '../lib/time.js';
 
+const CLAWVAULT_DIR = '.clawvault';
+const CHECKPOINT_FILE = 'last-checkpoint.json';
+const CHECKPOINT_HISTORY_DIR = 'checkpoints';
+
 export interface RecoveryInfo {
   died: boolean;
   deathTime: string | null;
@@ -16,12 +20,92 @@ export interface RecoveryInfo {
   recoveryMessage: string;
 }
 
+export interface RecoveryCheckInfo {
+  died: boolean;
+  deathTime: string | null;
+  checkpoint: CheckpointData | null;
+}
+
+export interface ListedCheckpoint extends CheckpointData {
+  filePath: string;
+}
+
+function parseCheckpointFile(filePath: string): CheckpointData | null {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return null;
+    }
+    const record = parsed as Record<string, unknown>;
+    if (typeof record.timestamp !== 'string' || !record.timestamp.trim()) {
+      return null;
+    }
+    return record as CheckpointData;
+  } catch {
+    return null;
+  }
+}
+
+function compareByTimestampDesc(left: ListedCheckpoint, right: ListedCheckpoint): number {
+  const leftTime = Date.parse(left.timestamp);
+  const rightTime = Date.parse(right.timestamp);
+  if (!Number.isNaN(leftTime) && !Number.isNaN(rightTime)) {
+    return rightTime - leftTime;
+  }
+  return right.timestamp.localeCompare(left.timestamp);
+}
+
+export async function checkRecoveryStatus(vaultPath: string): Promise<RecoveryCheckInfo> {
+  const { died, checkpoint, deathTime } = await checkDirtyDeath(vaultPath);
+  return { died, checkpoint, deathTime };
+}
+
+export function listCheckpoints(vaultPath: string): ListedCheckpoint[] {
+  const resolvedVaultPath = path.resolve(vaultPath);
+  const clawvaultDir = path.join(resolvedVaultPath, CLAWVAULT_DIR);
+  const historyDir = path.join(clawvaultDir, CHECKPOINT_HISTORY_DIR);
+  const checkpoints: ListedCheckpoint[] = [];
+
+  if (fs.existsSync(historyDir)) {
+    const files = fs.readdirSync(historyDir)
+      .filter((entry) => entry.endsWith('.json'))
+      .sort()
+      .reverse();
+    for (const fileName of files) {
+      const absolutePath = path.join(historyDir, fileName);
+      const parsed = parseCheckpointFile(absolutePath);
+      if (!parsed) {
+        continue;
+      }
+      checkpoints.push({
+        ...parsed,
+        filePath: absolutePath
+      });
+    }
+  }
+
+  if (checkpoints.length === 0) {
+    const latestCheckpointPath = path.join(clawvaultDir, CHECKPOINT_FILE);
+    if (fs.existsSync(latestCheckpointPath)) {
+      const fallback = parseCheckpointFile(latestCheckpointPath);
+      if (fallback) {
+        checkpoints.push({
+          ...fallback,
+          filePath: latestCheckpointPath
+        });
+      }
+    }
+  }
+
+  return checkpoints.sort(compareByTimestampDesc);
+}
+
 export async function recover(
   vaultPath: string,
   options: { clearFlag?: boolean; verbose?: boolean } = {}
 ): Promise<RecoveryInfo> {
   const { clearFlag = false } = options;
-  const { died, checkpoint, deathTime } = await checkDirtyDeath(vaultPath);
+  const { died, checkpoint, deathTime } = await checkRecoveryStatus(vaultPath);
   
   if (!died) {
     return {
@@ -89,6 +173,56 @@ export async function recover(
     handoffContent,
     recoveryMessage: message
   };
+}
+
+export function formatRecoveryCheckStatus(info: RecoveryCheckInfo): string {
+  if (!info.died) {
+    return '✓ Dirty death flag is clear.';
+  }
+
+  let output = '⚠️ Dirty death flag is set.\n';
+  output += `Death time: ${info.deathTime}\n`;
+  if (info.checkpoint?.timestamp) {
+    const age = formatAge(Date.now() - new Date(info.checkpoint.timestamp).getTime());
+    output += `Last checkpoint: ${info.checkpoint.timestamp} (${age} ago)\n`;
+  } else {
+    output += 'Last checkpoint: unavailable\n';
+  }
+  output += 'Use `clawvault recover --clear` after reviewing recovery details.';
+  return output;
+}
+
+export function formatCheckpointList(checkpoints: ListedCheckpoint[]): string {
+  if (checkpoints.length === 0) {
+    return 'No checkpoints found.';
+  }
+
+  const headers = ['TIMESTAMP', 'WORKING_ON', 'FOCUS', 'FILE'];
+  const rows = checkpoints.map((checkpoint) => ({
+    timestamp: checkpoint.timestamp,
+    workingOn: checkpoint.workingOn ?? '-',
+    focus: checkpoint.focus ?? '-',
+    file: path.basename(checkpoint.filePath)
+  }));
+
+  const timestampWidth = Math.max(headers[0].length, ...rows.map((row) => row.timestamp.length));
+  const workingOnWidth = Math.max(headers[1].length, ...rows.map((row) => row.workingOn.length));
+  const focusWidth = Math.max(headers[2].length, ...rows.map((row) => row.focus.length));
+  const fileWidth = Math.max(headers[3].length, ...rows.map((row) => row.file.length));
+
+  const lines: string[] = [];
+  lines.push(
+    `${headers[0].padEnd(timestampWidth)}  ${headers[1].padEnd(workingOnWidth)}  ${headers[2].padEnd(focusWidth)}  ${headers[3].padEnd(fileWidth)}`
+  );
+  lines.push(
+    `${'-'.repeat(timestampWidth)}  ${'-'.repeat(workingOnWidth)}  ${'-'.repeat(focusWidth)}  ${'-'.repeat(fileWidth)}`
+  );
+  for (const row of rows) {
+    lines.push(
+      `${row.timestamp.padEnd(timestampWidth)}  ${row.workingOn.padEnd(workingOnWidth)}  ${row.focus.padEnd(focusWidth)}  ${row.file}`
+    );
+  }
+  return lines.join('\n');
 }
 
 /**

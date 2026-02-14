@@ -16,6 +16,8 @@ import { registerResilienceCommands } from './register-resilience-commands.js';
 import { registerSessionLifecycleCommands } from './register-session-lifecycle-commands.js';
 import { registerTemplateCommands } from './register-template-commands.js';
 import { registerVaultOperationsCommands } from './register-vault-operations-commands.js';
+import { registerConfigCommands } from './register-config-commands.js';
+import { registerRouteCommands } from './register-route-commands.js';
 
 import { registerTaskCommands } from './register-task-commands.js';
 
@@ -93,6 +95,8 @@ registerTaskCommands(program, {
 });
 
 registerTailscaleCommands(program, { chalk });
+registerConfigCommands(program, { chalk, resolveVaultPath });
+registerRouteCommands(program, { chalk, resolveVaultPath });
 
 // Parse and run
 program.parse();

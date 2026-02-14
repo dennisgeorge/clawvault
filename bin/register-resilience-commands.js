@@ -45,13 +45,48 @@ export function registerResilienceCommands(program, { chalk, resolveVaultPath })
     .command('recover')
     .description('Check for context death and recover state')
     .option('--clear', 'Clear the dirty death flag after recovery')
+    .option('--check', 'Check dirty death flag without clearing it')
+    .option('--list', 'List saved checkpoints (newest first)')
     .option('--verbose', 'Show full checkpoint and handoff content')
     .option('-v, --vault <path>', 'Vault path')
     .option('--json', 'Output as JSON')
     .action(async (options) => {
       try {
-        const { recover, formatRecoveryInfo } = await import('../dist/commands/recover.js');
-        const info = await recover(resolveVaultPath(options.vault), {
+        if (options.check && options.list) {
+          throw new Error('--check and --list cannot be used together.');
+        }
+
+        const {
+          recover,
+          formatRecoveryInfo,
+          checkRecoveryStatus,
+          formatRecoveryCheckStatus,
+          listCheckpoints,
+          formatCheckpointList
+        } = await import('../dist/commands/recover.js');
+        const vaultPath = resolveVaultPath(options.vault);
+
+        if (options.check) {
+          const status = await checkRecoveryStatus(vaultPath);
+          if (options.json) {
+            console.log(JSON.stringify(status, null, 2));
+          } else {
+            console.log(formatRecoveryCheckStatus(status));
+          }
+          return;
+        }
+
+        if (options.list) {
+          const checkpoints = listCheckpoints(vaultPath);
+          if (options.json) {
+            console.log(JSON.stringify(checkpoints, null, 2));
+          } else {
+            console.log(formatCheckpointList(checkpoints));
+          }
+          return;
+        }
+
+        const info = await recover(vaultPath, {
           clearFlag: options.clear,
           verbose: options.verbose
         });

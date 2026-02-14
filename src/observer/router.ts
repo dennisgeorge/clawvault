@@ -16,6 +16,7 @@ import {
   type BacklogItem,
   type Task
 } from '../lib/task-utils.js';
+import { listRouteRules, matchRouteRule, type RouteRule } from '../lib/config-manager.js';
 
 /**
  * Routes observations into the appropriate vault category files.
@@ -51,6 +52,11 @@ interface ExistingWorkItem {
   status: string;
   source?: string;
   tags: string[];
+}
+
+interface RouteDestination {
+  filePath: string;
+  headerLabel: string;
 }
 
 const CATEGORY_PATTERNS: Array<{ category: string; patterns: RegExp[] }> = [
@@ -120,11 +126,13 @@ export class Router {
   private readonly vaultPath: string;
   private readonly extractTasks: boolean;
   private readonly now: () => Date;
+  private customRoutes: RouteRule[];
 
   constructor(vaultPath: string, options: RouterOptions = {}) {
     this.vaultPath = path.resolve(vaultPath);
     this.extractTasks = options.extractTasks ?? true;
     this.now = options.now ?? (() => new Date());
+    this.customRoutes = this.loadCustomRoutes();
   }
 
   /**
@@ -136,6 +144,7 @@ export class Router {
     observationMarkdown: string,
     context: RouteContext = {}
   ): { routed: RoutedItem[]; summary: string } {
+    this.customRoutes = this.loadCustomRoutes();
     const items = this.parseObservations(observationMarkdown);
     const routed: RoutedItem[] = [];
     const knownWorkItems = this.extractTasks ? this.loadExistingWorkItems() : [];
@@ -509,26 +518,72 @@ export class Router {
     return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
   }
 
+  private loadCustomRoutes(): RouteRule[] {
+    try {
+      return listRouteRules(this.vaultPath);
+    } catch {
+      return [];
+    }
+  }
+
+  private resolveCustomEntityPath(content: string, category: string): string | null {
+    if ((category !== 'people' && category !== 'projects') || this.customRoutes.length === 0) {
+      return null;
+    }
+
+    const matchedRule = matchRouteRule(content, this.customRoutes);
+    if (!matchedRule) {
+      return null;
+    }
+
+    const targetParts = matchedRule.target
+      .split('/')
+      .map((segment) => segment.trim())
+      .filter(Boolean);
+    if (targetParts.length < 2 || targetParts[0] !== category) {
+      return null;
+    }
+
+    return targetParts.slice(1).join('/');
+  }
+
   /**
    * Resolve the file path for a routed item.
    * For people/projects: entity-slug subfolder with date file (e.g., people/pedro/2026-02-12.md)
    * For other categories: category/date.md
    */
-  private resolveFilePath(category: string, item: RoutedItem): string {
+  private resolveFilePath(category: string, item: RoutedItem): RouteDestination {
+    const customEntityPath = this.resolveCustomEntityPath(item.content, category);
+    if (customEntityPath) {
+      const customEntityDir = path.join(this.vaultPath, category, customEntityPath);
+      fs.mkdirSync(customEntityDir, { recursive: true });
+      return {
+        filePath: path.join(customEntityDir, `${item.date}.md`),
+        headerLabel: `${category}/${customEntityPath}`
+      };
+    }
+
     const entitySlug = this.extractEntitySlug(item.content, category);
     if (entitySlug) {
       const entityDir = path.join(this.vaultPath, category, entitySlug);
       fs.mkdirSync(entityDir, { recursive: true });
-      return path.join(entityDir, `${item.date}.md`);
+      return {
+        filePath: path.join(entityDir, `${item.date}.md`),
+        headerLabel: `${category}/${entitySlug}`
+      };
     }
     const categoryDir = path.join(this.vaultPath, category);
     fs.mkdirSync(categoryDir, { recursive: true });
-    return path.join(categoryDir, `${item.date}.md`);
+    return {
+      filePath: path.join(categoryDir, `${item.date}.md`),
+      headerLabel: category
+    };
   }
 
   private appendToCategory(category: string, item: RoutedItem): void {
-    // Resolve file path (entity-aware for people/projects)
-    const filePath = this.resolveFilePath(category, item);
+    // Resolve file path (entity-aware for people/projects, custom routes first)
+    const destination = this.resolveFilePath(category, item);
+    const filePath = destination.filePath;
     // Ensure parent dir exists (resolveFilePath handles entity dirs, but be safe)
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
 
@@ -565,8 +620,7 @@ export class Router {
       importance: item.importance,
       content: linkedContent
     });
-    const entitySlug = this.extractEntitySlug(item.content, category);
-    const headerLabel = entitySlug ? `${category}/${entitySlug}` : category;
+    const headerLabel = destination.headerLabel;
     const header = existing ? '' : `# ${headerLabel} — ${item.date}\n`;
     const newContent = existing
       ? `${existing}\n${entry}\n`
