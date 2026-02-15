@@ -1,17 +1,54 @@
 # Changelog
 
-## [2.4.7] — 2026-02-15
+## [2.5.0] — 2026-02-15
 
-### Added
-- **Dynamic prompt injection** — `clawvault inject` with two-layer matching (deterministic rules + optional LLM classification). Shared LLM provider across observer and inject systems.
-- **Pluggable compression backends** — observer now supports Ollama, Minimax, GLM, and any OpenAI-compatible backend via config.
-- **First-class project primitive** — `clawvault project` for managing project entities with metadata, goals, and team.
-- **Transition logging** — centralized task state transition ledger in `task-utils`, with edge-case hardening.
+Two headline features that change how agents interact with their vaults.
+
+### 🧠 Dynamic Prompt Injection (`clawvault inject`)
+
+Agents can now pull relevant decisions, preferences, and rules directly into their prompt context — automatically. Two-layer matching system:
+
+1. **Deterministic matching** (default) — keyword and scope-based rules fire instantly with zero latency. Define rules that match on entity names, categories, or custom scopes.
+2. **LLM fuzzy matching** (opt-in via `--enable-llm`) — when deterministic rules miss, an LLM classifies the message intent and finds relevant vault entries. Uses the shared LLM provider (same as observer).
+
+```bash
+clawvault inject "How should we handle the Hale deployment?"
+clawvault inject --enable-llm "What's our pricing strategy?"
+clawvault inject --scope decisions,preferences "brand guidelines"
+```
+
+Options: `--max-results`, `--scope`, `--format (markdown|json)`, `--model`, `--enable-llm`/`--disable-llm`.
+
+This is the bridge between passive memory storage and active context engineering — your vault decisions actually show up when they matter.
+
+### 📁 First-Class Project Primitive (`clawvault project`)
+
+Projects are now a proper entity type with full lifecycle management:
+
+```bash
+clawvault project add "Site Machine" --owner pedro --client "Hale Pet Door" \
+  --team "pedro,clawdious,joao" --status active --deadline 2026-03-01 \
+  --repo "https://github.com/Versatly/site-machine" --tags "client,priority"
+
+clawvault project list --status active --client "Hale Pet Door"
+clawvault project tasks site-machine
+clawvault project board --group-by client
+```
+
+Subcommands: `add`, `update`, `archive`, `list`, `show`, `tasks`, `board`.
+
+Projects link to tasks via the `--project` flag on `task add`. `project tasks <slug>` shows all related tasks. `project board` generates an Obsidian-compatible Kanban grouped by status, owner, or client.
+
+Frontmatter fields: `owner`, `status`, `team`, `client`, `tags`, `description`, `deadline`, `repo`, `url`.
+
+### Also Added
+- **Pluggable compression backends** — observer now supports Ollama, Minimax, GLM, and any OpenAI-compatible backend via config. No more hard dependency on a single LLM provider.
+- **Centralized transition logging** — task state changes write to a ledger (`transitions.jsonl`) with timestamps, reasons, and actor. Ledger write failures are non-fatal.
 
 ### Improved
-- Canvas refactored to single generator, stripped 4 templates (-2,081 lines).
-- Inject: LLM matching disabled by default (deterministic-only unless opted in via `--llm`).
-- Global inject scope treated as unfiltered.
+- Canvas refactored to single generator, stripped 4 redundant templates (-2,081 lines).
+- Inject: LLM matching disabled by default — deterministic-only unless explicitly opted in.
+- Global inject scope treated as unfiltered for maximum flexibility.
 - Observer: stabilized pluggable backend assertions.
 - Test suite expanded to **429 passing tests across 64 files**.
 

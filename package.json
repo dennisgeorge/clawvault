@@ -1,6 +1,6 @@
 {
   "name": "clawvault",
-  "version": "2.4.7",
+  "version": "2.5.0",
   "description": "Structured memory system for AI agents — typed storage, knowledge graph, context profiles, canvas dashboards, neural graph themes, and Obsidian-native task views. An elephant never forgets. 🐘",
   "type": "module",
   "main": "dist/index.cjs",
