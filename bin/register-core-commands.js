@@ -17,7 +17,7 @@ export function registerCoreCommands(
     .option('--no-tasks', 'Skip tasks/ and backlog/ directories')
     .option('--no-graph', 'Skip initial graph build')
     .option('--categories <list>', 'Comma-separated list of custom categories to create')
-    .option('--canvas <template>', 'Generate a canvas dashboard on init (default, brain, project-board, sprint)')
+    .option('--canvas', 'Generate a vault status canvas dashboard on init')
     .option('--theme <style>', 'Graph color theme to apply (neural, minimal, none)', 'none')
     .option('--minimal', 'Create minimal vault (memory categories only, no tasks/bases/graph)')
     .action(async (vaultPath, options) => {
@@ -106,7 +106,7 @@ export function registerCoreCommands(
             await setupCommand({
               graphColors: false,
               bases: false,
-              canvas: options.canvas === true ? 'default' : options.canvas,
+              canvas: true,
               theme: 'none',
               vault: resolvedPath
             });
@@ -138,7 +138,7 @@ export function registerCoreCommands(
     .option('--no-graph-colors', 'Skip graph color configuration')
     .option('--bases', 'Generate Obsidian Bases views for task management')
     .option('--no-bases', 'Skip Bases file generation')
-    .option('--canvas [template]', 'Generate canvas dashboard (default, brain, project-board, sprint)')
+    .option('--canvas', 'Generate vault status canvas dashboard')
     .option('--no-canvas', 'Skip canvas generation')
     .option('--theme <style>', 'Graph color theme (neural, minimal, none)', 'neural')
     .option('--force', 'Overwrite existing configuration files')

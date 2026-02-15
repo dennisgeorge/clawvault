@@ -50,7 +50,7 @@ describe('register-task-commands', () => {
     ]));
   });
 
-  it('adds canvas template and listing flags', () => {
+  it('adds simplified canvas flags', () => {
     const program = new Command();
     registerTaskCommands(program, {
       chalk: chalkStub,
@@ -62,9 +62,8 @@ describe('register-task-commands', () => {
 
     const optionFlags = canvasCommand?.options.map((option) => option.flags) ?? [];
     expect(optionFlags).toEqual(expect.arrayContaining([
-      '--template <id>',
-      '--list-templates',
-      '--project <project>'
+      '-v, --vault <path>',
+      '--output <path>'
     ]));
   });
 });

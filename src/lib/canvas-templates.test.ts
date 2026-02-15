@@ -2,44 +2,23 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import {
-  getTemplate,
-  listTemplates,
-  registerTemplate,
-  type CanvasTemplate
-} from './canvas-templates.js';
-import type { Canvas } from './canvas-layout.js';
-import { createTask, updateTask } from './task-utils.js';
+import { generateCanvas } from './canvas-templates.js';
 import { buildOrUpdateMemoryGraphIndex } from './memory-graph.js';
-import { generateCanvas } from '../commands/canvas.js';
+import { createTask, completeTask, updateTask } from './task-utils.js';
+import { ensureLedgerStructure, getObservationPath } from './ledger.js';
 
 function makeTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'clawvault-canvas-templates-'));
 }
 
-function canonicalizeCanvas(canvas: Canvas): {
-  nodes: Array<Omit<Canvas['nodes'][number], 'id'>>;
-  edges: Array<Omit<Canvas['edges'][number], 'id' | 'fromNode' | 'toNode'> & {
-    fromNodeIndex: number;
-    toNodeIndex: number;
-  }>;
-} {
-  const indexByNodeId = new Map<string, number>();
-  canvas.nodes.forEach((node, index) => {
-    indexByNodeId.set(node.id, index);
-  });
-
-  const nodes = canvas.nodes.map(({ id: _id, ...rest }) => rest);
-  const edges = canvas.edges.map(({ id: _id, fromNode, toNode, ...rest }) => ({
-    ...rest,
-    fromNodeIndex: indexByNodeId.get(fromNode) ?? -1,
-    toNodeIndex: indexByNodeId.get(toNode) ?? -1
-  }));
-
-  return { nodes, edges };
+function getCanvasText(canvas: { nodes: Array<{ type: string; text?: string }> }): string {
+  return canvas.nodes
+    .filter((node) => node.type === 'text')
+    .map((node) => node.text ?? '')
+    .join('\n');
 }
 
-describe('canvas templates', () => {
+describe('canvas generator', () => {
   let tempDir: string;
 
   beforeEach(() => {
@@ -51,90 +30,61 @@ describe('canvas templates', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('lists built-in templates', () => {
-    const templateIds = listTemplates().map((template) => template.id);
-    expect(templateIds).toEqual(expect.arrayContaining([
-      'default',
-      'project-board',
-      'brain',
-      'sprint'
+  it('generates a valid single canvas layout', () => {
+    const canvas = generateCanvas(tempDir);
+    const groupLabels = canvas.nodes
+      .filter((node) => node.type === 'group')
+      .map((node) => node.label);
+
+    expect(Array.isArray(canvas.nodes)).toBe(true);
+    expect(Array.isArray(canvas.edges)).toBe(true);
+    expect(groupLabels).toEqual(expect.arrayContaining([
+      'Vault Status',
+      'Recent Observations',
+      'Graph Stats'
     ]));
   });
 
-  it('registers and resolves templates from registry', () => {
-    const initialCount = listTemplates().length;
-    const customTemplateId = `unit-template-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
-    const customTemplate: CanvasTemplate = {
-      id: customTemplateId,
-      name: 'Unit Test Template',
-      description: 'Used for template registry tests.',
-      generate: () => ({ nodes: [], edges: [] })
-    };
+  it('shows tasks grouped by status', () => {
+    createTask(tempDir, 'Open task');
+    const inProgress = createTask(tempDir, 'In progress task');
+    const blocked = createTask(tempDir, 'Blocked task');
+    const done = createTask(tempDir, 'Done task');
 
-    registerTemplate(customTemplate);
+    updateTask(tempDir, inProgress.slug, { status: 'in-progress' });
+    updateTask(tempDir, blocked.slug, { status: 'blocked', blocked_by: 'api-outage' });
+    completeTask(tempDir, done.slug);
 
-    expect(getTemplate(customTemplateId)).toBeDefined();
-    expect(listTemplates().length).toBe(initialCount + 1);
+    const text = getCanvasText(generateCanvas(tempDir));
+    expect(text).toContain('Tasks by Status');
+    expect(text).toContain('In Progress (1)');
+    expect(text).toContain('Open (1)');
+    expect(text).toContain('Blocked (1)');
+    expect(text).toContain('Done (1)');
   });
 
-  it('generates valid canvas JSON from each built-in template', async () => {
-    // Seed graph data to exercise the brain template path.
+  it('includes recent observations in the output', () => {
+    ensureLedgerStructure(tempDir);
+    const observationPath = getObservationPath(tempDir, '2026-02-14');
+    fs.mkdirSync(path.dirname(observationPath), { recursive: true });
+    fs.writeFileSync(observationPath, '# Daily Sync\n\nCaptured insights.');
+
+    const text = getCanvasText(generateCanvas(tempDir));
+    expect(text).toContain('Total days: 1');
+    expect(text).toContain('2026-02-14: Daily Sync');
+  });
+
+  it('includes graph stats when graph index is available', async () => {
     fs.mkdirSync(path.join(tempDir, 'projects'), { recursive: true });
     fs.mkdirSync(path.join(tempDir, 'people'), { recursive: true });
     fs.writeFileSync(path.join(tempDir, 'projects', 'alpha.md'), '# Alpha\n[[people/alice]]\n');
     fs.writeFileSync(path.join(tempDir, 'people', 'alice.md'), '# Alice\n[[projects/alpha]]\n');
     await buildOrUpdateMemoryGraphIndex(tempDir, { forceFull: true });
 
-    for (const templateId of ['default', 'project-board', 'brain', 'sprint']) {
-      const template = getTemplate(templateId);
-      expect(template).toBeDefined();
-      const canvas = template!.generate(tempDir, { project: 'alpha' });
-      expect(Array.isArray(canvas.nodes)).toBe(true);
-      expect(Array.isArray(canvas.edges)).toBe(true);
-    }
-  });
-
-  it('filters project-board tasks by project', () => {
-    const alphaTask = createTask(tempDir, 'Alpha Task', { project: 'alpha', priority: 'high' });
-    const betaTask = createTask(tempDir, 'Beta Task', { project: 'beta', priority: 'critical' });
-    updateTask(tempDir, betaTask.slug, { status: 'blocked', blocked_by: alphaTask.slug });
-
-    const projectBoard = getTemplate('project-board');
-    expect(projectBoard).toBeDefined();
-    const canvas = projectBoard!.generate(tempDir, { project: 'alpha' });
-
-    // Project-board uses text cards — check that alpha task title appears and beta doesn't
-    const allText = canvas.nodes.map((n) => n.text || '').join('\n');
-    expect(allText).toContain('Alpha Task');
-    expect(allText).not.toContain('Beta Task');
-  });
-
-  it('renders brain template with architecture sections', async () => {
-    fs.mkdirSync(path.join(tempDir, 'projects'), { recursive: true });
-    fs.mkdirSync(path.join(tempDir, 'decisions'), { recursive: true });
-    fs.writeFileSync(path.join(tempDir, 'projects', 'alpha.md'), '# Alpha\n[[decisions/stack-choice]]');
-    fs.writeFileSync(path.join(tempDir, 'decisions', 'stack-choice.md'), '# Stack Choice\n[[projects/alpha]]');
-    await buildOrUpdateMemoryGraphIndex(tempDir, { forceFull: true });
-
-    const brainTemplate = getTemplate('brain');
-    const canvas = brainTemplate!.generate(tempDir, {});
-    // Brain architecture should have groups for hippocampus, direction, agent workspace, graph
-    const groupLabels = canvas.nodes.filter((n) => n.type === 'group').map((n) => n.label || '');
-    expect(groupLabels.some((l) => l.includes('HIPPOCAMPUS'))).toBe(true);
-    expect(groupLabels.some((l) => l.includes('DIRECTION'))).toBe(true);
-    expect(groupLabels.some((l) => l.includes('AGENT'))).toBe(true);
-    expect(groupLabels.some((l) => l.includes('GRAPH'))).toBe(true);
-  });
-
-  it('keeps default template output aligned with generateCanvas output', () => {
-    createTask(tempDir, 'Default Template Task');
-
-    const defaultTemplate = getTemplate('default');
-    expect(defaultTemplate).toBeDefined();
-
-    const fromCommand = generateCanvas(tempDir);
-    const fromTemplate = defaultTemplate!.generate(tempDir, {});
-
-    expect(canonicalizeCanvas(fromTemplate)).toEqual(canonicalizeCanvas(fromCommand));
+    const text = getCanvasText(generateCanvas(tempDir));
+    expect(text).toContain('Graph Stats');
+    expect(text).toContain('Nodes:');
+    expect(text).toContain('Edges:');
+    expect(text).toContain('Node types:');
   });
 });

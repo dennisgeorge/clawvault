@@ -10,7 +10,7 @@ const CONFIG_FILE = '.clawvault.json';
 export interface SetupOptions {
   graphColors?: boolean;
   bases?: boolean;
-  canvas?: boolean | string;
+  canvas?: boolean;
   theme?: 'neural' | 'minimal' | 'none';
   force?: boolean;
   vault?: string;
@@ -366,10 +366,9 @@ export async function setupCommand(options: SetupOptions = {}): Promise<void> {
 
   // Canvas
   if (doCanvas) {
-    const templateId = typeof options.canvas === 'string' ? options.canvas : 'default';
     try {
       const { canvasCommand } = await import('./canvas.js');
-      await canvasCommand(target.vaultPath, { template: templateId });
+      await canvasCommand(target.vaultPath);
     } catch (err) {
       console.log(`⚠ Canvas generation failed: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -396,7 +395,7 @@ export async function setupCommand(options: SetupOptions = {}): Promise<void> {
   console.log('\nCustomize further:');
   console.log('  clawvault setup --theme neural     # Neural neural graph colors');
   console.log('  clawvault setup --theme minimal        # Subtle category colors');
-  console.log('  clawvault setup --canvas brain          # Generate brain architecture canvas');
+  console.log('  clawvault setup --canvas                # Generate vault status canvas');
   console.log('  clawvault setup --no-bases --no-graph-colors  # Structure only');
   console.log('  clawvault setup --force                 # Overwrite existing configs');
 }
