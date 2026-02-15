@@ -18,7 +18,10 @@ export type ManagedConfigKey =
   | 'observe.provider'
   | 'context.maxResults'
   | 'context.defaultProfile'
-  | 'graph.maxHops';
+  | 'graph.maxHops'
+  | 'inject.maxResults'
+  | 'inject.useLlm'
+  | 'inject.scope';
 
 export interface RouteRule {
   pattern: string;
@@ -41,6 +44,11 @@ export interface ManagedDefaults {
   graph: {
     maxHops: number;
   };
+  inject: {
+    maxResults: number;
+    useLlm: boolean;
+    scope: string[];
+  };
   routes: RouteRule[];
 }
 
@@ -52,7 +60,10 @@ export const SUPPORTED_CONFIG_KEYS: ManagedConfigKey[] = [
   'observe.provider',
   'context.maxResults',
   'context.defaultProfile',
-  'graph.maxHops'
+  'graph.maxHops',
+  'inject.maxResults',
+  'inject.useLlm',
+  'inject.scope'
 ];
 
 const DEFAULT_THEME: Theme = 'none';
@@ -61,6 +72,9 @@ const DEFAULT_OBSERVE_PROVIDER: ObserveProvider = 'gemini';
 const DEFAULT_CONTEXT_MAX_RESULTS = 5;
 const DEFAULT_CONTEXT_PROFILE: ContextProfile = 'default';
 const DEFAULT_GRAPH_MAX_HOPS = 2;
+const DEFAULT_INJECT_MAX_RESULTS = 8;
+const DEFAULT_INJECT_USE_LLM = true;
+const DEFAULT_INJECT_SCOPE = ['global'];
 
 function configPathFor(vaultPath: string): string {
   return path.join(path.resolve(vaultPath), CONFIG_FILE);
@@ -108,6 +122,22 @@ function asPositiveInteger(value: unknown): number | null {
     const parsed = Number.parseInt(value, 10);
     if (Number.isInteger(parsed) && parsed > 0) {
       return parsed;
+    }
+  }
+  return null;
+}
+
+function asBoolean(value: unknown): boolean | null {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'yes', 'on'].includes(normalized)) {
+      return true;
+    }
+    if (['false', '0', 'no', 'off'].includes(normalized)) {
+      return false;
     }
   }
   return null;
@@ -223,6 +253,11 @@ function withDefaults(vaultPath: string, config: Record<string, unknown>): Recor
     graph: {
       maxHops: DEFAULT_GRAPH_MAX_HOPS
     },
+    inject: {
+      maxResults: DEFAULT_INJECT_MAX_RESULTS,
+      useLlm: DEFAULT_INJECT_USE_LLM,
+      scope: [...DEFAULT_INJECT_SCOPE]
+    },
     routes: []
   };
 
@@ -239,6 +274,11 @@ function withDefaults(vaultPath: string, config: Record<string, unknown>): Recor
   const graphRecord = (
     config.graph && typeof config.graph === 'object' && !Array.isArray(config.graph)
       ? config.graph
+      : {}
+  ) as Record<string, unknown>;
+  const injectRecord = (
+    config.inject && typeof config.inject === 'object' && !Array.isArray(config.inject)
+      ? config.inject
       : {}
   ) as Record<string, unknown>;
 
@@ -266,6 +306,20 @@ function withDefaults(vaultPath: string, config: Record<string, unknown>): Recor
     graph: {
       ...graphRecord,
       maxHops: asPositiveInteger(graphRecord.maxHops) ?? defaults.graph.maxHops
+    },
+    inject: {
+      ...injectRecord,
+      maxResults: asPositiveInteger(injectRecord.maxResults) ?? defaults.inject.maxResults,
+      useLlm: asBoolean(injectRecord.useLlm) ?? defaults.inject.useLlm,
+      scope: (
+        asStringArray(injectRecord.scope)
+        ?? (
+          typeof injectRecord.scope === 'string'
+            ? injectRecord.scope.split(',').map((entry) => entry.trim()).filter(Boolean)
+            : null
+        )
+        ?? [...defaults.inject.scope]
+      )
     },
     routes: normalizeRoutes(config.routes)
   };
@@ -346,6 +400,36 @@ function coerceManagedValue(key: ManagedConfigKey, value: unknown): unknown {
     return parsed;
   }
 
+  if (key === 'inject.maxResults') {
+    const parsed = asPositiveInteger(value);
+    if (parsed === null) {
+      throw new Error('Config key "inject.maxResults" must be a positive integer.');
+    }
+    return parsed;
+  }
+
+  if (key === 'inject.useLlm') {
+    const parsed = asBoolean(value);
+    if (parsed === null) {
+      throw new Error('Config key "inject.useLlm" must be a boolean.');
+    }
+    return parsed;
+  }
+
+  if (key === 'inject.scope') {
+    const normalized = Array.isArray(value)
+      ? value
+        .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+        .filter(Boolean)
+      : typeof value === 'string'
+        ? value.split(',').map((entry) => entry.trim()).filter(Boolean)
+        : [];
+    if (normalized.length === 0) {
+      throw new Error('Config key "inject.scope" must be a non-empty string list.');
+    }
+    return normalized;
+  }
+
   throw new Error(`Unsupported config key: ${key}`);
 }
 
@@ -407,6 +491,11 @@ export function resetConfig(vaultPath: string): Record<string, unknown> {
   };
   document.graph = {
     maxHops: DEFAULT_GRAPH_MAX_HOPS
+  };
+  document.inject = {
+    maxResults: DEFAULT_INJECT_MAX_RESULTS,
+    useLlm: DEFAULT_INJECT_USE_LLM,
+    scope: [...DEFAULT_INJECT_SCOPE]
   };
   document.routes = [];
   if (typeof document.lastUpdated === 'string') {

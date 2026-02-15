@@ -168,6 +168,46 @@ export function registerQueryCommands(
       }
     });
 
+  // === INJECT ===
+  program
+    .command('inject <message>')
+    .description('Inject relevant rules, decisions, and preferences for prompt context')
+    .option('-n, --max-results <n>', 'Maximum injected items')
+    .option('--scope <scope>', 'Comma-separated scope filter override')
+    .option('--enable-llm', 'Enable optional LLM fuzzy intent matching')
+    .option('--disable-llm', 'Disable optional LLM fuzzy intent matching')
+    .option('--format <format>', 'Output format (markdown|json)', 'markdown')
+    .option('--model <model>', 'Override LLM model when fuzzy matching is enabled')
+    .option('-v, --vault <path>', 'Vault path')
+    .action(async (message, options) => {
+      try {
+        const parsedMaxResults = options.maxResults
+          ? Number.parseInt(options.maxResults, 10)
+          : undefined;
+        if (options.maxResults && (!Number.isFinite(parsedMaxResults) || parsedMaxResults <= 0)) {
+          throw new Error(`Invalid --max-results value: ${options.maxResults}`);
+        }
+        const useLlm = options.enableLlm
+          ? true
+          : options.disableLlm
+            ? false
+            : undefined;
+
+        const { injectCommand } = await import('../dist/commands/inject.js');
+        await injectCommand(message, {
+          vaultPath: resolveVaultPath(options.vault),
+          maxResults: parsedMaxResults,
+          useLlm,
+          scope: options.scope,
+          format: options.format === 'json' ? 'json' : 'markdown',
+          model: options.model
+        });
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err.message}`));
+        process.exit(1);
+      }
+    });
+
   // === OBSERVE ===
   program
     .command('observe')

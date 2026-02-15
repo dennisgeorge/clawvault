@@ -933,6 +933,7 @@ clawvault wake                        # restore context on startup
       facts: 'Raw information, data points, things that are true',
       feelings: 'Emotional states, reactions, energy levels',
       decisions: 'Choices made with context and reasoning',
+      rules: 'Injectable operational constraints, guardrails, and runbooks',
       lessons: 'What I learned, insights, patterns observed',
       commitments: 'Promises, goals, obligations to fulfill',
       preferences: 'Likes, dislikes, how I want things',

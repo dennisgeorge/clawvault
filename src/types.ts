@@ -113,6 +113,7 @@ export interface SyncResult {
 export type Category = 
   | 'preferences'
   | 'decisions'
+  | 'rules'
   | 'patterns'
   | 'people'
   | 'projects'
@@ -128,6 +129,7 @@ export type Category =
   | string;
 
 export const DEFAULT_CATEGORIES: Category[] = [
+  'rules',
   'preferences',
   'decisions',
   'patterns',

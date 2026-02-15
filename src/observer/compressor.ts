@@ -7,6 +7,7 @@ import {
   type ParsedObservationRecord,
   type ObservationType
 } from '../lib/observation-format.js';
+import { requestLlmCompletion, resolveLlmProvider } from '../lib/llm-provider.js';
 
 export interface CompressorOptions {
   model?: string;
@@ -41,15 +42,19 @@ export class Compressor {
     }
 
     const prompt = this.buildPrompt(cleanedMessages, existingObservations);
-    const provider = this.resolveProvider();
+    const provider = resolveLlmProvider();
 
     if (provider) {
       try {
-        const llmOutput = provider === 'anthropic'
-          ? await this.callAnthropic(prompt)
-          : provider === 'gemini'
-          ? await this.callGemini(prompt)
-          : await this.callOpenAI(prompt);
+        const llmOutput = await requestLlmCompletion({
+          provider,
+          prompt,
+          model: this.model,
+          temperature: 0.1,
+          maxTokens: 1400,
+          fetchImpl: this.fetchImpl,
+          systemPrompt: 'You transform session logs into concise observations.'
+        });
         const normalized = this.normalizeLlmOutput(llmOutput);
         if (normalized) {
           return this.mergeObservations(existingObservations, normalized);
@@ -61,20 +66,6 @@ export class Compressor {
 
     const fallback = this.fallbackCompression(cleanedMessages);
     return this.mergeObservations(existingObservations, fallback);
-  }
-
-  private resolveProvider(): 'anthropic' | 'openai' | 'gemini' | null {
-    if (process.env.CLAWVAULT_NO_LLM) return null;
-    if (process.env.ANTHROPIC_API_KEY) {
-      return 'anthropic';
-    }
-    if (process.env.OPENAI_API_KEY) {
-      return 'openai';
-    }
-    if (process.env.GEMINI_API_KEY) {
-      return 'gemini';
-    }
-    return null;
   }
 
   private buildPrompt(messages: string[], existingObservations: string): string {
@@ -133,103 +124,6 @@ export class Compressor {
       '',
       'Return only the updated observation markdown.'
     ].join('\n');
-  }
-
-  private async callAnthropic(prompt: string): Promise<string> {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return '';
-    }
-
-    const response = await this.fetchImpl('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: this.model ?? 'claude-3-5-haiku-latest',
-        temperature: 0.1,
-        max_tokens: 1400,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Anthropic request failed (${response.status})`);
-    }
-
-    const payload = await response.json() as {
-      content?: Array<{ type: string; text?: string }>;
-    };
-
-    return payload.content
-      ?.filter((part) => part.type === 'text' && part.text)
-      .map((part) => part.text as string)
-      .join('\n')
-      .trim() ?? '';
-  }
-
-  private async callOpenAI(prompt: string): Promise<string> {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return '';
-    }
-
-    const response = await this.fetchImpl('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: this.model ?? 'gpt-4o-mini',
-        temperature: 0.1,
-        messages: [
-          { role: 'system', content: 'You transform session logs into concise observations.' },
-          { role: 'user', content: prompt }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI request failed (${response.status})`);
-    }
-
-    const payload = await response.json() as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    return payload.choices?.[0]?.message?.content?.trim() ?? '';
-  }
-
-  private async callGemini(prompt: string): Promise<string> {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return '';
-    }
-
-    const model = this.model ?? 'gemini-2.0-flash';
-    const response = await this.fetchImpl(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 1400 }
-        })
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Gemini request failed (${response.status})`);
-    }
-
-    const payload = await response.json() as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
-    return payload.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
   }
 
   private normalizeLlmOutput(output: string): string {

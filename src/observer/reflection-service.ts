@@ -13,6 +13,7 @@ import {
   parseObservationMarkdown,
   type ObservationType
 } from '../lib/observation-format.js';
+import { requestLlmCompletion, resolveLlmProvider } from '../lib/llm-provider.js';
 import { archiveObservations, type ArchiveObservationsResult } from './archive.js';
 
 export interface ReflectOptions {
@@ -263,90 +264,11 @@ function promoteWeekRecords(records: Array<{ date: string; type: ObservationType
   return promoted;
 }
 
-function resolveProvider(): 'anthropic' | 'openai' | 'gemini' | null {
-  if (process.env.CLAWVAULT_NO_LLM) return null;
-  if (process.env.ANTHROPIC_API_KEY) return 'anthropic';
-  if (process.env.OPENAI_API_KEY) return 'openai';
-  if (process.env.GEMINI_API_KEY) return 'gemini';
-  return null;
-}
-
-async function callOpenAI(prompt: string, model?: string): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return '';
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: model ?? 'gpt-4o-mini',
-      temperature: 0.1,
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
-  if (!response.ok) return '';
-  const payload = await response.json() as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  return payload.choices?.[0]?.message?.content?.trim() ?? '';
-}
-
-async function callAnthropic(prompt: string, model?: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return '';
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-      model: model ?? 'claude-3-5-haiku-latest',
-      max_tokens: 1200,
-      temperature: 0.1,
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
-  if (!response.ok) return '';
-  const payload = await response.json() as {
-    content?: Array<{ type: string; text?: string }>;
-  };
-  return payload.content
-    ?.filter((entry) => entry.type === 'text' && entry.text)
-    .map((entry) => entry.text as string)
-    .join('\n')
-    .trim() ?? '';
-}
-
-async function callGemini(prompt: string, model?: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return '';
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model ?? 'gemini-2.0-flash'}:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 1200 }
-      })
-    }
-  );
-  if (!response.ok) return '';
-  const payload = await response.json() as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  return payload.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
-}
-
 async function maybeGenerateLlmReflection(
   weekKey: string,
   sections: ReflectionSections
 ): Promise<string | null> {
-  const provider = resolveProvider();
+  const provider = resolveLlmProvider();
   if (!provider) {
     return null;
   }
@@ -367,11 +289,12 @@ async function maybeGenerateLlmReflection(
   ].join('\n');
 
   try {
-    const output = provider === 'anthropic'
-      ? await callAnthropic(prompt)
-      : provider === 'gemini'
-        ? await callGemini(prompt)
-        : await callOpenAI(prompt);
+    const output = await requestLlmCompletion({
+      provider,
+      prompt,
+      temperature: 0.1,
+      maxTokens: 1200
+    });
     if (!output.trim()) {
       return null;
     }

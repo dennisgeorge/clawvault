@@ -49,7 +49,7 @@ describe('CLI command registration modules', () => {
     });
 
     const names = listCommandNames(program);
-    expect(names).toEqual(expect.arrayContaining(['search', 'vsearch', 'context', 'observe', 'reflect', 'session-recap']));
+    expect(names).toEqual(expect.arrayContaining(['search', 'vsearch', 'context', 'inject', 'observe', 'reflect', 'session-recap']));
 
     const contextCommand = program.commands.find((command) => command.name() === 'context');
     const profileOption = contextCommand?.options.find((option) => option.flags.includes('--profile <profile>'));

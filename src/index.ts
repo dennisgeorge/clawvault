@@ -27,6 +27,7 @@
 import * as fs from 'fs';
 import type { Command } from 'commander';
 import { registerContextCommand } from './commands/context.js';
+import { registerInjectCommand } from './commands/inject.js';
 import { registerObserveCommand } from './commands/observe.js';
 import { registerReflectCommand } from './commands/reflect.js';
 import { registerTailscaleCommands } from './commands/tailscale.js';
@@ -66,6 +67,12 @@ export {
   registerContextCommand
 } from './commands/context.js';
 export type { ContextFormat, ContextProfile, ContextProfileOption, ContextOptions, ContextEntry, ContextResult } from './commands/context.js';
+export {
+  injectCommand,
+  buildInjectionResult,
+  registerInjectCommand
+} from './commands/inject.js';
+export type { InjectFormat, InjectCommandOptions } from './commands/inject.js';
 export { observeCommand, registerObserveCommand } from './commands/observe.js';
 export type { ObserveCommandOptions } from './commands/observe.js';
 export { reflectCommand, registerReflectCommand } from './commands/reflect.js';
@@ -138,6 +145,22 @@ export {
   resolveContextProfile
 } from './lib/context-profile.js';
 export type { ContextProfileInput, ResolvedContextProfile } from './lib/context-profile.js';
+export {
+  indexInjectableItems,
+  deterministicInjectMatches,
+  runPromptInjection
+} from './lib/inject-utils.js';
+export type {
+  InjectableItem,
+  InjectMatchSource,
+  InjectMatchReason,
+  InjectMatch,
+  InjectResult,
+  InjectRuntimeOptions,
+  InjectSourceCategory
+} from './lib/inject-utils.js';
+export { resolveLlmProvider, requestLlmCompletion } from './lib/llm-provider.js';
+export type { LlmProvider, LlmCompletionOptions } from './lib/llm-provider.js';
 export type {
   MemoryGraph,
   MemoryGraphNode,
@@ -276,6 +299,7 @@ export const VERSION = readPackageVersion();
 
 export function registerCommanderCommands(program: Command): Command {
   registerContextCommand(program);
+  registerInjectCommand(program);
   registerObserveCommand(program);
   registerReflectCommand(program);
   registerTailscaleCommands(program);

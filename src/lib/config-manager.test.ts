@@ -43,6 +43,9 @@ describe('config-manager', () => {
       setConfigValue(vaultPath, 'context.maxResults', '11');
       setConfigValue(vaultPath, 'context.defaultProfile', 'planning');
       setConfigValue(vaultPath, 'graph.maxHops', '4');
+      setConfigValue(vaultPath, 'inject.maxResults', '9');
+      setConfigValue(vaultPath, 'inject.useLlm', 'false');
+      setConfigValue(vaultPath, 'inject.scope', 'project,incident');
 
       expect(getConfigValue(vaultPath, 'name')).toBe('clawvault-dev');
       expect(getConfigValue(vaultPath, 'categories')).toEqual(['people', 'projects', 'decisions']);
@@ -52,6 +55,9 @@ describe('config-manager', () => {
       expect(getConfigValue(vaultPath, 'context.maxResults')).toBe(11);
       expect(getConfigValue(vaultPath, 'context.defaultProfile')).toBe('planning');
       expect(getConfigValue(vaultPath, 'graph.maxHops')).toBe(4);
+      expect(getConfigValue(vaultPath, 'inject.maxResults')).toBe(9);
+      expect(getConfigValue(vaultPath, 'inject.useLlm')).toBe(false);
+      expect(getConfigValue(vaultPath, 'inject.scope')).toEqual(['project', 'incident']);
 
       const listed = listConfig(vaultPath);
       expect(listed).toMatchObject({
@@ -68,6 +74,11 @@ describe('config-manager', () => {
         },
         graph: {
           maxHops: 4
+        },
+        inject: {
+          maxResults: 9,
+          useLlm: false,
+          scope: ['project', 'incident']
         }
       });
     } finally {
@@ -98,6 +109,11 @@ describe('config-manager', () => {
         },
         graph: {
           maxHops: 2
+        },
+        inject: {
+          maxResults: 8,
+          useLlm: true,
+          scope: ['global']
         },
         routes: []
       });
