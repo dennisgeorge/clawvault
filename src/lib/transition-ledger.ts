@@ -44,6 +44,29 @@ function getTodayLedgerPath(vaultPath: string): string {
   return path.join(getLedgerDir(vaultPath), `${date}.jsonl`);
 }
 
+const RETRYABLE_APPEND_CODES = new Set(['ENOENT', 'EAGAIN', 'EBUSY']);
+const MAX_APPEND_RETRIES = 2;
+
+function asErrno(error: unknown): NodeJS.ErrnoException | null {
+  if (!error || typeof error !== 'object') {
+    return null;
+  }
+  return error as NodeJS.ErrnoException;
+}
+
+function formatLedgerWriteError(filePath: string, error: unknown): Error {
+  const errno = asErrno(error);
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (errno?.code === 'ENOSPC') {
+    return new Error(`Failed to write transition ledger at ${filePath}: no space left on device.`);
+  }
+  if (errno?.code === 'EACCES' || errno?.code === 'EPERM') {
+    return new Error(`Failed to write transition ledger at ${filePath}: permission denied.`);
+  }
+  return new Error(`Failed to write transition ledger at ${filePath}: ${message}`);
+}
+
 /**
  * Append a transition event to the ledger
  */
@@ -52,11 +75,37 @@ export function appendTransition(
   event: TransitionEvent
 ): void {
   const ledgerDir = getLedgerDir(vaultPath);
-  if (!fs.existsSync(ledgerDir)) {
+  try {
     fs.mkdirSync(ledgerDir, { recursive: true });
+  } catch (error) {
+    throw formatLedgerWriteError(ledgerDir, error);
   }
+
   const filePath = getTodayLedgerPath(vaultPath);
-  fs.appendFileSync(filePath, JSON.stringify(event) + '\n');
+  const payload = JSON.stringify(event) + '\n';
+
+  for (let attempt = 0; attempt <= MAX_APPEND_RETRIES; attempt += 1) {
+    try {
+      fs.appendFileSync(filePath, payload);
+      return;
+    } catch (error) {
+      const errno = asErrno(error);
+      const code = errno?.code;
+
+      if (code === 'ENOENT') {
+        try {
+          fs.mkdirSync(ledgerDir, { recursive: true });
+        } catch (mkdirError) {
+          throw formatLedgerWriteError(filePath, mkdirError);
+        }
+      }
+
+      if (code && RETRYABLE_APPEND_CODES.has(code) && attempt < MAX_APPEND_RETRIES) {
+        continue;
+      }
+      throw formatLedgerWriteError(filePath, error);
+    }
+  }
 }
 
 /**
@@ -91,15 +140,25 @@ export function readAllTransitions(vaultPath: string): TransitionEvent[] {
   const ledgerDir = getLedgerDir(vaultPath);
   if (!fs.existsSync(ledgerDir)) return [];
 
-  const files = fs.readdirSync(ledgerDir)
-    .filter(f => f.endsWith('.jsonl'))
-    .sort();
+  let files: string[] = [];
+  try {
+    files = fs.readdirSync(ledgerDir)
+      .filter(f => f.endsWith('.jsonl'))
+      .sort();
+  } catch {
+    return [];
+  }
 
   const events: TransitionEvent[] = [];
   for (const file of files) {
-    const lines = fs.readFileSync(path.join(ledgerDir, file), 'utf-8')
-      .split('\n')
-      .filter(l => l.trim());
+    let lines: string[] = [];
+    try {
+      lines = fs.readFileSync(path.join(ledgerDir, file), 'utf-8')
+        .split('\n')
+        .filter(l => l.trim());
+    } catch {
+      continue;
+    }
     for (const line of lines) {
       try {
         events.push(JSON.parse(line));

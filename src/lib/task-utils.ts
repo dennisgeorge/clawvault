@@ -6,6 +6,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import matter from 'gray-matter';
+import {
+  appendTransition,
+  buildTransitionEvent,
+  countBlockedTransitions,
+  isRegression,
+} from './transition-ledger.js';
 
 // Task status types
 export type TaskStatus = 'open' | 'in-progress' | 'blocked' | 'done';
@@ -75,6 +81,12 @@ export interface TaskFilterOptions {
 export interface BacklogFilterOptions {
   project?: string;
   source?: string;
+}
+
+export interface TaskTransitionOptions {
+  skipTransition?: boolean;
+  confidence?: number;
+  reason?: string | null;
 }
 
 /**
@@ -157,6 +169,94 @@ function parseDueDate(value?: string): number | null {
 function startOfToday(): number {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+}
+
+const VALID_TASK_STATUSES = new Set<TaskStatus>([
+  'open',
+  'in-progress',
+  'blocked',
+  'done'
+]);
+
+function isTaskStatus(value: unknown): value is TaskStatus {
+  return typeof value === 'string' && VALID_TASK_STATUSES.has(value as TaskStatus);
+}
+
+function persistTaskFrontmatter(task: Task, frontmatter: TaskFrontmatter): void {
+  fs.writeFileSync(task.path, matter.stringify(task.content, frontmatter));
+}
+
+function resolveStatusTransition(
+  previousStatus: unknown,
+  nextStatus: unknown
+): { fromStatus: TaskStatus; toStatus: TaskStatus } | null {
+  if (!isTaskStatus(previousStatus) || !isTaskStatus(nextStatus)) {
+    return null;
+  }
+  if (previousStatus === nextStatus) {
+    return null;
+  }
+  return { fromStatus: previousStatus, toStatus: nextStatus };
+}
+
+interface LogStatusTransitionParams {
+  vaultPath: string;
+  task: Task;
+  fromStatus: TaskStatus;
+  toStatus: TaskStatus;
+  frontmatter: TaskFrontmatter;
+  options: Pick<TaskTransitionOptions, 'confidence' | 'reason'>;
+}
+
+function logStatusTransition({
+  vaultPath,
+  task,
+  fromStatus,
+  toStatus,
+  frontmatter,
+  options,
+}: LogStatusTransitionParams): TaskFrontmatter {
+  const normalizedReason = typeof options.reason === 'string' ? options.reason.trim() : '';
+  const reason = normalizedReason || (isRegression(fromStatus, toStatus) ? `regression: ${fromStatus} -> ${toStatus}` : undefined);
+
+  const event = buildTransitionEvent(task.slug, fromStatus, toStatus, {
+    confidence: options.confidence,
+    reason,
+  });
+  try {
+    appendTransition(vaultPath, event);
+  } catch {
+    // Transition logging is best-effort; task updates should still succeed.
+    return frontmatter;
+  }
+
+  if (toStatus !== 'blocked' || frontmatter.escalation) {
+    return frontmatter;
+  }
+
+  // Escalate tasks that have been blocked 3+ times.
+  let blockedCount = 0;
+  try {
+    blockedCount = countBlockedTransitions(vaultPath, task.slug);
+  } catch {
+    return frontmatter;
+  }
+
+  if (blockedCount < 3) {
+    return frontmatter;
+  }
+
+  const escalatedFrontmatter: TaskFrontmatter = {
+    ...frontmatter,
+    escalation: true,
+  };
+
+  try {
+    persistTaskFrontmatter(task, escalatedFrontmatter);
+    return escalatedFrontmatter;
+  } catch {
+    return frontmatter;
+  }
 }
 
 /**
@@ -416,15 +516,22 @@ export function updateTask(
     estimate?: string | null;
     parent?: string | null;
     depends_on?: string[] | null;
-  }
+  },
+  options: TaskTransitionOptions = {}
 ): Task {
   const task = readTask(vaultPath, slug);
   if (!task) {
     throw new Error(`Task not found: ${slug}`);
   }
 
+  if (updates.status !== undefined && !isTaskStatus(updates.status)) {
+    throw new Error(`Invalid task status: ${String(updates.status)}`);
+  }
+
+  const previousStatus = task.frontmatter.status;
+
   const now = new Date().toISOString();
-  const newFrontmatter: TaskFrontmatter = {
+  let newFrontmatter: TaskFrontmatter = {
     ...task.frontmatter,
     updated: now
   };
@@ -568,12 +675,31 @@ export function updateTask(
     } else {
       newFrontmatter.blocked_by = updates.blocked_by;
     }
-  } else if (updates.status && updates.status !== 'blocked') {
+  } else if (updates.status !== undefined && updates.status !== 'blocked') {
     delete newFrontmatter.blocked_by;
   }
 
-  const fileContent = matter.stringify(task.content, newFrontmatter);
-  fs.writeFileSync(task.path, fileContent);
+  persistTaskFrontmatter(task, newFrontmatter);
+
+  const transition = options.skipTransition
+    ? null
+    : resolveStatusTransition(previousStatus, newFrontmatter.status);
+
+  if (transition) {
+    const confidence = options.confidence ?? (typeof updates.confidence === 'number' ? updates.confidence : undefined);
+    const reason = options.reason ?? updates.reason ?? null;
+    newFrontmatter = logStatusTransition({
+      vaultPath,
+      task,
+      fromStatus: transition.fromStatus,
+      toStatus: transition.toStatus,
+      frontmatter: newFrontmatter,
+      options: {
+        confidence,
+        reason,
+      },
+    });
+  }
 
   return {
     ...task,
@@ -584,30 +710,8 @@ export function updateTask(
 /**
  * Mark a task as done
  */
-export function completeTask(vaultPath: string, slug: string): Task {
-  const task = readTask(vaultPath, slug);
-  if (!task) {
-    throw new Error(`Task not found: ${slug}`);
-  }
-
-  const now = new Date().toISOString();
-  const newFrontmatter: TaskFrontmatter = {
-    ...task.frontmatter,
-    status: 'done',
-    updated: now,
-    completed: now
-  };
-
-  // Clear blocked_by when completing
-  delete newFrontmatter.blocked_by;
-
-  const fileContent = matter.stringify(task.content, newFrontmatter);
-  fs.writeFileSync(task.path, fileContent);
-
-  return {
-    ...task,
-    frontmatter: newFrontmatter
-  };
+export function completeTask(vaultPath: string, slug: string, options: TaskTransitionOptions = {}): Task {
+  return updateTask(vaultPath, slug, { status: 'done' }, options);
 }
 
 /**

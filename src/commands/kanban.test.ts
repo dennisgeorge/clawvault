@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { createTask, readTask } from '../lib/task-utils.js';
+import { readAllTransitions } from '../lib/transition-ledger.js';
 import {
   syncKanbanBoard,
   importKanbanBoard,
@@ -144,6 +145,14 @@ clawvault-group-by: status
 
       const updated = readTask(tempDir, 'move-me');
       expect(updated?.frontmatter.status).toBe('in-progress');
+
+      const transitions = readAllTransitions(tempDir);
+      expect(transitions).toHaveLength(1);
+      expect(transitions[0]).toMatchObject({
+        task_id: 'move-me',
+        from_status: 'open',
+        to_status: 'in-progress'
+      });
     });
 
     it('updates task priority from priority lanes', () => {

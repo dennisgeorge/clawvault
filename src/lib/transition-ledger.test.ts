@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -112,6 +112,17 @@ describe('transition-ledger', () => {
     });
 
     it('returns empty array for missing ledger dir', () => {
+      expect(readAllTransitions(tempDir)).toEqual([]);
+    });
+
+    it('throws a descriptive error when ledger path cannot be created', () => {
+      const ledgerRoot = path.join(tempDir, 'ledger');
+      fs.mkdirSync(ledgerRoot, { recursive: true });
+      fs.writeFileSync(path.join(ledgerRoot, 'transitions'), 'occupied');
+
+      expect(() => appendTransition(tempDir, buildTransitionEvent('broken-ledger', 'open', 'blocked')))
+        .toThrow(/Failed to write transition ledger/i);
+
       expect(readAllTransitions(tempDir)).toEqual([]);
     });
   });
