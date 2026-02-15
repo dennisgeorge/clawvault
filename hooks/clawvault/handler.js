@@ -525,7 +525,7 @@ function resolveAgentIdForEvent(event) {
   const fromEnv = sanitizeAgentId(process.env.OPENCLAW_AGENT_ID);
   if (fromEnv) return fromEnv;
 
-  return 'clawdious';
+  return 'main';
 }
 
 function runObserverCron(vaultPath, agentId, options = {}) {

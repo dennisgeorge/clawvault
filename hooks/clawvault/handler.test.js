@@ -185,7 +185,7 @@ describe('clawvault hook handler', () => {
   it('triggers active observation on heartbeat when threshold is crossed', async () => {
     const vaultPath = makeVaultFixture();
     const sessionId = 'heartbeat-session-1';
-    const openClawFixture = makeOpenClawSessionFixture('clawdious', sessionId, 70 * 1024);
+    const openClawFixture = makeOpenClawSessionFixture('main', sessionId, 70 * 1024);
     process.env.CLAWVAULT_PATH = vaultPath;
     process.env.OPENCLAW_STATE_DIR = openClawFixture.stateRoot;
 
@@ -196,7 +196,7 @@ describe('clawvault hook handler', () => {
         [sessionId]: {
           lastObservedOffset: 0,
           lastObservedAt: '2026-02-14T00:00:00.000Z',
-          sessionKey: 'agent:clawdious:main',
+          sessionKey: 'agent:main:main',
           lastFileSize: 0
         }
       }),
@@ -213,7 +213,7 @@ describe('clawvault hook handler', () => {
 
     expect(execFileSyncMock).toHaveBeenCalledWith(
       'clawvault',
-      expect.arrayContaining(['observe', '--cron', '--agent', 'clawdious']),
+      expect.arrayContaining(['observe', '--cron', '--agent', 'main']),
       expect.objectContaining({ shell: false })
     );
 

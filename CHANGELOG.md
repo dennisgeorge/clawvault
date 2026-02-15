@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.5.3] — 2026-02-15
+
+### Fixed
+- Canonicalized OpenClaw onboarding and hook setup docs around the required runtime flow: `openclaw hooks install clawvault` -> `openclaw hooks enable clawvault` -> verification with `hooks list/info/check`.
+- Removed command-surface drift in top-level docs (legacy `serve`/`peers`/`net-search`, old canvas template flags, and stale compatibility script references).
+- Clarified AGENTS.md guidance to append ClawVault workflow instructions instead of replacing existing bootstrap prompts.
+
+### Improved
+- Standardized default OpenClaw fallback agent identity to `main` in active observer and hook runtime paths for safer multi-user installs.
+- Updated hook and skill metadata/docs to align with current package/runtime behavior.
+- Simplified CI and npm script stack to executable, in-repo checks (`typecheck`, `test`, `build`) and removed references to missing compat validator scripts.
+
+### Removed
+- Removed deprecated in-repo `docs/` markdown set in favor of the external live docs source of truth.
+
+---
+
 ## [2.5.1] — 2026-02-15
 
 ### Security

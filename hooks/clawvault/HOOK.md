@@ -26,7 +26,14 @@ Integrates ClawVault's context death resilience into OpenClaw:
 npm install -g clawvault
 openclaw hooks install clawvault
 openclaw hooks enable clawvault
+
+# Verify
+openclaw hooks list --verbose
+openclaw hooks info clawvault
+openclaw hooks check
 ```
+
+After enabling, restart your OpenClaw gateway process so hook registration reloads.
 
 ## Requirements
 
@@ -66,9 +73,11 @@ Injection format:
 
 The hook accepts canonical OpenClaw events (`gateway:startup`, `gateway:heartbeat`, `command:new`, `session:start`, `compaction:memoryFlush`, `cron.weekly`) and tolerates alias payload shapes (`event`, `eventName`, `name`, `hook`, `trigger`) to remain robust across runtime wrappers.
 
-## No Configuration Needed
+## Configuration Notes
 
-Just enable the hook. It auto-detects vault path via:
+The hook auto-detects vault path via:
 
 1. `CLAWVAULT_PATH` environment variable
 2. Walking up from cwd to find `.clawvault.json`
+
+If `openclaw hooks enable clawvault` fails with hook-not-found, run `openclaw hooks install clawvault` first and verify discovery with `openclaw hooks list --verbose`.

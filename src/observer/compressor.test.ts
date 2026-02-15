@@ -221,7 +221,7 @@ describe('Compressor', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, request] = fetchMock.mock.calls[0] as [unknown, RequestInit];
     const requestUrl = typeof url === 'string' ? url : String(url);
-    const headers = new Headers(request.headers as HeadersInit);
+    const headers = new Headers(request.headers as any);
     const bodyRaw = typeof request.body === 'string' ? request.body : '{}';
     const body = JSON.parse(bodyRaw) as { model?: string };
 
@@ -263,7 +263,7 @@ describe('Compressor', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, request] = fetchMock.mock.calls[0] as [unknown, RequestInit];
     const requestUrl = typeof url === 'string' ? url : String(url);
-    const headers = new Headers(request.headers as HeadersInit);
+    const headers = new Headers(request.headers as any);
     const bodyRaw = typeof request.body === 'string' ? request.body : '{}';
     const body = JSON.parse(bodyRaw) as { model?: string };
 
@@ -304,7 +304,7 @@ describe('Compressor', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, request] = fetchMock.mock.calls[0] as [unknown, RequestInit];
     const requestUrl = typeof url === 'string' ? url : String(url);
-    const headers = new Headers(request.headers as HeadersInit);
+    const headers = new Headers(request.headers as any);
 
     expect(requestUrl).toBe('https://api.anthropic.com/v1/messages');
     expect(headers.get('x-api-key')).toBe('anthropic-test-key');

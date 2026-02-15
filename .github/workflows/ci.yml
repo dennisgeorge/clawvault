@@ -9,7 +9,7 @@ on:
   pull_request:
 
 jobs:
-  test-and-compat:
+  test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -26,30 +26,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run quality and compatibility checks
+      - name: Run quality checks
         run: npm run ci
-        env:
-          COMPAT_REPORT_DIR: ${{ runner.temp }}/compat-reports
-
-      - name: Upload compatibility reports on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: compat-reports
-          path: ${{ runner.temp }}/compat-reports
-          if-no-files-found: ignore
-
-      - name: Upload compatibility summary artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: compat-summary
-          path: |
-            ${{ runner.temp }}/compat-reports/summary.json
-            ${{ runner.temp }}/compat-reports/report-schema-validator-result.json
-            ${{ runner.temp }}/compat-reports/validator-result.json
-            ${{ runner.temp }}/compat-reports/schema-validator-result.json
-            ${{ runner.temp }}/compat-reports/validator-result-verifier-result.json
-            ${{ runner.temp }}/compat-reports/artifact-bundle-validator-result.json
-            ${{ runner.temp }}/compat-reports/artifact-bundle-manifest-validator-result.json
-          if-no-files-found: ignore

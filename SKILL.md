@@ -1,25 +1,25 @@
 ---
 name: clawvault
-version: 2.0.0
+version: 2.5.3
 description: Agent memory system with memory graph, context profiles, checkpoint/recover, structured storage, semantic search, and observational memory. Use when: storing/searching memories, preventing context death, graph-aware context retrieval, repairing broken sessions. Don't use when: general file I/O.
 author: Versatly
 repository: https://github.com/Versatly/clawvault
 homepage: https://clawvault.dev
-metadata: {"openclaw":{"emoji":"🐘","kind":"cli","requires":{"bins":["clawvault"],"env_optional":["CLAWVAULT_PATH","GEMINI_API_KEY","OPENCLAW_HOME","OPENCLAW_STATE_DIR"]},"install":[{"id":"node","kind":"node","package":"clawvault","bins":["clawvault"],"label":"Install ClawVault CLI (npm)"}],"hooks":{"clawvault":{"events":["gateway:startup","gateway:heartbeat","command:new","session:start","compaction:memoryFlush"],"capabilities":["auto-checkpoint plus active observation flush before session reset","context death detection and alert injection","session start context injection via --profile auto","heartbeat-triggered active session observation with threshold checks","compaction-triggered incremental observation flush"],"does_not":["make network calls (except optional GEMINI_API_KEY for observe --compress)","access external APIs or cloud services","send telemetry or analytics","modify files outside vault directory and OpenClaw session transcripts"]}},"capabilities":["reads/writes markdown files in vault directory","reads/modifies OpenClaw session transcripts (repair-session, with backup)","builds memory graph index (.clawvault/graph-index.json)","runs qmd for semantic search (optional, graceful fallback)","LLM API calls for observe --compress and observe --active (optional, requires GEMINI_API_KEY)"]}}
+metadata: {"openclaw":{"emoji":"🐘","kind":"cli","requires":{"bins":["clawvault"],"env_optional":["CLAWVAULT_PATH","GEMINI_API_KEY","OPENCLAW_HOME","OPENCLAW_STATE_DIR"]},"install":[{"id":"node","kind":"node","package":"clawvault","bins":["clawvault"],"label":"Install ClawVault CLI (npm)"}],"hooks":{"clawvault":{"events":["gateway:startup","gateway:heartbeat","command:new","session:start","compaction:memoryFlush"],"capabilities":["auto-checkpoint plus active observation flush before session reset","context death detection and alert injection","session start context injection via --profile auto","heartbeat-triggered active session observation with threshold checks","compaction-triggered incremental observation flush"],"does_not":["make network calls (except optional GEMINI_API_KEY for observe --compress)","access external APIs or cloud services","send telemetry or analytics","modify files outside vault directory and OpenClaw session transcripts"]}},"capabilities":["reads/writes markdown files in vault directory","reads/modifies OpenClaw session transcripts (repair-session, with backup)","builds memory graph index (.clawvault/graph-index.json)","requires qmd for core query/memory workflows","LLM API calls for observe --compress and observe --active (optional, requires GEMINI_API_KEY)"]}}
 ---
 
 # ClawVault 🐘
 
 An elephant never forgets. Structured memory for OpenClaw agents.
 
-> **Built for [OpenClaw](https://openclaw.ai)** — install via `clawhub install clawvault`
+> **Built for [OpenClaw](https://openclaw.ai)**. Canonical install: npm CLI + hook install + hook enable.
 
 ## Security & Transparency
 
 **What this skill does:**
 - Reads/writes markdown files in your vault directory (`CLAWVAULT_PATH` or auto-discovered)
 - `repair-session` reads and modifies OpenClaw session transcripts (`~/.openclaw/agents/`) — creates backups before writing
-- Installs an OpenClaw **hook** (`hooks/clawvault/handler.js`) that runs on `gateway:startup` and `command:new` events to auto-checkpoint and detect context death. The hook is **opt-in** — enable via `openclaw hooks enable clawvault`
+- Provides an OpenClaw **hook pack** (`hooks/clawvault/handler.js`) with lifecycle events (`gateway:startup`, `gateway:heartbeat`, `command:new`, `session:start`, `compaction:memoryFlush`, `cron.weekly`). Hook is opt-in and must be installed/enabled.
 - `observe --compress` makes LLM API calls (Gemini Flash by default) to compress session transcripts into observations
 
 **Environment variables used:**
@@ -31,11 +31,21 @@ An elephant never forgets. Structured memory for OpenClaw agents.
 
 **This is a full CLI tool, not instruction-only.** It writes files, registers hooks, and runs code.
 
-## Install
+## Install (Canonical)
 
 ```bash
 npm install -g clawvault
+openclaw hooks install clawvault
+openclaw hooks enable clawvault
+
+# Verify and reload
+openclaw hooks list --verbose
+openclaw hooks info clawvault
+openclaw hooks check
+# restart gateway process
 ```
+
+`clawhub install clawvault` can install skill guidance, but does not replace explicit hook pack installation.
 
 ## Setup
 
@@ -67,7 +77,19 @@ clawvault sleep "PR review + type guards" --next "respond to CI" --blocked "wait
 clawvault doctor
 ```
 
-## New in v2.0.0
+## Reality Checks Before Use
+
+```bash
+# Verify runtime compatibility with current OpenClaw setup
+clawvault compat
+
+# Verify qmd is available
+qmd --version
+```
+
+ClawVault currently depends on `qmd` for core vault/query flows.
+
+## Current Feature Set
 
 ### Memory Graph
 
@@ -107,7 +129,7 @@ clawvault context --profile auto "current task"
 | `incident` | Recent events, blockers, urgent items |
 | `handoff` | Session transition context |
 
-### OpenClaw Compat Diagnostics
+### OpenClaw Compatibility Diagnostics
 
 ```bash
 # Check hook wiring, event routing, handler safety
@@ -243,6 +265,8 @@ vault/
 - [ ] Run `clawvault doctor` when something feels off
 ```
 
+Append this checklist to existing memory instructions. Do not replace your full AGENTS.md behavior unless you intend to.
+
 ## Session Transcript Repair (v1.5.0+)
 
 When the Anthropic API rejects with "unexpected tool_use_id found in tool_result blocks", use:
@@ -270,13 +294,14 @@ Backups are created automatically (use `--no-backup` to skip).
 
 ## Troubleshooting
 
-- **qmd not installed** — run `bun install -g github:tobi/qmd` or `npm install -g qmd`
+- **qmd not installed** — install qmd, then confirm with `qmd --version`
 - **No ClawVault found** — run `clawvault init` or set `CLAWVAULT_PATH`
 - **CLAWVAULT_PATH missing** — run `clawvault shell-init` and add to shell rc
 - **Too many orphan links** — run `clawvault link --orphans`
 - **Inbox backlog warning** — process or archive inbox items
 - **"unexpected tool_use_id" error** — run `clawvault repair-session`
 - **OpenClaw integration drift** — run `clawvault compat`
+- **Hook enable fails / hook not found** — run `openclaw hooks install clawvault`, then `openclaw hooks enable clawvault`, restart gateway, and verify via `openclaw hooks list --verbose`
 - **Graph out of date** — run `clawvault graph --refresh`
 - **Wrong context for task** — try `clawvault context --profile incident` or `--profile planning`
 
