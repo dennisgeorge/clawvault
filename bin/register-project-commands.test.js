@@ -76,6 +76,11 @@ describe('register-project-commands', () => {
       '--output <path>',
       '--group-by <field>'
     ]));
+
+    expect(listCommand?.description()).toContain('archived projects are hidden');
+
+    const boardGroupByOption = boardCommand?.options.find((option) => option.flags === '--group-by <field>');
+    expect(boardGroupByOption?.description).toContain('default: status');
   });
 
   it('dispatches project subcommands to project command handler', async () => {

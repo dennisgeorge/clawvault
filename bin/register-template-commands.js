@@ -5,7 +5,7 @@
 export function registerTemplateCommands(program, { chalk }) {
   const template = program
     .command('template')
-    .description('Manage templates');
+    .description('Manage document templates');
 
   template
     .command('list')

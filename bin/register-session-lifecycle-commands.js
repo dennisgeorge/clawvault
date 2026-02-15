@@ -10,7 +10,7 @@ export function registerSessionLifecycleCommands(
   program
     .command('wake')
     .description('Start a session (recover + recap + summary)')
-    .option('-n, --handoff-limit <n>', 'Number of recent handoffs to include', '3')
+    .option('-n, --handoff-limit <n>', 'Number of recent handoffs to include (default: 3)', '3')
     .option('--full', 'Show full recap (default: brief)')
     .option('-v, --vault <path>', 'Vault path')
     .action(async (options) => {
@@ -55,7 +55,7 @@ export function registerSessionLifecycleCommands(
     .option('-s, --session <key>', 'Session key')
     .option('--session-transcript <path>', 'Session transcript path for auto-observe')
     .option('--reflect', 'Run weekly reflection pass after sleep handoff')
-    .option('--index', 'Update qmd index after handoff')
+    .option('--index', 'Update qmd index after handoff (default: disabled)')
     .option('--no-git', 'Skip git commit prompt')
     .option('-v, --vault <path>', 'Vault path')
     .action(async (summary, options) => {
@@ -177,7 +177,7 @@ export function registerSessionLifecycleCommands(
   program
     .command('recap')
     .description('Generate a session recap - who I was (bootstrap hook)')
-    .option('-n, --handoff-limit <n>', 'Number of recent handoffs to include', '3')
+    .option('-n, --handoff-limit <n>', 'Number of recent handoffs to include (default: 3)', '3')
     .option('-v, --vault <path>', 'Vault path')
     .option('--json', 'Output as JSON')
     .option('--markdown', 'Output as markdown (default)')

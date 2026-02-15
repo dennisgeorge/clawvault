@@ -18,14 +18,14 @@ export function registerProjectCommands(
 ) {
   const projectCmd = program
     .command('project')
-    .description('Project management');
+    .description('Manage projects and project boards');
 
   projectCmd
     .command('add <title>')
     .description('Add a new project')
-    .option('-v, --vault <path>', 'Vault path')
+    .option('-v, --vault <path>', 'Vault path (default: find nearest)')
     .option('--owner <owner>', 'Project owner')
-    .option('--status <status>', 'Project status (active, paused, completed, archived)')
+    .option('--status <status>', 'Project status (active, paused, completed, archived) (default: active)')
     .option('--team <team>', 'Comma-separated team members')
     .option('--client <client>', 'Client name')
     .option('--tags <tags>', 'Comma-separated tags')
@@ -60,7 +60,7 @@ export function registerProjectCommands(
   projectCmd
     .command('update <slug>')
     .description('Update a project')
-    .option('-v, --vault <path>', 'Vault path')
+    .option('-v, --vault <path>', 'Vault path (default: find nearest)')
     .option('--status <status>', 'Project status (active, paused, completed, archived)')
     .option('--owner <owner>', 'Project owner')
     .option('--team <team>', 'Comma-separated team members')
@@ -97,7 +97,7 @@ export function registerProjectCommands(
   projectCmd
     .command('archive <slug>')
     .description('Archive a project')
-    .option('-v, --vault <path>', 'Vault path')
+    .option('-v, --vault <path>', 'Vault path (default: find nearest)')
     .option('--reason <reason>', 'Reason for archiving')
     .action(async (slug, options) => {
       try {
@@ -117,9 +117,9 @@ export function registerProjectCommands(
 
   projectCmd
     .command('list')
-    .description('List projects')
-    .option('-v, --vault <path>', 'Vault path')
-    .option('--status <status>', 'Filter by status')
+    .description('List projects (archived projects are hidden unless --status archived)')
+    .option('-v, --vault <path>', 'Vault path (default: find nearest)')
+    .option('--status <status>', 'Filter by status (active, paused, completed, archived)')
     .option('--owner <owner>', 'Filter by owner')
     .option('--client <client>', 'Filter by client')
     .option('--tag <tag>', 'Filter by tag')
@@ -146,7 +146,7 @@ export function registerProjectCommands(
   projectCmd
     .command('show <slug>')
     .description('Show project details')
-    .option('-v, --vault <path>', 'Vault path')
+    .option('-v, --vault <path>', 'Vault path (default: find nearest)')
     .option('--json', 'Output as JSON')
     .action(async (slug, options) => {
       try {
@@ -166,8 +166,8 @@ export function registerProjectCommands(
 
   projectCmd
     .command('tasks <slug>')
-    .description('List tasks for a project')
-    .option('-v, --vault <path>', 'Vault path')
+    .description('List tasks linked to a project')
+    .option('-v, --vault <path>', 'Vault path (default: find nearest)')
     .option('--json', 'Output as JSON')
     .action(async (slug, options) => {
       try {
@@ -187,10 +187,10 @@ export function registerProjectCommands(
 
   projectCmd
     .command('board')
-    .description('Generate project kanban board')
-    .option('-v, --vault <path>', 'Vault path')
+    .description('Generate and sync the project kanban board')
+    .option('-v, --vault <path>', 'Vault path (default: find nearest)')
     .option('--output <path>', 'Board markdown path (default: Projects-Board.md)')
-    .option('--group-by <field>', 'Grouping field (status, owner, client)')
+    .option('--group-by <field>', 'Grouping field (status, owner, client) (default: status)')
     .action(async (options) => {
       try {
         const vaultPath = resolveVaultPath(options.vault);

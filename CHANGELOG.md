@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.5.1] — 2026-02-15
+
+### Security
+- Hardened CLI runtime argument handling for qmd execution by exporting and reusing `sanitizeQmdArg` in `bin/command-runtime.js`.
+- Re-validated `--file` inputs through `validatePathWithinBase` for file-backed write flows (`store` and `remember`) to prevent path traversal.
+
+### Fixed
+- Audited and clarified command descriptions across `bin/register-*.js` modules.
+- Expanded help text default guidance for options where runtime defaults apply.
+- Completed help coverage for `inject` and `project` command families, including subcommand and default behavior notes.
+
+---
+
 ## [2.5.0] — 2026-02-15
 
 Two headline features that change how agents interact with their vaults.

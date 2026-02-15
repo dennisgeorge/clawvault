@@ -16,7 +16,7 @@ export function registerQueryCommands(
   program
     .command('search <query>')
     .description('Search the vault via qmd (BM25)')
-    .option('-n, --limit <n>', 'Max results', '10')
+    .option('-n, --limit <n>', 'Max results (default: 10)', '10')
     .option('-c, --category <category>', 'Filter by category')
     .option('--tags <tags>', 'Filter by tags (comma-separated)')
     .option('--recent', 'Boost recent documents')
@@ -71,7 +71,7 @@ export function registerQueryCommands(
   program
     .command('vsearch <query>')
     .description('Semantic search via qmd (requires qmd installed)')
-    .option('-n, --limit <n>', 'Max results', '5')
+    .option('-n, --limit <n>', 'Max results (default: 5)', '5')
     .option('-c, --category <category>', 'Filter by category')
     .option('--tags <tags>', 'Filter by tags (comma-separated)')
     .option('--recent', 'Boost recent documents')
@@ -126,13 +126,13 @@ export function registerQueryCommands(
   program
     .command('context <task>')
     .description('Generate task-relevant context for prompt injection')
-    .option('-n, --limit <n>', 'Max results', '5')
-    .option('--format <format>', 'Output format (markdown|json)', 'markdown')
+    .option('-n, --limit <n>', 'Max results (default: 5)', '5')
+    .option('--format <format>', 'Output format (markdown|json) (default: markdown)', 'markdown')
     .option('--recent', 'Boost recent documents (enabled by default)', true)
-    .option('--include-observations', 'Include observation memories in output', true)
+    .option('--include-observations', 'Include observation memories in output (enabled by default)', true)
     .option('--budget <number>', 'Optional token budget for assembled context')
-    .option('--profile <profile>', 'Context profile (default|planning|incident|handoff|auto)', 'default')
-    .option('--max-hops <n>', 'Maximum graph expansion hops', '2')
+    .option('--profile <profile>', 'Context profile (default|planning|incident|handoff|auto) (default: default)', 'default')
+    .option('--max-hops <n>', 'Maximum graph expansion hops (default: 2)', '2')
     .option('-v, --vault <path>', 'Vault path')
     .action(async (task, options) => {
       try {
@@ -171,12 +171,12 @@ export function registerQueryCommands(
   // === INJECT ===
   program
     .command('inject <message>')
-    .description('Inject relevant rules, decisions, and preferences for prompt context')
-    .option('-n, --max-results <n>', 'Maximum injected items')
-    .option('--scope <scope>', 'Comma-separated scope filter override')
-    .option('--enable-llm', 'Enable optional LLM fuzzy intent matching')
-    .option('--disable-llm', 'Disable optional LLM fuzzy intent matching')
-    .option('--format <format>', 'Output format (markdown|json)', 'markdown')
+    .description('Inject relevant rules, decisions, and preferences into prompt context')
+    .option('-n, --max-results <n>', 'Maximum injected items (default: config inject.maxResults, fallback 8)')
+    .option('--scope <scope>', 'Comma-separated scope filter override (default: config inject.scope, fallback global)')
+    .option('--enable-llm', 'Enable LLM fuzzy intent matching (overrides config inject.useLlm)')
+    .option('--disable-llm', 'Disable LLM fuzzy intent matching (overrides config inject.useLlm)')
+    .option('--format <format>', 'Output format (markdown|json) (default: markdown)', 'markdown')
     .option('--model <model>', 'Override LLM model when fuzzy matching is enabled')
     .option('-v, --vault <path>', 'Vault path')
     .action(async (message, options) => {
@@ -218,9 +218,11 @@ export function registerQueryCommands(
     .option('--min-new <bytes>', 'Override minimum new-content threshold in bytes')
     .option('--sessions-dir <path>', 'Override OpenClaw sessions directory')
     .option('--dry-run', 'Show active observation candidates without compressing')
-    .option('--threshold <n>', 'Compression token threshold', '30000')
-    .option('--reflect-threshold <n>', 'Reflection token threshold', '40000')
+    .option('--threshold <n>', 'Compression token threshold (default: 30000)', '30000')
+    .option('--reflect-threshold <n>', 'Reflection token threshold (default: 40000)', '40000')
     .option('--model <model>', 'LLM model override')
+    .option('--extract-tasks', 'Extract task-like observations into backlog (enabled by default)', true)
+    .option('--no-extract-tasks', 'Disable task extraction from observations')
     .option('--compress <file>', 'One-shot compression for a conversation file')
     .option('--daemon', 'Run in detached background mode')
     .option('-v, --vault <path>', 'Vault path')
@@ -252,6 +254,7 @@ export function registerQueryCommands(
           threshold,
           reflectThreshold,
           model: options.model,
+          extractTasks: options.extractTasks,
           compress: options.compress,
           daemon: options.daemon,
           vaultPath: resolveVaultPath(options.vault)
@@ -266,7 +269,7 @@ export function registerQueryCommands(
   program
     .command('reflect')
     .description('Promote stable observations into weekly reflections')
-    .option('--days <n>', 'Observation window in days', '14')
+    .option('--days <n>', 'Observation window in days (default: 14)', '14')
     .option('--dry-run', 'Show reflection output candidates without writing')
     .option('-v, --vault <path>', 'Vault path')
     .action(async (options) => {
@@ -291,8 +294,8 @@ export function registerQueryCommands(
   program
     .command('session-recap <sessionKey>')
     .description('Generate recap from a specific OpenClaw session transcript')
-    .option('-n, --limit <n>', 'Number of messages to include', '15')
-    .option('--format <format>', 'Output format (markdown|json)', 'markdown')
+    .option('-n, --limit <n>', 'Number of messages to include (default: 15)', '15')
+    .option('--format <format>', 'Output format (markdown|json) (default: markdown)', 'markdown')
     .option('-a, --agent <id>', 'Agent ID (default: OPENCLAW_AGENT_ID or clawdious)')
     .action(async (sessionKey, options) => {
       try {

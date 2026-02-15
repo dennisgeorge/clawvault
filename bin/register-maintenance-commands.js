@@ -194,7 +194,7 @@ export function registerMaintenanceCommands(program, { chalk }) {
   program
     .command('archive')
     .description('Archive old observations into ledger/archive')
-    .option('--older-than <days>', 'Archive observations older than this many days', '14')
+    .option('--older-than <days>', 'Archive observations older than this many days (default: 14)', '14')
     .option('--dry-run', 'Show archive candidates without writing')
     .option('-v, --vault <path>', 'Vault path')
     .action(async (options) => {

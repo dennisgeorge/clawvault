@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import path from 'path';
 
 const {
   spawnMock,
@@ -118,6 +119,23 @@ describe('command runtime helpers', () => {
     });
 
     await expect(runQmd(['update'])).rejects.toThrow('qmd exited with code 2');
+  });
+
+  it('exports and enforces argument/path sanitization helpers', async () => {
+    const { sanitizeQmdArg, validatePathWithinBase } = await loadRuntimeModule();
+    expect(sanitizeQmdArg('update')).toBe('update');
+    expect(sanitizeQmdArg(42)).toBe('42');
+    expect(() => sanitizeQmdArg('bad\0arg')).toThrow('contains null byte');
+
+    const safePath = validatePathWithinBase('notes/today.md', '/tmp/vault');
+    expect(safePath).toBe(path.resolve('/tmp/vault', 'notes/today.md'));
+    expect(() => validatePathWithinBase('../etc/passwd', '/tmp/vault')).toThrow('Path traversal detected');
+  });
+
+  it('rejects qmd args with null-byte injection attempts', async () => {
+    const { runQmd } = await loadRuntimeModule();
+    await expect(runQmd(['up\0date'])).rejects.toThrow('contains null byte');
+    expect(spawnMock).not.toHaveBeenCalled();
   });
 
   it('prints consistent qmd missing guidance', async () => {

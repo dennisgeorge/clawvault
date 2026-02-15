@@ -18,7 +18,7 @@ export function registerVaultOperationsCommands(
   // === LIST ===
   program
     .command('list [category]')
-    .description('List documents')
+    .description('List vault documents (optionally filtered by category)')
     .option('-v, --vault <path>', 'Vault path')
     .option('--json', 'Output as JSON')
     .action(async (category, options) => {
@@ -134,7 +134,7 @@ export function registerVaultOperationsCommands(
   // === SYNC ===
   program
     .command('sync <target>')
-    .description('Sync vault files to target path')
+    .description('Sync vault files to a target path')
     .option('--delete', 'Delete orphan files in target')
     .option('--dry-run', 'Show what would be synced without syncing')
     .option('-v, --vault <path>', 'Vault path')
@@ -216,12 +216,12 @@ export function registerVaultOperationsCommands(
   // === REMEMBER ===
   program
     .command('remember <type> <title>')
-    .description('Store a memory with type classification (fact|feeling|decision|lesson|commitment|preference|relationship|project)')
+    .description('Store a typed memory (fact|feeling|decision|lesson|commitment|preference|relationship|project)')
     .option('--content <content>', 'Content body')
-    .option('-f, --file <file>', 'Read content from file')
+    .option('-f, --file <file>', 'Read content from file (validated against current working directory)')
     .option('--stdin', 'Read content from stdin')
     .option('-v, --vault <path>', 'Vault path')
-    .option('--no-index', 'Skip qmd index update')
+    .option('--no-index', 'Skip qmd index update (auto-updates by default)')
     .action(async (type, title, options) => {
       const validTypes = ['fact', 'feeling', 'decision', 'lesson', 'commitment', 'preference', 'relationship', 'project'];
       if (!validTypes.includes(type)) {
@@ -272,8 +272,8 @@ export function registerVaultOperationsCommands(
   // === DASHBOARD ===
   program
     .command('dashboard')
-    .description('Run local vault graph dashboard')
-    .option('-p, --port <port>', 'Dashboard port', '3377')
+    .description('Run the local vault graph dashboard server')
+    .option('-p, --port <port>', 'Dashboard port (default: 3377)', '3377')
     .option('-v, --vault <path>', 'Vault path')
     .action(async (options) => {
       try {

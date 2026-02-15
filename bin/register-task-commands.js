@@ -24,7 +24,7 @@ export function registerTaskCommands(
   // === TASK ===
   const taskCmd = program
     .command('task')
-    .description('Task management');
+    .description('Manage tasks');
 
   // task add
   taskCmd
@@ -67,7 +67,7 @@ export function registerTaskCommands(
   // task list
   taskCmd
     .command('list')
-    .description('List tasks')
+    .description('List tasks with optional filters')
     .option('-v, --vault <path>', 'Vault path')
     .option('--owner <owner>', 'Filter by owner')
     .option('--project <project>', 'Filter by project')
@@ -229,7 +229,7 @@ export function registerTaskCommands(
   // === BACKLOG ===
   const backlogCmd = program
     .command('backlog')
-    .description('Backlog management');
+    .description('Manage backlog items');
 
   // backlog add (also supports "backlog <title>" shorthand)
   backlogCmd
@@ -330,8 +330,8 @@ export function registerTaskCommands(
   // === CANVAS ===
   program
     .command('canvas')
-    .description('Generate Obsidian canvas dashboard')
-    .option('-v, --vault <path>', 'Vault path')
+    .description('Generate an Obsidian canvas dashboard file')
+    .option('-v, --vault <path>', 'Vault path (default: find nearest)')
     .option('--output <path>', 'Output file path (default: dashboard.canvas)')
     .action(async (options) => {
       try {

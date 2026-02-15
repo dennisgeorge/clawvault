@@ -66,7 +66,7 @@ function normalizeConfigKey(key) {
 export function registerConfigCommands(program, { chalk, resolveVaultPath }) {
   const config = program
     .command('config')
-    .description('Read and modify runtime config');
+    .description('Read and modify runtime configuration');
 
   config
     .command('get <key>')
@@ -135,7 +135,7 @@ export function registerConfigCommands(program, { chalk, resolveVaultPath }) {
   config
     .command('reset')
     .description('Reset runtime config values to defaults')
-    .option('--confirm', 'Confirm reset')
+    .option('--confirm', 'Confirm reset (required)')
     .option('-v, --vault <path>', 'Vault path')
     .action(async (options) => {
       try {

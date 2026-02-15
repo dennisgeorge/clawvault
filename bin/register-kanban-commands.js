@@ -8,17 +8,17 @@ export function registerKanbanCommands(
 ) {
   const kanbanCmd = program
     .command('kanban')
-    .description('Sync Obsidian Kanban boards with task frontmatter');
+    .description('Manage Obsidian Kanban sync for task frontmatter');
 
   kanbanCmd
     .command('sync')
     .description('Generate and sync an Obsidian Kanban board from tasks')
-    .option('-v, --vault <path>', 'Vault path')
+    .option('-v, --vault <path>', 'Vault path (default: find nearest)')
     .option('--output <path>', 'Board markdown path (default: Board.md)')
-    .option('--group-by <field>', 'Grouping field (status, priority, project, owner)')
+    .option('--group-by <field>', 'Grouping field (status, priority, project, owner) (default: status)')
     .option('--filter-project <project>', 'Only include tasks from a project')
     .option('--filter-owner <owner>', 'Only include tasks for an owner')
-    .option('--include-done', 'Include done tasks')
+    .option('--include-done', 'Include done tasks (default: hidden)')
     .action(async (options) => {
       try {
         const vaultPath = resolveVaultPath(options.vault);
@@ -39,7 +39,7 @@ export function registerKanbanCommands(
   kanbanCmd
     .command('import')
     .description('Import lane state from an Obsidian Kanban board into tasks')
-    .option('-v, --vault <path>', 'Vault path')
+    .option('-v, --vault <path>', 'Vault path (default: find nearest)')
     .option('--output <path>', 'Board markdown path (default: Board.md)')
     .action(async (options) => {
       try {

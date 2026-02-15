@@ -32,7 +32,7 @@ export function registerTailscaleCommands(program, { chalk }) {
     .requiredOption('--peer <hostname>', 'Peer hostname or IP to sync with')
     .option('-v, --vault <path>', 'Vault path')
     .option('--port <number>', 'Port on the peer (default: 8384)', parseInt)
-    .option('--direction <dir>', 'Sync direction: push, pull, or bidirectional', 'bidirectional')
+    .option('--direction <dir>', 'Sync direction: push, pull, or bidirectional (default: bidirectional)', 'bidirectional')
     .option('--dry-run', 'Show what would be synced without making changes')
     .option('--delete-orphans', 'Delete files that exist locally but not on peer (pull only)')
     .option('--categories <list>', 'Comma-separated list of categories to sync')

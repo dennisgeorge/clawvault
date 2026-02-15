@@ -31,15 +31,16 @@ export function validatePathWithinBase(inputPath, basePath) {
 
 /**
  * Sanitizes an argument that may contain a path to prevent injection.
- * @param {string} arg - The argument to sanitize
+ * @param {unknown} arg - The argument to sanitize
  * @returns {string} The sanitized argument
  */
-function sanitizeQmdArg(arg) {
+export function sanitizeQmdArg(arg) {
+  const normalizedArg = String(arg);
   // Reject arguments with null bytes (injection attempt)
-  if (arg.includes('\0')) {
+  if (normalizedArg.includes('\0')) {
     throw new Error('Invalid argument: contains null byte');
   }
-  return arg;
+  return normalizedArg;
 }
 
 function withQmdIndex(args) {

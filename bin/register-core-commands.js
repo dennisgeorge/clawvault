@@ -11,8 +11,8 @@ export function registerCoreCommands(
   // === INIT ===
   program
     .command('init [path]')
-    .description('Initialize a new ClawVault')
-    .option('-n, --name <name>', 'Vault name')
+    .description('Initialize a new ClawVault vault')
+    .option('-n, --name <name>', 'Vault name (default: target directory name)')
     .option('--qmd', 'Set up qmd semantic search collection')
     .option('--qmd-collection <name>', 'qmd collection name (defaults to vault name)')
     .option('--no-bases', 'Skip Obsidian Bases file generation')
@@ -20,7 +20,7 @@ export function registerCoreCommands(
     .option('--no-graph', 'Skip initial graph build')
     .option('--categories <list>', 'Comma-separated list of custom categories to create')
     .option('--canvas', 'Generate a vault status canvas dashboard on init')
-    .option('--theme <style>', 'Graph color theme to apply (neural, minimal, none)', 'none')
+    .option('--theme <style>', 'Graph color theme to apply (neural, minimal, none) (default: none)', 'none')
     .option('--minimal', 'Create minimal vault (memory categories only, no tasks/bases/graph)')
     .action(async (vaultPath, options) => {
       const targetPath = vaultPath || '.';
@@ -135,14 +135,14 @@ export function registerCoreCommands(
   // === SETUP ===
   program
     .command('setup')
-    .description('Auto-discover and configure a ClawVault')
+    .description('Auto-discover and configure an existing ClawVault vault')
     .option('--graph-colors', 'Set up graph color scheme for Obsidian')
     .option('--no-graph-colors', 'Skip graph color configuration')
     .option('--bases', 'Generate Obsidian Bases views for task management')
     .option('--no-bases', 'Skip Bases file generation')
     .option('--canvas', 'Generate vault status canvas dashboard')
     .option('--no-canvas', 'Skip canvas generation')
-    .option('--theme <style>', 'Graph color theme (neural, minimal, none)', 'neural')
+    .option('--theme <style>', 'Graph color theme (neural, minimal, none) (default: neural)', 'neural')
     .option('--force', 'Overwrite existing configuration files')
     .option('-v, --vault <path>', 'Vault path')
     .action(async (options) => {
@@ -165,11 +165,11 @@ export function registerCoreCommands(
   // === STORE ===
   program
     .command('store')
-    .description('Store a new memory')
+    .description('Store a new memory document')
     .requiredOption('-c, --category <category>', 'Category (preferences, decisions, patterns, people, projects, goals, transcripts, inbox)')
     .requiredOption('-t, --title <title>', 'Document title')
     .option('--content <content>', 'Content body')
-    .option('-f, --file <file>', 'Read content from file')
+    .option('-f, --file <file>', 'Read content from file (validated against current working directory)')
     .option('--stdin', 'Read content from stdin')
     .option('--overwrite', 'Overwrite if exists')
     .option('--no-index', 'Skip qmd index update (auto-updates by default)')
@@ -215,10 +215,10 @@ export function registerCoreCommands(
   // === CAPTURE ===
   program
     .command('capture <note>')
-    .description('Quick capture to inbox')
+    .description('Quick-capture a note to inbox')
     .option('-t, --title <title>', 'Note title')
     .option('-v, --vault <path>', 'Vault path')
-    .option('--no-index', 'Skip qmd index update')
+    .option('--no-index', 'Skip qmd index update (auto-updates by default)')
     .action(async (note, options) => {
       try {
         const vault = await getVault(options.vault);
