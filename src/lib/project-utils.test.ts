@@ -116,7 +116,7 @@ fields:
     expect(project.frontmatter.owner).toBe('alice');
     expect(project.frontmatter.client).toBe('Acme');
     expect(project.frontmatter.repo).toBe('https://github.com/acme/template-project');
-    expect((project.frontmatter as Record<string, unknown>).stack).toBe('repo=https://github.com/acme/template-project');
+    expect((project.frontmatter as unknown as Record<string, unknown>).stack).toBe('repo=https://github.com/acme/template-project');
 
     const raw = fs.readFileSync(path.join(tempDir, 'projects', 'template-project.md'), 'utf-8');
     expect(raw).toContain('# Project: Template Project');

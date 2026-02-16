@@ -177,7 +177,7 @@ Effort: {{estimate}}
       expect(task.frontmatter.owner).toBe('alice');
       expect(task.frontmatter.project).toBe('core-platform');
       expect(task.frontmatter.estimate).toBe('3h');
-      expect((task.frontmatter as Record<string, unknown>).effort).toBe('3h');
+      expect((task.frontmatter as unknown as Record<string, unknown>).effort).toBe('3h');
 
       const raw = fs.readFileSync(task.path, 'utf-8');
       expect(raw).toContain('# CUSTOM Template Task');

@@ -40,7 +40,7 @@ export interface ListedPrimitiveTemplateDefinition extends PrimitiveTemplateDefi
   path: string;
 }
 
-export type TemplateRenderVariables = TemplateVariables & Record<string, unknown>;
+export type TemplateRenderVariables = TemplateVariables & Record<string, string | number | boolean | null | undefined>;
 
 export interface BuildTemplateFrontmatterOptions {
   pruneEmpty?: boolean;
@@ -407,7 +407,7 @@ export function renderDocumentFromTemplate(
   options: RenderDocumentFromTemplateOptions = {}
 ): RenderedTemplateDocument {
   const now = options.now ?? new Date();
-  const variables: TemplateRenderVariables = {
+  const variables = {
     ...buildTemplateVariables(
       {
         title: options.title ?? '',
@@ -416,7 +416,7 @@ export function renderDocumentFromTemplate(
       now
     ),
     ...(options.variables ?? {}),
-  };
+  } as TemplateRenderVariables;
 
   const frontmatter = buildFrontmatterFromTemplate(
     definition,
@@ -442,4 +442,47 @@ export function getTemplateFieldNames(
   const definition = loadTemplateDefinition(templateName, options);
   if (!definition) return [];
   return Object.keys(definition.fields);
+}
+
+export interface TemplateValidationError {
+  field: string;
+  message: string;
+  kind: 'required' | 'enum' | 'type';
+}
+
+/**
+ * Validate frontmatter against the template schema.
+ * Returns an empty array if valid, or a list of constraint violations.
+ * This is advisory — callers decide whether to block or warn.
+ */
+export function validateFrontmatter(
+  definition: PrimitiveTemplateDefinition,
+  frontmatter: Record<string, unknown>
+): TemplateValidationError[] {
+  const errors: TemplateValidationError[] = [];
+
+  for (const [fieldName, schema] of Object.entries(definition.fields)) {
+    const value = frontmatter[fieldName];
+
+    if (schema.required && (value === undefined || value === null || value === '')) {
+      errors.push({
+        field: fieldName,
+        message: `Required field "${fieldName}" is missing.`,
+        kind: 'required',
+      });
+      continue;
+    }
+
+    if (value !== undefined && value !== null && schema.enum && schema.enum.length > 0) {
+      if (!schema.enum.includes(value)) {
+        errors.push({
+          field: fieldName,
+          message: `"${String(value)}" is not a valid value for "${fieldName}". Expected one of: ${schema.enum.join(', ')}.`,
+          kind: 'enum',
+        });
+      }
+    }
+  }
+
+  return errors;
 }
