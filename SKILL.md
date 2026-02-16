@@ -1,17 +1,18 @@
 ---
 name: clawvault
-version: "2.5.7"
+version: "2.5.8"
 description: Agent memory system with memory graph, context profiles, checkpoint/recover, structured storage, semantic search, and observational memory. Use when: storing/searching memories, preventing context death, graph-aware context retrieval, repairing broken sessions. Don't use when: general file I/O.
 author: Versatly
 repository: https://github.com/Versatly/clawvault
 homepage: https://clawvault.dev
+user-invocable: true
 metadata:
   openclaw:
     emoji: "🐘"
-    kind: "cli"
     requires:
       bins:
         - "clawvault"
+        - "qmd"
       env_optional:
         - "CLAWVAULT_PATH"
         - "GEMINI_API_KEY"
@@ -30,6 +31,8 @@ metadata:
         bins:
           - "qmd"
         label: "Install qmd backend (required for query/context workflows)"
+  clawvault:
+    kind: "cli"
     hooks:
       clawvault:
         events:
