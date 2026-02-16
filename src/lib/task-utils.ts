@@ -556,7 +556,7 @@ export function createTask(
       overrides: buildTaskTemplateOverrides(options),
       frontmatter: { pruneEmpty: true },
     });
-    const templateFrontmatter = rendered.frontmatter as TaskFrontmatter;
+    const templateFrontmatter = rendered.frontmatter as unknown as TaskFrontmatter;
     frontmatter = {
       ...templateFrontmatter,
       status: isTaskStatus(templateFrontmatter.status) ? templateFrontmatter.status : 'open',

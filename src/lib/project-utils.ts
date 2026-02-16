@@ -390,7 +390,7 @@ export function createProject(
       overrides: buildProjectTemplateOverrides(options),
       frontmatter: { pruneEmpty: true },
     });
-    const templateFrontmatter = rendered.frontmatter as ProjectFrontmatter;
+    const templateFrontmatter = rendered.frontmatter as unknown as ProjectFrontmatter;
     frontmatter = normalizeProjectFrontmatter({
       ...templateFrontmatter,
       type: 'project',
