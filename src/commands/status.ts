@@ -7,6 +7,7 @@ import { formatAge } from '../lib/time.js';
 import { scanVaultLinks } from '../lib/backlinks.js';
 import { loadMemoryGraphIndex } from '../lib/memory-graph.js';
 import { getObserverStaleness } from '../observer/active-session-observer.js';
+import { parseQmdCollectionList } from '../lib/qmd-collections.js';
 import type { CheckpointData } from './checkpoint.js';
 
 export interface VaultStatus {
@@ -26,6 +27,8 @@ export interface VaultStatus {
     collection: string;
     root: string;
     indexStatus: 'present' | 'missing' | 'root-mismatch';
+    files?: number;
+    vectors?: number;
     error?: string;
   };
   graph: {
@@ -125,16 +128,26 @@ function parseQmdCollectionsText(raw: string): string[] {
   return names;
 }
 
-function getQmdIndexStatus(collection: string, root: string, indexName?: string): 'present' | 'missing' | 'root-mismatch' {
-  // qmd collection list doesn't support --json, parse text output instead
+interface QmdIndexResult {
+  status: 'present' | 'missing' | 'root-mismatch';
+  files?: number;
+  vectors?: number;
+}
+
+function getQmdIndexStatus(collection: string, root: string, indexName?: string): QmdIndexResult {
   const output = execFileSync('qmd', withQmdIndexArgs(['collection', 'list'], indexName), { encoding: 'utf-8' });
-  const names = parseQmdCollectionsText(output);
+  const collections = parseQmdCollectionList(output);
   
-  if (names.includes(collection)) {
-    return 'present';
+  const collectionInfo = collections.find(c => c.name === collection);
+  if (collectionInfo) {
+    return {
+      status: 'present',
+      files: collectionInfo.files,
+      vectors: collectionInfo.vectors
+    };
   }
 
-  return 'missing';
+  return { status: 'missing' };
 }
 
 function loadCheckpoint(vaultPath: string): { data: CheckpointData | null; error?: string } {
@@ -193,12 +206,12 @@ export async function getStatus(
 
   const qmdCollection = vault.getQmdCollection();
   const qmdRoot = vault.getQmdRoot();
-  let qmdIndexStatus: VaultStatus['qmd']['indexStatus'] = 'missing';
+  let qmdIndexResult: QmdIndexResult = { status: 'missing' };
   let qmdError: string | undefined;
   try {
-    qmdIndexStatus = getQmdIndexStatus(qmdCollection, qmdRoot, options.qmdIndexName);
-    if (qmdIndexStatus !== 'present') {
-      issues.push(`qmd collection ${qmdIndexStatus.replace('-', ' ')}`);
+    qmdIndexResult = getQmdIndexStatus(qmdCollection, qmdRoot, options.qmdIndexName);
+    if (qmdIndexResult.status !== 'present') {
+      issues.push(`qmd collection ${qmdIndexResult.status.replace('-', ' ')}`);
     }
   } catch (err: any) {
     qmdError = err?.message || 'Failed to check qmd index';
@@ -256,7 +269,9 @@ export async function getStatus(
     qmd: {
       collection: qmdCollection,
       root: qmdRoot,
-      indexStatus: qmdIndexStatus,
+      indexStatus: qmdIndexResult.status,
+      files: qmdIndexResult.files,
+      vectors: qmdIndexResult.vectors,
       error: qmdError
     },
     graph: graphStatus,
@@ -306,6 +321,12 @@ export function formatStatus(status: VaultStatus): string {
   output += `  - Collection: ${status.qmd.collection}\n`;
   output += `  - Root: ${status.qmd.root}\n`;
   output += `  - Index: ${status.qmd.indexStatus}\n`;
+  if (status.qmd.files !== undefined) {
+    output += `  - Files: ${status.qmd.files}\n`;
+  }
+  if (status.qmd.vectors !== undefined) {
+    output += `  - Vectors: ${status.qmd.vectors}\n`;
+  }
   if (status.qmd.error) {
     output += `  - Error: ${status.qmd.error}\n`;
   }

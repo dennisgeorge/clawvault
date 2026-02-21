@@ -134,7 +134,7 @@ describe('status command', () => {
     hasQmdMock.mockReturnValue(true);
     execFileSyncMock.mockImplementation((command: string) => {
       if (command === 'qmd') {
-        return `Collections (1):\n\n${mockCollection} (qmd://${mockCollection}/)\n  Pattern: **/*.md\n  Root: ${mockRoot}\n`;
+        return `Collections (1):\n\n${mockCollection} (qmd://${mockCollection}/)\n  Pattern: **/*.md\n  Root: ${mockRoot}\n  Files: 168\n  Vectors: 324\n`;
       }
       if (command === 'git') {
         return '';
@@ -176,6 +176,8 @@ describe('status command', () => {
       expect(status.issues).toHaveLength(0);
       expect(status.checkpoint.exists).toBe(true);
       expect(status.qmd.indexStatus).toBe('present');
+      expect(status.qmd.files).toBe(168);
+      expect(status.qmd.vectors).toBe(324);
       expect(status.links.total).toBe(0);
       expect(status.links.orphans).toBe(0);
       expect(status.graph.indexStatus).toBe('present');
@@ -184,6 +186,8 @@ describe('status command', () => {
       expect(formatted).toContain('Graph:');
       expect(formatted).toContain('Observer:');
       expect(formatted).toContain('Links:');
+      expect(formatted).toContain('Files: 168');
+      expect(formatted).toContain('Vectors: 324');
     } finally {
       fs.rmSync(vaultPath, { recursive: true, force: true });
     }
