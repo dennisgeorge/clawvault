@@ -1,0 +1,72 @@
+{
+  "id": "clawvault",
+  "name": "ClawVault",
+  "version": "2.6.1",
+  "description": "Structured memory system for AI agents with context death resilience",
+  "kind": "memory",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "vaultPath": {
+        "type": "string",
+        "description": "Path to the ClawVault vault directory. If not set, auto-discovered from CLAWVAULT_PATH or by walking up from cwd."
+      },
+      "autoCheckpoint": {
+        "type": "boolean",
+        "description": "Enable automatic checkpointing on session events",
+        "default": true
+      },
+      "contextProfile": {
+        "type": "string",
+        "enum": ["default", "planning", "incident", "handoff", "auto"],
+        "description": "Default context profile for session start injection",
+        "default": "auto"
+      },
+      "maxContextResults": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 20,
+        "description": "Maximum number of context results to inject on session start",
+        "default": 4
+      },
+      "observeOnHeartbeat": {
+        "type": "boolean",
+        "description": "Enable observation threshold checks on gateway heartbeat",
+        "default": true
+      },
+      "weeklyReflection": {
+        "type": "boolean",
+        "description": "Enable weekly reflection on Sunday midnight UTC",
+        "default": true
+      }
+    },
+    "additionalProperties": false
+  },
+  "uiHints": {
+    "vaultPath": {
+      "label": "Vault Path",
+      "placeholder": "~/my-vault",
+      "description": "Path to your ClawVault memory vault"
+    },
+    "autoCheckpoint": {
+      "label": "Auto Checkpoint",
+      "description": "Automatically checkpoint before session resets"
+    },
+    "contextProfile": {
+      "label": "Context Profile",
+      "description": "Profile used for context injection at session start"
+    },
+    "maxContextResults": {
+      "label": "Max Context Results",
+      "description": "Number of vault memories to inject"
+    },
+    "observeOnHeartbeat": {
+      "label": "Observe on Heartbeat",
+      "description": "Check observation thresholds during heartbeat events"
+    },
+    "weeklyReflection": {
+      "label": "Weekly Reflection",
+      "description": "Run weekly reflection on Sunday midnight UTC"
+    }
+  }
+}

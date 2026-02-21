@@ -21,9 +21,11 @@
     "bin",
     "dashboard",
     "templates",
-    "hooks"
+    "hooks",
+    "openclaw.plugin.json"
   ],
   "openclaw": {
+    "plugin": "./openclaw.plugin.json",
     "hooks": [
       "./hooks/clawvault"
     ]

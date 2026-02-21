@@ -73,11 +73,41 @@ Injection format:
 
 The hook accepts canonical OpenClaw events (`gateway:startup`, `gateway:heartbeat`, `command:new`, `session:start`, `compaction:memoryFlush`, `cron.weekly`) and tolerates alias payload shapes (`event`, `eventName`, `name`, `hook`, `trigger`) to remain robust across runtime wrappers.
 
-## Configuration Notes
+## Configuration
 
-The hook auto-detects vault path via:
+### Plugin Configuration (Recommended)
 
-1. `CLAWVAULT_PATH` environment variable
-2. Walking up from cwd to find `.clawvault.json`
+Configure the plugin via OpenClaw's config system:
+
+```bash
+# Set vault path
+openclaw config set plugins.clawvault.config.vaultPath ~/my-vault
+
+# View current config
+openclaw config get plugins.clawvault.config
+```
+
+Available configuration options:
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `vaultPath` | string | (auto-detected) | Path to the ClawVault vault directory |
+| `autoCheckpoint` | boolean | `true` | Enable automatic checkpointing on session events |
+| `contextProfile` | string | `"auto"` | Default context profile (`default`, `planning`, `incident`, `handoff`, `auto`) |
+| `maxContextResults` | integer | `4` | Maximum context results to inject on session start |
+| `observeOnHeartbeat` | boolean | `true` | Enable observation threshold checks on heartbeat |
+| `weeklyReflection` | boolean | `true` | Enable weekly reflection on Sunday midnight UTC |
+
+### Vault Path Resolution
+
+The hook resolves the vault path in this order:
+
+1. Plugin config (`plugins.clawvault.config.vaultPath` set via `openclaw config`)
+2. `OPENCLAW_PLUGIN_CLAWVAULT_VAULTPATH` environment variable
+3. `CLAWVAULT_PATH` environment variable
+4. Walking up from cwd to find `.clawvault.json`
+5. Checking `memory/` subdirectory (OpenClaw convention)
+
+### Troubleshooting
 
 If `openclaw hooks enable clawvault` fails with hook-not-found, run `openclaw hooks install clawvault` first and verify discovery with `openclaw hooks list --verbose`.

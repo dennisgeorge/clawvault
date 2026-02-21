@@ -260,4 +260,98 @@ describe('clawvault hook handler', () => {
 
     fs.rmSync(vaultPath, { recursive: true, force: true });
   });
+
+  it('uses vaultPath from plugin config when provided in event', async () => {
+    const vaultPath = makeVaultFixture();
+
+    execFileSyncMock.mockImplementation((_command, args) => {
+      if (args[0] === 'recover') {
+        return 'Clean startup';
+      }
+      return '';
+    });
+
+    const handler = await loadHandler();
+    const event = {
+      type: 'gateway',
+      action: 'startup',
+      pluginConfig: {
+        vaultPath
+      },
+      messages: []
+    };
+
+    await handler(event);
+
+    expect(execFileSyncMock).toHaveBeenCalledWith(
+      'clawvault',
+      expect.arrayContaining(['recover', '--clear', '-v', vaultPath]),
+      expect.objectContaining({ shell: false })
+    );
+
+    fs.rmSync(vaultPath, { recursive: true, force: true });
+  });
+
+  it('uses vaultPath from context.pluginConfig when provided', async () => {
+    const vaultPath = makeVaultFixture();
+
+    execFileSyncMock.mockImplementation((_command, args) => {
+      if (args[0] === 'recover') {
+        return 'Clean startup';
+      }
+      return '';
+    });
+
+    const handler = await loadHandler();
+    const event = {
+      type: 'gateway',
+      action: 'startup',
+      context: {
+        pluginConfig: {
+          vaultPath
+        }
+      },
+      messages: []
+    };
+
+    await handler(event);
+
+    expect(execFileSyncMock).toHaveBeenCalledWith(
+      'clawvault',
+      expect.arrayContaining(['recover', '--clear', '-v', vaultPath]),
+      expect.objectContaining({ shell: false })
+    );
+
+    fs.rmSync(vaultPath, { recursive: true, force: true });
+  });
+
+  it('uses vaultPath from OPENCLAW_PLUGIN_CLAWVAULT_VAULTPATH env var', async () => {
+    const vaultPath = makeVaultFixture();
+    process.env.OPENCLAW_PLUGIN_CLAWVAULT_VAULTPATH = vaultPath;
+
+    execFileSyncMock.mockImplementation((_command, args) => {
+      if (args[0] === 'recover') {
+        return 'Clean startup';
+      }
+      return '';
+    });
+
+    const handler = await loadHandler();
+    const event = {
+      type: 'gateway',
+      action: 'startup',
+      messages: []
+    };
+
+    await handler(event);
+
+    expect(execFileSyncMock).toHaveBeenCalledWith(
+      'clawvault',
+      expect.arrayContaining(['recover', '--clear', '-v', vaultPath]),
+      expect.objectContaining({ shell: false })
+    );
+
+    delete process.env.OPENCLAW_PLUGIN_CLAWVAULT_VAULTPATH;
+    fs.rmSync(vaultPath, { recursive: true, force: true });
+  });
 });

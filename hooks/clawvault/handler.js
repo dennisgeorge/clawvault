@@ -444,9 +444,40 @@ function validateVaultPath(vaultPath) {
   return resolved;
 }
 
+// Extract plugin config from event context (set via openclaw config)
+function extractPluginConfig(event) {
+  const candidates = [
+    event?.pluginConfig,
+    event?.context?.pluginConfig,
+    event?.config?.plugins?.clawvault?.config,
+    event?.context?.config?.plugins?.clawvault?.config
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+      return candidate;
+    }
+  }
+
+  return {};
+}
+
 // Find vault by walking up directories
-function findVaultPath() {
-  // Check env first
+function findVaultPath(event) {
+  // Check plugin config first (set via openclaw config set plugins.clawvault.config.vaultPath)
+  const pluginConfig = extractPluginConfig(event);
+  if (pluginConfig.vaultPath) {
+    const validated = validateVaultPath(pluginConfig.vaultPath);
+    if (validated) return validated;
+  }
+
+  // Check OPENCLAW_PLUGIN_CLAWVAULT_VAULTPATH env (injected by OpenClaw from plugin config)
+  if (process.env.OPENCLAW_PLUGIN_CLAWVAULT_VAULTPATH) {
+    const validated = validateVaultPath(process.env.OPENCLAW_PLUGIN_CLAWVAULT_VAULTPATH);
+    if (validated) return validated;
+  }
+
+  // Check CLAWVAULT_PATH env
   if (process.env.CLAWVAULT_PATH) {
     return validateVaultPath(process.env.CLAWVAULT_PATH);
   }
@@ -571,7 +602,7 @@ function isSundayMidnightUtc(date) {
 }
 
 async function handleWeeklyReflect(event) {
-  const vaultPath = findVaultPath();
+  const vaultPath = findVaultPath(event);
   if (!vaultPath) {
     console.log('[clawvault] No vault found, skipping weekly reflection');
     return;
@@ -593,7 +624,7 @@ async function handleWeeklyReflect(event) {
 
 // Handle gateway startup - check for context death
 async function handleStartup(event) {
-  const vaultPath = findVaultPath();
+  const vaultPath = findVaultPath(event);
   if (!vaultPath) {
     console.log('[clawvault] No vault found, skipping recovery check');
     return;
@@ -632,7 +663,7 @@ async function handleStartup(event) {
 
 // Handle /new command - auto-checkpoint before reset
 async function handleNew(event) {
-  const vaultPath = findVaultPath();
+  const vaultPath = findVaultPath(event);
   if (!vaultPath) {
     console.log('[clawvault] No vault found, skipping auto-checkpoint');
     return;
@@ -671,7 +702,7 @@ async function handleNew(event) {
 
 // Handle session start - inject dynamic context for first prompt
 async function handleSessionStart(event) {
-  const vaultPath = findVaultPath();
+  const vaultPath = findVaultPath(event);
   if (!vaultPath) {
     console.log('[clawvault] No vault found, skipping context injection');
     return;
@@ -733,7 +764,7 @@ async function handleSessionStart(event) {
 
 // Handle heartbeat events - cheap stat-based trigger for active observation
 async function handleHeartbeat(event) {
-  const vaultPath = findVaultPath();
+  const vaultPath = findVaultPath(event);
   if (!vaultPath) {
     console.log('[clawvault] No vault found, skipping heartbeat observation check');
     return;
@@ -750,7 +781,7 @@ async function handleHeartbeat(event) {
 
 // Handle context compaction - force flush any pending session deltas
 async function handleContextCompaction(event) {
-  const vaultPath = findVaultPath();
+  const vaultPath = findVaultPath(event);
   if (!vaultPath) {
     console.log('[clawvault] No vault found, skipping compaction observation');
     return;
