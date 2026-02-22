@@ -10,14 +10,65 @@ import { Document, SearchResult, SearchOptions } from '../types.js';
 
 export const QMD_INSTALL_URL = 'https://github.com/tobi/qmd';
 export const QMD_INSTALL_COMMAND = 'bun install -g github:tobi/qmd';
-const QMD_NOT_INSTALLED_MESSAGE = `ClawVault requires qmd. Install: ${QMD_INSTALL_COMMAND}`;
 export const QMD_INDEX_ENV_VAR = 'CLAWVAULT_QMD_INDEX';
 
-export class QmdUnavailableError extends Error {
-  constructor(message: string = QMD_NOT_INSTALLED_MESSAGE) {
-    super(message);
-    this.name = 'QmdUnavailableError';
+export type QmdErrorCode = 
+  | 'NOT_INSTALLED'
+  | 'NOT_CONFIGURED'
+  | 'COLLECTION_NOT_FOUND'
+  | 'EXECUTION_FAILED';
+
+export interface QmdErrorDetails {
+  code: QmdErrorCode;
+  message: string;
+  hint: string;
+}
+
+const QMD_ERROR_MESSAGES: Record<QmdErrorCode, QmdErrorDetails> = {
+  NOT_INSTALLED: {
+    code: 'NOT_INSTALLED',
+    message: 'qmd is not installed',
+    hint: `Install qmd to enable ClawVault search and indexing:\n  ${QMD_INSTALL_COMMAND}\n\nFor more information: ${QMD_INSTALL_URL}`
+  },
+  NOT_CONFIGURED: {
+    code: 'NOT_CONFIGURED',
+    message: 'qmd collection is not configured',
+    hint: 'Run `clawvault doctor` to diagnose configuration issues, or `clawvault migrate` to fix common setup problems.'
+  },
+  COLLECTION_NOT_FOUND: {
+    code: 'COLLECTION_NOT_FOUND',
+    message: 'qmd collection not found',
+    hint: 'The configured qmd collection does not exist. Run `clawvault migrate` to recreate it, or `qmd collection add <name> <path>` manually.'
+  },
+  EXECUTION_FAILED: {
+    code: 'EXECUTION_FAILED',
+    message: 'qmd command failed',
+    hint: 'Run `clawvault doctor` to diagnose qmd issues.'
   }
+};
+
+export class QmdUnavailableError extends Error {
+  readonly code: QmdErrorCode;
+  readonly hint: string;
+
+  constructor(code: QmdErrorCode = 'NOT_INSTALLED', additionalContext?: string) {
+    const details = QMD_ERROR_MESSAGES[code];
+    const fullMessage = additionalContext 
+      ? `${details.message}: ${additionalContext}`
+      : details.message;
+    super(fullMessage);
+    this.name = 'QmdUnavailableError';
+    this.code = code;
+    this.hint = details.hint;
+  }
+
+  toUserMessage(): string {
+    return `Error: ${this.message}\n\n${this.hint}`;
+  }
+}
+
+export function getQmdErrorDetails(code: QmdErrorCode): QmdErrorDetails {
+  return QMD_ERROR_MESSAGES[code];
 }
 
 export class QmdConfigurationError extends Error {
@@ -133,7 +184,7 @@ function parseQmdOutput(raw: string): QmdResult[] {
 
 function ensureQmdAvailable(): void {
   if (!hasQmd()) {
-    throw new QmdUnavailableError();
+    throw new QmdUnavailableError('NOT_INSTALLED');
   }
 }
 
@@ -193,7 +244,7 @@ function execQmd(args: string[], indexName?: string): QmdResult[] {
     return parseQmdOutput(result);
   } catch (err: any) {
     if (err?.code === 'ENOENT') {
-      throw new QmdUnavailableError();
+      throw new QmdUnavailableError('NOT_INSTALLED');
     }
 
     const output = [err?.stdout, err?.stderr].filter(Boolean).join('\n');
@@ -209,10 +260,14 @@ function execQmd(args: string[], indexName?: string): QmdResult[] {
       } catch {
         // Fall through to throw a helpful error
       }
+      
+      if (output.includes('collection not found') || output.includes('no such collection')) {
+        throw new QmdUnavailableError('COLLECTION_NOT_FOUND', output.trim());
+      }
     }
 
-    const message = err?.message ? `qmd failed: ${err.message}` : 'qmd failed';
-    throw new Error(message);
+    const errorDetail = err?.message || 'unknown error';
+    throw new QmdUnavailableError('EXECUTION_FAILED', errorDetail);
   }
 }
 

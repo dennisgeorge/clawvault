@@ -3,10 +3,11 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-const { hasQmdMock, scanVaultLinksMock, getObserverStalenessMock } = vi.hoisted(() => ({
+const { hasQmdMock, scanVaultLinksMock, getObserverStalenessMock, listQmdCollectionsMock } = vi.hoisted(() => ({
   hasQmdMock: vi.fn(),
   scanVaultLinksMock: vi.fn(),
-  getObserverStalenessMock: vi.fn()
+  getObserverStalenessMock: vi.fn(),
+  listQmdCollectionsMock: vi.fn()
 }));
 
 let mockStats = { documents: 0, categories: {} as Record<string, number> };
@@ -40,6 +41,14 @@ vi.mock('../observer/active-session-observer.js', () => ({
   getObserverStaleness: getObserverStalenessMock
 }));
 
+vi.mock('../lib/qmd-collections.js', () => ({
+  listQmdCollections: listQmdCollectionsMock,
+  removeQmdCollection: vi.fn()
+}));
+
+let mockQmdCollection = 'vault';
+let mockQmdRoot = '/tmp/vault';
+
 vi.mock('../lib/vault.js', () => ({
   ClawVault: class {
     private vaultPath: string;
@@ -68,7 +77,11 @@ vi.mock('../lib/vault.js', () => ({
     }
 
     getQmdCollection(): string {
-      return 'vault';
+      return mockQmdCollection;
+    }
+
+    getQmdRoot(): string {
+      return mockQmdRoot;
     }
   },
   findVault: async () => null
@@ -111,6 +124,9 @@ beforeEach(() => {
     oldestMs: 0,
     newestMs: 0
   });
+  listQmdCollectionsMock.mockReturnValue([]);
+  mockQmdCollection = 'vault';
+  mockQmdRoot = '/tmp/vault';
 });
 
 describe('doctor', () => {
@@ -197,5 +213,128 @@ describe('doctor', () => {
       fs.rmSync(vaultPath, { recursive: true, force: true });
       fs.rmSync(homePath, { recursive: true, force: true });
     }
+  });
+
+  it('detects missing qmd collection as migration issue', async () => {
+    hasQmdMock.mockReturnValue(true);
+    listQmdCollectionsMock.mockReturnValue([]);
+    scanVaultLinksMock.mockReturnValue({
+      backlinks: new Map(),
+      orphans: [],
+      linkCount: 0
+    });
+
+    const vaultPath = makeTempDir('clawvault-doctor-migration-');
+    const homePath = makeTempDir('clawvault-home-migration-');
+    process.env.HOME = homePath;
+    process.env.SHELL = '/bin/bash';
+    fs.writeFileSync(path.join(homePath, '.bashrc'), 'export CLAWVAULT_PATH="/tmp/vault"');
+
+    mockStats = { documents: 10, categories: {} };
+    mockDocuments = [makeDoc('projects', new Date())];
+    mockHandoffs = [makeDoc('handoffs', new Date())];
+    mockInbox = [];
+    mockQmdCollection = 'my-vault';
+    mockQmdRoot = vaultPath;
+
+    try {
+      const report = await doctor(vaultPath);
+      expect(report.migrationIssues.length).toBeGreaterThan(0);
+      const missingCollection = report.migrationIssues.find(
+        issue => issue.type === 'missing_qmd_collection'
+      );
+      expect(missingCollection).toBeDefined();
+      expect(missingCollection?.autoFixable).toBe(true);
+    } finally {
+      fs.rmSync(vaultPath, { recursive: true, force: true });
+      fs.rmSync(homePath, { recursive: true, force: true });
+    }
+  });
+
+  it('detects stale v2 collection name as migration issue', async () => {
+    hasQmdMock.mockReturnValue(true);
+    const vaultPath = makeTempDir('clawvault-doctor-stale-');
+    listQmdCollectionsMock.mockReturnValue([
+      { name: 'clawvault', uri: 'qmd://clawvault', root: vaultPath, details: {} }
+    ]);
+    scanVaultLinksMock.mockReturnValue({
+      backlinks: new Map(),
+      orphans: [],
+      linkCount: 0
+    });
+
+    const homePath = makeTempDir('clawvault-home-stale-');
+    process.env.HOME = homePath;
+    process.env.SHELL = '/bin/bash';
+    fs.writeFileSync(path.join(homePath, '.bashrc'), 'export CLAWVAULT_PATH="/tmp/vault"');
+
+    mockStats = { documents: 10, categories: {} };
+    mockDocuments = [makeDoc('projects', new Date())];
+    mockHandoffs = [makeDoc('handoffs', new Date())];
+    mockInbox = [];
+    mockQmdCollection = 'my-new-vault';
+    mockQmdRoot = vaultPath;
+
+    try {
+      const report = await doctor(vaultPath);
+      const staleCollection = report.migrationIssues.find(
+        issue => issue.type === 'stale_collection_name'
+      );
+      expect(staleCollection).toBeDefined();
+      expect(staleCollection?.autoFixable).toBe(true);
+      expect(staleCollection?.details).toMatchObject({
+        oldName: 'clawvault',
+        newName: 'my-new-vault'
+      });
+    } finally {
+      fs.rmSync(vaultPath, { recursive: true, force: true });
+      fs.rmSync(homePath, { recursive: true, force: true });
+    }
+  });
+
+  it('detects wrong vault path as migration issue', async () => {
+    hasQmdMock.mockReturnValue(true);
+    const vaultPath = makeTempDir('clawvault-doctor-wrongpath-');
+    const wrongPath = '/some/other/path';
+    listQmdCollectionsMock.mockReturnValue([
+      { name: 'my-vault', uri: 'qmd://my-vault', root: wrongPath, details: {} }
+    ]);
+    scanVaultLinksMock.mockReturnValue({
+      backlinks: new Map(),
+      orphans: [],
+      linkCount: 0
+    });
+
+    const homePath = makeTempDir('clawvault-home-wrongpath-');
+    process.env.HOME = homePath;
+    process.env.SHELL = '/bin/bash';
+    fs.writeFileSync(path.join(homePath, '.bashrc'), 'export CLAWVAULT_PATH="/tmp/vault"');
+
+    mockStats = { documents: 10, categories: {} };
+    mockDocuments = [makeDoc('projects', new Date())];
+    mockHandoffs = [makeDoc('handoffs', new Date())];
+    mockInbox = [];
+    mockQmdCollection = 'my-vault';
+    mockQmdRoot = vaultPath;
+
+    try {
+      const report = await doctor(vaultPath);
+      const wrongPathIssue = report.migrationIssues.find(
+        issue => issue.type === 'wrong_vault_path'
+      );
+      expect(wrongPathIssue).toBeDefined();
+      expect(wrongPathIssue?.autoFixable).toBe(true);
+    } finally {
+      fs.rmSync(vaultPath, { recursive: true, force: true });
+      fs.rmSync(homePath, { recursive: true, force: true });
+    }
+  });
+
+  it('includes actionable hint for qmd not installed', async () => {
+    hasQmdMock.mockReturnValue(false);
+    const report = await doctor('/tmp/vault');
+    const qmdCheck = report.checks.find(check => check.label === 'qmd installed');
+    expect(qmdCheck?.hint).toContain('bun install');
+    expect(qmdCheck?.hint).toContain('github.com/tobi/qmd');
   });
 });

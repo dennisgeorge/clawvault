@@ -83,7 +83,9 @@ export {
 export type {
   DoctorCheck,
   DoctorReport,
-  DoctorStatus
+  DoctorStatus,
+  MigrationIssue,
+  MigrationIssueType
 } from './commands/doctor.js';
 export { embedCommand, registerEmbedCommand } from './commands/embed.js';
 export type { EmbedCommandOptions, EmbedCommandResult } from './commands/embed.js';
@@ -95,6 +97,12 @@ export {
   registerMigrateObservationsCommand
 } from './commands/migrate-observations.js';
 export type { MigrateObservationsOptions, MigrateObservationsResult } from './commands/migrate-observations.js';
+export {
+  migrate,
+  migrateCommand,
+  registerMigrateCommand
+} from './commands/migrate.js';
+export type { MigrateCommandOptions, MigrationAction, MigrateResult } from './commands/migrate.js';
 export { syncBdCommand, registerSyncBdCommand } from './commands/sync-bd.js';
 export type { SyncBdCommandOptions } from './commands/sync-bd.js';
 export {
@@ -117,9 +125,10 @@ export {
   qmdEmbed,
   QmdUnavailableError,
   QmdConfigurationError,
-  QMD_INSTALL_COMMAND,
+  getQmdErrorDetails,  QMD_INSTALL_COMMAND,
   QMD_INSTALL_URL
 } from './lib/search.js';
+export type { QmdErrorCode, QmdErrorDetails } from './lib/search.js';
 export {
   embed,
   embedBatch,

@@ -37,7 +37,9 @@ export class ClawVault {
 
   constructor(vaultPath: string) {
     if (!hasQmd()) {
-      throw new QmdUnavailableError();
+      const error = new QmdUnavailableError('NOT_INSTALLED');
+      console.error(error.toUserMessage());
+      throw error;
     }
     this.config = {
       path: path.resolve(vaultPath),
@@ -55,7 +57,9 @@ export class ClawVault {
    */
   async init(options: Partial<VaultConfig> = {}, initFlags?: { skipBases?: boolean; skipTasks?: boolean; skipGraph?: boolean }): Promise<void> {
     if (!hasQmd()) {
-      throw new QmdUnavailableError();
+      const error = new QmdUnavailableError('NOT_INSTALLED');
+      console.error(error.toUserMessage());
+      throw error;
     }
     const vaultPath = this.config.path;
     const flags = initFlags || {};
@@ -176,7 +180,9 @@ export class ClawVault {
    */
   async load(): Promise<void> {
     if (!hasQmd()) {
-      throw new QmdUnavailableError();
+      const error = new QmdUnavailableError('NOT_INSTALLED');
+      console.error(error.toUserMessage());
+      throw error;
     }
     const vaultPath = this.config.path;
     const configPath = path.join(vaultPath, CONFIG_FILE);

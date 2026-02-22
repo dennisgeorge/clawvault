@@ -4,10 +4,12 @@ import * as path from 'path';
 import { ClawVault, findVault } from '../lib/vault.js';
 import { scanVaultLinks } from '../lib/backlinks.js';
 import { formatAge } from '../lib/time.js';
-import { hasQmd } from '../lib/search.js';
+import { hasQmd, QMD_INSTALL_COMMAND, QMD_INSTALL_URL } from '../lib/search.js';
 import { loadMemoryGraphIndex } from '../lib/memory-graph.js';
 import { getObserverStaleness } from '../observer/active-session-observer.js';
 import { checkOpenClawCompatibility } from './compat.js';
+import { listQmdCollections, type QmdCollectionInfo } from '../lib/qmd-collections.js';
+import { loadVaultQmdConfig } from '../lib/vault-qmd-config.js';
 
 const CLAWVAULT_DIR = '.clawvault';
 const CHECKPOINT_FILE = 'last-checkpoint.json';
@@ -21,6 +23,7 @@ export interface DoctorCheck {
   status: DoctorStatus;
   detail?: string;
   hint?: string;
+  category?: 'system' | 'migration' | 'health';
 }
 
 export interface DoctorReport {
@@ -28,7 +31,30 @@ export interface DoctorReport {
   checks: DoctorCheck[];
   warnings: number;
   errors: number;
+  migrationIssues: MigrationIssue[];
 }
+
+export interface MigrationIssue {
+  type: MigrationIssueType;
+  description: string;
+  autoFixable: boolean;
+  details?: Record<string, unknown>;
+}
+
+export type MigrationIssueType =
+  | 'stale_collection_name'
+  | 'missing_qmd_collection'
+  | 'wrong_vault_path'
+  | 'orphaned_collection'
+  | 'missing_qmd_config'
+  | 'legacy_config_format';
+
+const V2_COLLECTION_PATTERNS = [
+  /^clawvault$/i,
+  /^vault$/i,
+  /^memory$/i,
+  /^notes$/i
+];
 
 function daysSince(date: Date, now: number = Date.now()): number {
   return Math.max(0, Math.floor((now - date.getTime()) / DAY_MS));
@@ -78,6 +104,153 @@ function hasClawvaultPathConfig(paths: string[]): boolean {
   return false;
 }
 
+function isLikelyV2CollectionName(name: string): boolean {
+  return V2_COLLECTION_PATTERNS.some(pattern => pattern.test(name));
+}
+
+function checkQmdCollectionExists(
+  collections: QmdCollectionInfo[],
+  expectedName: string
+): { exists: boolean; collection?: QmdCollectionInfo } {
+  const found = collections.find(c => c.name === expectedName);
+  return { exists: !!found, collection: found };
+}
+
+function checkCollectionPathMatches(
+  collection: QmdCollectionInfo,
+  expectedRoot: string
+): boolean {
+  if (!collection.root) return false;
+  const normalizedCollectionRoot = path.resolve(collection.root);
+  const normalizedExpectedRoot = path.resolve(expectedRoot);
+  return normalizedCollectionRoot === normalizedExpectedRoot;
+}
+
+function detectMigrationIssues(
+  vaultPath: string,
+  configuredCollection: string | undefined,
+  configuredRoot: string | undefined
+): MigrationIssue[] {
+  const issues: MigrationIssue[] = [];
+  
+  if (!hasQmd()) {
+    return issues;
+  }
+
+  let collections: QmdCollectionInfo[];
+  try {
+    collections = listQmdCollections();
+  } catch {
+    return issues;
+  }
+
+  const vaultConfig = loadVaultQmdConfig(vaultPath);
+  const expectedCollection = configuredCollection || vaultConfig.qmdCollection;
+  const expectedRoot = configuredRoot || vaultConfig.qmdRoot;
+
+  const { exists, collection } = checkQmdCollectionExists(collections, expectedCollection);
+
+  if (!exists) {
+    const potentialV2Collections = collections.filter(c => 
+      isLikelyV2CollectionName(c.name) && 
+      c.root && 
+      path.resolve(c.root) === path.resolve(expectedRoot)
+    );
+
+    if (potentialV2Collections.length > 0) {
+      issues.push({
+        type: 'stale_collection_name',
+        description: `Found v2-style collection "${potentialV2Collections[0].name}" that should be renamed to "${expectedCollection}"`,
+        autoFixable: true,
+        details: {
+          oldName: potentialV2Collections[0].name,
+          newName: expectedCollection,
+          root: potentialV2Collections[0].root
+        }
+      });
+    } else {
+      issues.push({
+        type: 'missing_qmd_collection',
+        description: `qmd collection "${expectedCollection}" does not exist`,
+        autoFixable: true,
+        details: {
+          collectionName: expectedCollection,
+          expectedRoot
+        }
+      });
+    }
+  } else if (collection && !checkCollectionPathMatches(collection, expectedRoot)) {
+    issues.push({
+      type: 'wrong_vault_path',
+      description: `Collection "${expectedCollection}" points to "${collection.root}" but vault is at "${expectedRoot}"`,
+      autoFixable: true,
+      details: {
+        collectionName: expectedCollection,
+        currentRoot: collection.root,
+        expectedRoot
+      }
+    });
+  }
+
+  const orphanedCollections = collections.filter(c => {
+    if (c.name === expectedCollection) return false;
+    if (!c.root) return false;
+    const collectionRoot = path.resolve(c.root);
+    const vaultRoot = path.resolve(expectedRoot);
+    return collectionRoot === vaultRoot || collectionRoot.startsWith(vaultRoot + path.sep);
+  });
+
+  for (const orphan of orphanedCollections) {
+    issues.push({
+      type: 'orphaned_collection',
+      description: `Orphaned collection "${orphan.name}" points to vault path but is not the configured collection`,
+      autoFixable: true,
+      details: {
+        collectionName: orphan.name,
+        root: orphan.root
+      }
+    });
+  }
+
+  const configPath = path.join(vaultPath, '.clawvault.json');
+  if (fs.existsSync(configPath)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      if (!config.qmdCollection || !config.qmdRoot) {
+        issues.push({
+          type: 'missing_qmd_config',
+          description: 'Vault config is missing qmdCollection or qmdRoot settings',
+          autoFixable: true,
+          details: {
+            hasQmdCollection: !!config.qmdCollection,
+            hasQmdRoot: !!config.qmdRoot
+          }
+        });
+      }
+    } catch {
+      issues.push({
+        type: 'legacy_config_format',
+        description: 'Unable to parse .clawvault.json - may need migration',
+        autoFixable: false
+      });
+    }
+  }
+
+  return issues;
+}
+
+function migrationIssuesToChecks(issues: MigrationIssue[]): DoctorCheck[] {
+  return issues.map(issue => ({
+    label: `migration: ${issue.type.replace(/_/g, ' ')}`,
+    status: 'warn' as DoctorStatus,
+    detail: issue.description,
+    hint: issue.autoFixable 
+      ? 'Run `clawvault migrate` to auto-fix this issue.'
+      : 'Manual intervention required.',
+    category: 'migration' as const
+  }));
+}
+
 async function resolveVault(vaultPath?: string): Promise<ClawVault> {
   if (vaultPath) {
     const vault = new ClawVault(path.resolve(vaultPath));
@@ -103,6 +276,7 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
   const checks: DoctorCheck[] = [];
   let warnings = 0;
   let errors = 0;
+  const migrationIssues: MigrationIssue[] = [];
   const compatReport = checkOpenClawCompatibility();
 
   if (compatReport.errors > 0) {
@@ -110,7 +284,8 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
       label: 'OpenClaw compatibility',
       status: 'error',
       detail: `${compatReport.errors} error(s), ${compatReport.warnings} warning(s)`,
-      hint: 'Run `clawvault compat` for full compatibility diagnostics.'
+      hint: 'Run `clawvault compat` for full compatibility diagnostics.',
+      category: 'system'
     });
     errors++;
   } else if (compatReport.warnings > 0) {
@@ -118,23 +293,27 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
       label: 'OpenClaw compatibility',
       status: 'warn',
       detail: `${compatReport.warnings} warning(s)`,
-      hint: 'Run `clawvault compat` for full compatibility diagnostics.'
+      hint: 'Run `clawvault compat` for full compatibility diagnostics.',
+      category: 'system'
     });
     warnings++;
   } else {
     checks.push({
       label: 'OpenClaw compatibility',
-      status: 'ok'
+      status: 'ok',
+      category: 'system'
     });
   }
 
   if (hasQmd()) {
-    checks.push({ label: 'qmd installed', status: 'ok' });
+    checks.push({ label: 'qmd installed', status: 'ok', category: 'system' });
   } else {
     checks.push({
       label: 'qmd installed',
       status: 'error',
-      hint: 'Install qmd to enable ClawVault commands.'
+      detail: 'qmd binary not found in PATH',
+      hint: `Install qmd to enable ClawVault search and indexing:\n  ${QMD_INSTALL_COMMAND}\n\nFor more information: ${QMD_INSTALL_URL}`,
+      category: 'system'
     });
     errors++;
   }
@@ -144,34 +323,48 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
     checks.push({
       label: 'CLAWVAULT_PATH in shell config',
       status: 'ok',
-      detail: shellConfigs.map(p => path.basename(p)).join(', ')
+      detail: shellConfigs.map(p => path.basename(p)).join(', '),
+      category: 'system'
     });
   } else {
     checks.push({
       label: 'CLAWVAULT_PATH in shell config',
       status: 'warn',
-      hint: 'Run `clawvault shell-init` and add it to your shell rc.'
+      hint: 'Run `clawvault shell-init` and add it to your shell rc.',
+      category: 'system'
     });
     warnings++;
   }
 
   if (!hasQmd()) {
-    return { vaultPath, checks, warnings, errors };
+    return { vaultPath, checks, warnings, errors, migrationIssues };
   }
 
   let vault: ClawVault;
   try {
     vault = await resolveVault(vaultPath);
-    checks.push({ label: 'vault found', status: 'ok', detail: vault.getPath() });
+    checks.push({ label: 'vault found', status: 'ok', detail: vault.getPath(), category: 'system' });
   } catch (err: any) {
     checks.push({
       label: 'vault found',
       status: 'error',
-      detail: err?.message || 'Unable to locate vault'
+      detail: err?.message || 'Unable to locate vault',
+      category: 'system'
     });
     errors++;
-    return { vaultPath, checks, warnings, errors };
+    return { vaultPath, checks, warnings, errors, migrationIssues };
   }
+
+  const detectedMigrationIssues = detectMigrationIssues(
+    vault.getPath(),
+    vault.getQmdCollection(),
+    vault.getQmdRoot()
+  );
+  migrationIssues.push(...detectedMigrationIssues);
+  
+  const migrationChecks = migrationIssuesToChecks(detectedMigrationIssues);
+  checks.push(...migrationChecks);
+  warnings += migrationChecks.length;
 
   const stats = await vault.stats();
   const documents = await vault.list();
@@ -180,12 +373,13 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
   const qmdCollection = vault.getQmdCollection();
 
   if (qmdCollection) {
-    checks.push({ label: 'qmd collection configured', status: 'ok', detail: qmdCollection });
+    checks.push({ label: 'qmd collection configured', status: 'ok', detail: qmdCollection, category: 'system' });
   } else {
     checks.push({
       label: 'qmd collection configured',
       status: 'warn',
-      hint: 'Set qmd collection in .clawvault.json'
+      hint: 'Set qmd collection in .clawvault.json or run `clawvault migrate`.',
+      category: 'system'
     });
     warnings++;
   }
@@ -201,7 +395,8 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
       label: 'memory graph index',
       status: 'warn',
       detail: 'No graph index found',
-      hint: 'Run `clawvault graph --refresh` to build .clawvault/graph-index.json.'
+      hint: 'Run `clawvault graph --refresh` to build .clawvault/graph-index.json.',
+      category: 'health'
     });
     warnings++;
   } else {
@@ -215,14 +410,16 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
         label: 'memory graph index',
         status: 'warn',
         detail: `Stale graph index (generated ${generatedAge} ago)`,
-        hint: 'Run `clawvault graph --refresh` to resync index.'
+        hint: 'Run `clawvault graph --refresh` to resync index.',
+        category: 'health'
       });
       warnings++;
     } else {
       checks.push({
         label: 'memory graph index',
         status: 'ok',
-        detail: `${graphIndex.graph.stats.nodeCount} nodes, ${graphIndex.graph.stats.edgeCount} edges`
+        detail: `${graphIndex.graph.stats.nodeCount} nodes, ${graphIndex.graph.stats.edgeCount} edges`,
+        category: 'health'
       });
     }
   }
@@ -232,7 +429,8 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
     checks.push({
       label: 'recent handoff',
       status: 'warn',
-      hint: 'Run `clawvault sleep` at the end of sessions.'
+      hint: 'Run `clawvault sleep` at the end of sessions.',
+      category: 'health'
     });
     warnings++;
   } else {
@@ -246,14 +444,16 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
         label: 'recent handoff',
         status: 'warn',
         detail: `Last handoff ${ageLabel} ago`,
-        hint: 'Run `clawvault sleep` before long pauses.'
+        hint: 'Run `clawvault sleep` before long pauses.',
+        category: 'health'
       });
       warnings++;
     } else {
       checks.push({
         label: 'recent handoff',
         status: 'ok',
-        detail: `Last handoff ${ageLabel} ago`
+        detail: `Last handoff ${ageLabel} ago`,
+        category: 'health'
       });
     }
   }
@@ -267,7 +467,8 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
     checks.push({
       label: 'checkpoint freshness',
       status: 'warn',
-      detail: checkpointInfo.error
+      detail: checkpointInfo.error,
+      category: 'health'
     });
     warnings++;
   } else if (!checkpointInfo.timestamp) {
@@ -277,7 +478,8 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
       label: 'checkpoint freshness',
       status,
       detail: activeUse ? 'No checkpoint found' : 'No checkpoint found (vault appears inactive)',
-      hint: activeUse ? 'Run `clawvault checkpoint` during heavy work.' : undefined
+      hint: activeUse ? 'Run `clawvault checkpoint` during heavy work.' : undefined,
+      category: 'health'
     });
   } else {
     const checkpointDate = new Date(checkpointInfo.timestamp);
@@ -288,14 +490,16 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
         label: 'checkpoint freshness',
         status: 'warn',
         detail: `Last checkpoint ${ageLabel} ago`,
-        hint: 'Checkpoint at least once per active day.'
+        hint: 'Checkpoint at least once per active day.',
+        category: 'health'
       });
       warnings++;
     } else {
       checks.push({
         label: 'checkpoint freshness',
         status: 'ok',
-        detail: `Last checkpoint ${ageLabel} ago`
+        detail: `Last checkpoint ${ageLabel} ago`,
+        category: 'health'
       });
     }
   }
@@ -306,13 +510,15 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
       label: 'observer freshness',
       status: 'warn',
       detail: `${observerStaleness.staleCount} stale session cursor(s); oldest ${formatAge(observerStaleness.oldestMs)} ago`,
-      hint: 'Run `clawvault observe --cron` and verify cron/hook scheduling.'
+      hint: 'Run `clawvault observe --cron` and verify cron/hook scheduling.',
+      category: 'health'
     });
     warnings++;
   } else {
     checks.push({
       label: 'observer freshness',
-      status: 'ok'
+      status: 'ok',
+      category: 'health'
     });
   }
 
@@ -322,14 +528,16 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
       label: 'orphan links',
       status: 'warn',
       detail: `${linkScan.orphans.length} orphan link(s)`,
-      hint: 'Run `clawvault link --orphans` to review.'
+      hint: 'Run `clawvault link --orphans` to review.',
+      category: 'health'
     });
     warnings++;
   } else {
     checks.push({
       label: 'orphan links',
       status: 'ok',
-      detail: `${linkScan.orphans.length} orphan link(s)`
+      detail: `${linkScan.orphans.length} orphan link(s)`,
+      category: 'health'
     });
   }
 
@@ -338,14 +546,16 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
       label: 'inbox backlog',
       status: 'warn',
       detail: `${inbox.length} inbox item(s) pending`,
-      hint: 'Process inbox items to keep memory tidy.'
+      hint: 'Process inbox items to keep memory tidy.',
+      category: 'health'
     });
     warnings++;
   } else {
     checks.push({
       label: 'inbox backlog',
       status: 'ok',
-      detail: `${inbox.length} inbox item(s) pending`
+      detail: `${inbox.length} inbox item(s) pending`,
+      category: 'health'
     });
   }
 
@@ -354,10 +564,11 @@ export async function doctor(vaultPath?: string): Promise<DoctorReport> {
       label: 'vault activity',
       status: 'warn',
       detail: `${stats.documents} total documents`,
-      hint: 'Start capturing decisions, lessons, and projects.'
+      hint: 'Start capturing decisions, lessons, and projects.',
+      category: 'health'
     });
     warnings++;
   }
 
-  return { vaultPath: vault.getPath(), checks, warnings, errors };
+  return { vaultPath: vault.getPath(), checks, warnings, errors, migrationIssues };
 }
