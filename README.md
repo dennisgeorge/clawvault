@@ -258,6 +258,17 @@ The hook automatically:
 - Auto-checkpoints before session resets
 - Provides `--profile auto` for context queries
 
+### MEMORY.md vs Vault
+
+If you use both a `MEMORY.md` workspace file and a ClawVault vault, understand their roles:
+
+- **MEMORY.md** = Boot context (executive summary the agent sees instantly)
+- **Vault** = Full knowledge store (searchable, structured, versioned)
+
+MEMORY.md should contain high-level identity, key decisions, and current focus. The vault stores everything else. Update MEMORY.md periodically to reflect vault state, but it doesn't need to mirror it.
+
+See [docs/openclaw-plugin-usage.md](docs/openclaw-plugin-usage.md) for detailed guidance on this pattern.
+
 ---
 
 ## Requirements
