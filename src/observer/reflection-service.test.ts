@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+
+// Prevent LLM calls in tests — falls back to deterministic reflection
+beforeAll(() => { process.env.CLAWVAULT_NO_LLM = '1'; });
+afterAll(() => { delete process.env.CLAWVAULT_NO_LLM; });
 import { getObservationPath, getReflectionsRoot } from '../lib/ledger.js';
 import { runReflection } from './reflection-service.js';
 
@@ -18,7 +22,7 @@ function writeObservation(vaultPath: string, date: string, lines: string[]): voi
 }
 
 describe('runReflection', () => {
-  it('promotes high-importance and repeated medium-importance observations', async () => {
+  it('promotes high-importance and repeated medium-importance observations', { timeout: 15000 }, async () => {
     const vaultPath = makeVault();
     try {
       writeObservation(vaultPath, '2026-02-10', [

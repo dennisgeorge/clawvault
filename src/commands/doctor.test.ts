@@ -43,7 +43,10 @@ vi.mock('../observer/active-session-observer.js', () => ({
 
 vi.mock('../lib/qmd-collections.js', () => ({
   listQmdCollections: listQmdCollectionsMock,
-  removeQmdCollection: vi.fn()
+  removeQmdCollection: vi.fn(),
+  findCollectionByRoot: vi.fn().mockReturnValue(undefined),
+  collectionExists: vi.fn().mockReturnValue(true),
+  getFirstCollection: vi.fn().mockReturnValue(undefined)
 }));
 
 let mockQmdCollection = 'vault';

@@ -31,7 +31,10 @@ vi.mock('../lib/search.js', async () => {
 
 vi.mock('../lib/qmd-collections.js', () => ({
   listQmdCollections: listQmdCollectionsMock,
-  removeQmdCollection: removeQmdCollectionMock
+  removeQmdCollection: removeQmdCollectionMock,
+  findCollectionByRoot: vi.fn().mockReturnValue(undefined),
+  collectionExists: vi.fn().mockReturnValue(true),
+  getFirstCollection: vi.fn().mockReturnValue(undefined)
 }));
 
 vi.mock('child_process', async (importOriginal) => {

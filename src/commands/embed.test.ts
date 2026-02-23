@@ -17,6 +17,13 @@ vi.mock('../lib/search.js', async () => {
   };
 });
 
+vi.mock('../lib/qmd-collections.js', () => ({
+  findCollectionByRoot: vi.fn().mockReturnValue(undefined),
+  collectionExists: vi.fn().mockReturnValue(true),
+  listQmdCollections: vi.fn().mockReturnValue([]),
+  getFirstCollection: vi.fn().mockReturnValue(undefined)
+}));
+
 import { embedCommand } from './embed.js';
 import { QmdUnavailableError } from '../lib/search.js';
 
