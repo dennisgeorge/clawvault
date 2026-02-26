@@ -23,6 +23,7 @@ import { registerProjectCommands } from './register-project-commands.js';
 
 import { registerTaskCommands } from './register-task-commands.js';
 
+import { registerWorkgraphCommands } from './register-workgraph-commands.js';
 import { registerTailscaleCommands } from './register-tailscale-commands.js';
 import {
   getVault,
@@ -108,6 +109,7 @@ registerProjectCommands(program, {
   resolveVaultPath
 });
 
+registerWorkgraphCommands(program, { chalk, resolveVaultPath });
 registerTailscaleCommands(program, { chalk });
 registerConfigCommands(program, { chalk, resolveVaultPath });
 registerRouteCommands(program, { chalk, resolveVaultPath });

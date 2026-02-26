@@ -119,6 +119,152 @@ openclaw --version
 
 ClawVault currently depends on `qmd` for core vault/query flows.
 
+## Workgraph — Multi-Agent Coordination Primitives
+
+ClawVault's workgraph layer enables multiple agents to coordinate through the vault.
+Three layers: **Registry** (what types exist), **Ledger** (what happened), **Store** (the files).
+
+### Core Concepts
+
+**Primitives** are typed markdown files with YAML frontmatter. Built-in types: `thread`, `space`, `decision`, `lesson`, `fact`, `agent`. Agents can define new types at runtime.
+
+**Threads** are the unit of coordinated work. They have a lifecycle:
+```
+open → claim → active → done
+                 ↓
+              blocked → unblock → active
+```
+
+**The Ledger** (`.clawvault/ledger.jsonl`) is the source of truth for coordination:
+- Who claimed what, when
+- Which threads are available
+- Full audit trail of every mutation
+
+**The Registry** (`.clawvault/registry.json`) tracks primitive types:
+- 6 built-in types seeded automatically
+- Agents create new types at runtime via the API
+- Types can be extended with new fields after creation
+
+### Thread Coordination (Programmatic API)
+
+```typescript
+import { thread, store, ledger, registry } from './src/workgraph/index.js';
+
+// Create a thread
+const t = thread.createThread(vaultPath, 'Build Auth', 'Implement JWT auth', 'my-agent', {
+  priority: 'high',
+  tags: ['backend'],
+});
+
+// Claim it (other agents will see it's taken)
+thread.claim(vaultPath, t.path, 'my-agent');
+
+// Check what's available
+const open = store.openThreads(vaultPath);
+const claims = ledger.allClaims(vaultPath);
+
+// Break big work into smaller threads
+thread.decompose(vaultPath, t.path, [
+  { title: 'DB Schema', goal: 'Create tables' },
+  { title: 'JWT Service', goal: 'Token signing', deps: ['threads/db-schema.md'] },
+], 'my-agent');
+
+// Signal completion
+thread.done(vaultPath, t.path, 'my-agent', 'Auth system shipped');
+
+// Check audit trail
+const history = ledger.historyOf(vaultPath, t.path);
+```
+
+### Creating New Primitive Types (Compounding Abstraction)
+
+Agents can define new types at runtime. This is how abstractions compound:
+
+```typescript
+import { registry, store } from './src/workgraph/index.js';
+
+// Agent A defines a "workflow" type
+registry.defineType(vaultPath, 'workflow', 'A staged work sequence', {
+  stages: { type: 'list', required: true },
+  current_stage: { type: 'string', default: '' },
+}, 'agent-architect');
+
+// Agent B defines a "review-gate" that references workflows
+registry.defineType(vaultPath, 'review-gate', 'Approval checkpoint', {
+  workflow_ref: { type: 'ref', required: true },
+  approver: { type: 'string', required: true },
+  approved: { type: 'boolean', default: false },
+}, 'agent-pm');
+
+// Any agent can now create instances of these types
+store.create(vaultPath, 'workflow', {
+  title: 'Deploy Pipeline',
+  stages: ['build', 'test', 'staging', 'production'],
+}, '# Deploy Pipeline\n\nStandard deployment workflow.', 'agent-ops');
+```
+
+### Claim Exclusivity
+
+The ledger prevents race conditions between agents:
+
+```typescript
+// Agent A claims a thread
+thread.claim(vaultPath, 'threads/auth.md', 'agent-a');
+
+// Agent B tries to claim the same thread — FAILS
+thread.claim(vaultPath, 'threads/auth.md', 'agent-b');
+// Error: Cannot claim thread in "active" state.
+
+// Agent A releases it
+thread.release(vaultPath, 'threads/auth.md', 'agent-a');
+
+// Now Agent B can claim it
+thread.claim(vaultPath, 'threads/auth.md', 'agent-b');
+```
+
+### Audit Trail
+
+Every mutation is logged to `.clawvault/ledger.jsonl`:
+
+```jsonl
+{"ts":"2026-02-26T10:00:00Z","actor":"agent-lead","op":"create","target":"threads/auth.md","type":"thread"}
+{"ts":"2026-02-26T10:01:00Z","actor":"agent-worker","op":"claim","target":"threads/auth.md","type":"thread"}
+{"ts":"2026-02-26T10:30:00Z","actor":"agent-worker","op":"block","target":"threads/auth.md","type":"thread","data":{"blocked_by":"threads/db.md"}}
+{"ts":"2026-02-26T11:00:00Z","actor":"agent-lead","op":"unblock","target":"threads/auth.md","type":"thread"}
+{"ts":"2026-02-26T12:00:00Z","actor":"agent-worker","op":"done","target":"threads/auth.md","type":"thread","data":{"output":"JWT auth shipped"}}
+```
+
+Query the ledger:
+```typescript
+ledger.currentOwner(vaultPath, target)    // who owns this?
+ledger.isClaimed(vaultPath, target)       // is it taken?
+ledger.allClaims(vaultPath)               // all active claims
+ledger.historyOf(vaultPath, target)       // full history of a target
+ledger.activityOf(vaultPath, actor)       // what has this agent done?
+ledger.recent(vaultPath, 20)              // last 20 events
+```
+
+### Built-in Primitive Types
+
+| Type | Directory | Purpose |
+|------|-----------|---------|
+| `thread` | `threads/` | Unit of coordinated work with lifecycle |
+| `space` | `spaces/` | Workspace boundary grouping threads |
+| `decision` | `decisions/` | Recorded decision with reasoning |
+| `lesson` | `lessons/` | Captured insight or pattern |
+| `fact` | `facts/` | Structured knowledge (subject-predicate-object) |
+| `agent` | `agents/` | Registered participant in the workgraph |
+
+### Best Practices for Multi-Agent Work
+
+1. **One thread per unit of work** — don't overload threads
+2. **Decompose big threads** — use `thread.decompose()` to create sub-threads with deps
+3. **Always claim before working** — prevents conflicts
+4. **Use context_refs** — link threads to relevant decisions/lessons
+5. **Release what you can't finish** — let other agents pick it up
+6. **Define custom types for repeating patterns** — that's how abstractions compound
+7. **Wiki-link between primitives** — `[[threads/auth.md]]` builds the graph
+
 ## Current Feature Set
 
 ### Memory Graph
