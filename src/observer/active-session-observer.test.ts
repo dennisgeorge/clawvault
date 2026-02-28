@@ -73,6 +73,149 @@ describe('active-session-observer', () => {
     expect(parseSessionSourceLabel('agent:clawdious:telegram:group:-5114657181')).toBe('telegram-group');
   });
 
+  it('falls back to generic source labels for malformed or unknown session keys', () => {
+    expect(parseSessionSourceLabel('invalid-key')).toBe('session');
+    expect(parseSessionSourceLabel('agent:clawdious:slack:thread:1')).toBe('slack');
+    expect(parseSessionSourceLabel('agent:clawdious:custom:feed')).toBe('custom');
+    expect(parseSessionSourceLabel('agent:clawdious')).toBe('session');
+  });
+
+  it('returns an empty result when sessions directory is missing', async () => {
+    const root = makeTempDir('clawvault-active-observe-missing-');
+    const vaultPath = writeVault(root);
+    const sessionsDir = path.join(root, 'missing-sessions');
+
+    try {
+      const result = await observeActiveSessions({
+        vaultPath,
+        sessionsDir,
+        agentId: 'invalid*agent*id',
+        minNewBytes: 1
+      });
+
+      expect(result.agentId).toBe('main');
+      expect(result.checkedSessions).toBe(0);
+      expect(result.candidateSessions).toBe(0);
+      expect(result.observedSessions).toBe(0);
+      expect(result.failedSessionCount).toBe(0);
+      expect(result.candidates).toEqual([]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('observes fallback transcript files when sessions index is absent', async () => {
+    const root = makeTempDir('clawvault-active-observe-fallback-');
+    const vaultPath = writeVault(root);
+    const sessionsDir = path.join(root, 'sessions');
+    fs.mkdirSync(sessionsDir, { recursive: true });
+
+    const transcriptId = 'orphan-session';
+    fs.writeFileSync(
+      path.join(sessionsDir, `${transcriptId}.jsonl`),
+      messageLine('user', 'Fallback transcript captured'),
+      'utf-8'
+    );
+
+    const calls: Array<{
+      messages: string[];
+      options: { source?: string; sessionKey?: string; transcriptId?: string };
+    }> = [];
+
+    try {
+      const result = await observeActiveSessions(
+        {
+          vaultPath,
+          sessionsDir,
+          minNewBytes: 1
+        },
+        {
+          createObserver: () => ({
+            processMessages: async (
+              messages: string[],
+              options?: unknown
+            ): Promise<void> => {
+              const normalized = (options as { source?: string; sessionKey?: string; transcriptId?: string } | undefined) ?? {};
+              calls.push({ messages, options: normalized });
+            },
+            flush: async (): Promise<{ observations: string; routingSummary: string }> => ({
+              observations: '',
+              routingSummary: 'Routed 1 observations → decisions: 1'
+            })
+          })
+        }
+      );
+
+      expect(result.checkedSessions).toBe(1);
+      expect(result.candidateSessions).toBe(1);
+      expect(result.observedSessions).toBe(1);
+      expect(result.cursorUpdates).toBe(1);
+      expect(result.routedCounts.decisions).toBe(1);
+      expect(calls).toHaveLength(1);
+      expect(calls[0]?.messages).toEqual(['[unknown] user: Fallback transcript captured']);
+      expect(calls[0]?.options.transcriptId).toBe(transcriptId);
+      expect(calls[0]?.options.sessionKey).toContain(':unknown:');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('aggregates routed counts from multiple session flush summaries', async () => {
+    const root = makeTempDir('clawvault-active-observe-routing-counts-');
+    const vaultPath = writeVault(root);
+    const sessionsDir = path.join(root, 'sessions');
+    fs.mkdirSync(sessionsDir, { recursive: true });
+
+    const sessionA = 'session-a';
+    const sessionB = 'session-b';
+    fs.writeFileSync(
+      path.join(sessionsDir, 'sessions.json'),
+      JSON.stringify({
+        'agent:clawdious:main': { sessionId: sessionA, updatedAt: Date.now() },
+        'agent:clawdious:telegram:group:-123': { sessionId: sessionB, updatedAt: Date.now() - 1 }
+      }),
+      'utf-8'
+    );
+    fs.writeFileSync(path.join(sessionsDir, `${sessionA}.jsonl`), `${messageLine('user', 'A')}\n`, 'utf-8');
+    fs.writeFileSync(path.join(sessionsDir, `${sessionB}.jsonl`), `${messageLine('assistant', 'B')}\n`, 'utf-8');
+
+    const summaries = [
+      'Routed 2 observations → decisions: 1, lessons: 1',
+      'Routed 2 observations → lessons: 2, projects: 1 (dedup hits: 1)'
+    ];
+
+    try {
+      const result = await observeActiveSessions(
+        {
+          vaultPath,
+          sessionsDir,
+          minNewBytes: 1
+        },
+        {
+          createObserver: () => ({
+            processMessages: async (): Promise<void> => undefined,
+            flush: async (): Promise<{ observations: string; routingSummary: string }> => ({
+              observations: '',
+              routingSummary: summaries.shift() ?? ''
+            })
+          })
+        }
+      );
+
+      expect(result.candidateSessions).toBe(2);
+      expect(result.observedSessions).toBe(2);
+      expect(result.cursorUpdates).toBe(2);
+      expect(result.routedCounts).toEqual({
+        decisions: 1,
+        lessons: 3,
+        projects: 1
+      });
+      expect(result.failedSessionCount).toBe(0);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('observes only new transcript deltas and updates per-session cursors', async () => {
     process.env.CLAWVAULT_NO_LLM = '1';
     const root = makeTempDir('clawvault-active-observe-');
