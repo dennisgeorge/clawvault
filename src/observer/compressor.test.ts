@@ -14,6 +14,87 @@ afterEach(() => {
 });
 
 describe('Compressor', () => {
+  it('sanitizes noisy transcript payloads before sending LLM prompt', async () => {
+    process.env.ANTHROPIC_API_KEY = '';
+    process.env.GEMINI_API_KEY = '';
+    process.env.OPENAI_API_KEY = 'test-key';
+    process.env.CLAWVAULT_NO_LLM = '';
+
+    const fakeBase64 = 'A'.repeat(180);
+    const fetchMock = vi.fn(async (_input: unknown, _init?: RequestInit) => {
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: '## 2026-02-11\n\n- [decision|c=0.90|i=0.90] 10:30 Decided to ship canary rollout first'
+              }
+            }
+          ]
+        })
+      } as Response;
+    });
+    const fetchImpl = fetchMock as unknown as typeof fetch;
+
+    const compressor = new Compressor({
+      now: () => new Date('2026-02-11T10:30:00.000Z'),
+      fetchImpl
+    });
+
+    await compressor.compress([
+      'system: metadata: {"sessionId":"sess-123","parentId":"msg-21"}',
+      `tool_result: {"stdout":"ok","base64":"${fakeBase64}"}`,
+      'assistant: Decided to ship canary rollout first.',
+      `assistant: Screenshot payload data:image/png;base64,${fakeBase64}`,
+      'user: TODO: notify Pedro before deploy'
+    ], '');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, request] = fetchMock.mock.calls[0] as [unknown, RequestInit];
+    const bodyRaw = typeof request.body === 'string' ? request.body : '{}';
+    const body = JSON.parse(bodyRaw) as {
+      messages?: Array<{ role?: string; content?: string }>;
+    };
+    const prompt = body.messages?.find((message) => message.role === 'user')?.content ?? '';
+
+    expect(prompt).toContain('assistant: Decided to ship canary rollout first.');
+    expect(prompt).toContain('user: TODO: notify Pedro before deploy');
+    expect(prompt).not.toContain('tool_result');
+    expect(prompt).not.toContain('sessionId');
+    expect(prompt).not.toContain('data:image/png;base64');
+    expect(prompt).not.toContain(fakeBase64.slice(0, 40));
+  });
+
+  it('drops tool payload noise before fallback compression', async () => {
+    process.env.ANTHROPIC_API_KEY = '';
+    process.env.OPENAI_API_KEY = '';
+    process.env.GEMINI_API_KEY = '';
+    process.env.CLAWVAULT_NO_LLM = '';
+
+    const fakeBase64 = 'B'.repeat(180);
+    const compressor = new Compressor({
+      now: () => new Date('2026-02-11T12:00:00.000Z')
+    });
+    const output = await compressor.compress(
+      [
+        'system: metadata: {"sessionId":"sess-9","parentId":"msg-9"}',
+        `tool_result: {"stdout":"ok","base64":"${fakeBase64}"}`,
+        'assistant: Decision: adopt staged rollback plan.',
+        `assistant: data:image/png;base64,${fakeBase64}`,
+        'user: TODO: publish runbook update'
+      ],
+      ''
+    );
+
+    expect(output).toContain('Decision: adopt staged rollback plan.');
+    expect(output).toContain('TODO: publish runbook update');
+    expect(output).not.toContain('tool_result');
+    expect(output).not.toContain('sessionId');
+    expect(output).not.toContain('data:image/png;base64');
+    expect(output).not.toContain(fakeBase64.slice(0, 40));
+  });
+
   it('deduplicates by normalized content during merges', async () => {
     process.env.ANTHROPIC_API_KEY = '';
     process.env.GEMINI_API_KEY = '';

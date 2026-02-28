@@ -38,6 +38,27 @@ describe('parseSessionFile', () => {
     fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
   });
 
+  it('filters tool_result blocks, base64 payloads, and system metadata from OpenClaw JSONL', () => {
+    const fakeBase64 = 'A'.repeat(180);
+    const filePath = writeTempSession(
+      [
+        '{"type":"metadata","sessionId":"sess-001","parentId":"msg-0"}',
+        '{"type":"message","message":{"role":"assistant","content":[{"type":"text","text":"Decision: Use canary deploys first."},{"type":"tool_result","text":"{\\"stdout\\":\\"ok\\",\\"base64\\":\\"' + fakeBase64 + '\\"}"},{"type":"tool_use","text":"{\\"name\\":\\"bash\\"}"}]}}',
+        '{"type":"message","message":{"role":"tool_result","content":"{\\"stdout\\":\\"hidden tool output\\"}"}}',
+        '{"type":"message","message":{"role":"system","content":"metadata: sessionId=sess-001 parentId=msg-1"}}',
+        `{"type":"message","message":{"role":"user","content":"Please summarize this screenshot data:image/png;base64,${fakeBase64}"}}`
+      ].join('\n'),
+      '.jsonl'
+    );
+
+    const messages = parseSessionFile(filePath);
+    expect(messages).toEqual([
+      'assistant: Decision: Use canary deploys first.',
+      'user: Please summarize this screenshot'
+    ]);
+    fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+  });
+
   it('parses markdown transcripts into message chunks', () => {
     const filePath = writeTempSession(
       [

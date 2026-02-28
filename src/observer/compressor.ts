@@ -57,6 +57,12 @@ const TODO_SIGNAL_RE = /(?:\btodo:\s*|\bwe need to\b|\bdon't forget(?: to)?\b|\b
 const COMMITMENT_TASK_SIGNAL_RE = /\b(?:i'?ll|i will|let me|(?:i'?m\s+)?going to|plan to|should)\b/i;
 const UNRESOLVED_COMMITMENT_RE = /\b(?:need to figure out|tbd|to be determined)\b/i;
 const DEADLINE_SIGNAL_RE = /\b(?:by\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow)|before\s+the\s+\w+|deadline is)\b/i;
+const ROLE_PREFIX_RE = /^([a-z][a-z0-9_-]{1,31})\s*:\s*(.+)$/i;
+const BASE64_DATA_URI_RE = /\bdata:[^;\s]+;base64,[A-Za-z0-9+/=]{24,}\b/gi;
+const LONG_BASE64_TOKEN_RE = /\b[A-Za-z0-9+/]{80,}={0,2}\b/g;
+const NOISE_PREFIX_RE = /^(?:metadata|system metadata|session metadata)\s*:/i;
+const STRUCTURED_NOISE_MARKER_RE =
+  /\b(?:tool[_-]?result|tool[_-]?use|toolcallid|tooluseid|function[_-]?(?:call|result)|stdout|stderr|exitcode|recordedat|trace(?:_|-)?id|parent(?:_|-)?id|session(?:_|-)?id|metadata|base64|mime(?:type)?)\b/i;
 
 export class Compressor {
   private readonly provider?: CompressionProvider;
@@ -76,7 +82,7 @@ export class Compressor {
   }
 
   async compress(messages: string[], existingObservations: string): Promise<string> {
-    const cleanedMessages = messages.map((message) => message.trim()).filter(Boolean);
+    const cleanedMessages = this.sanitizeIncomingMessages(messages);
     if (cleanedMessages.length === 0) {
       return existingObservations.trim();
     }
@@ -106,6 +112,86 @@ export class Compressor {
 
     const fallback = this.fallbackCompression(cleanedMessages);
     return this.mergeObservations(existingObservations, fallback);
+  }
+
+  private sanitizeIncomingMessages(messages: string[]): string[] {
+    const sanitized: string[] = [];
+    for (const message of messages) {
+      const cleaned = this.sanitizeIncomingMessage(message);
+      if (cleaned) {
+        sanitized.push(cleaned);
+      }
+    }
+    return sanitized;
+  }
+
+  private sanitizeIncomingMessage(message: string): string {
+    const normalized = message.replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+      return '';
+    }
+
+    const roleMatch = ROLE_PREFIX_RE.exec(normalized);
+    if (roleMatch) {
+      const role = this.normalizeMessageRole(roleMatch[1]);
+      if (this.shouldDropMessageRole(role)) {
+        return '';
+      }
+
+      const content = this.stripNoisyData(roleMatch[2]);
+      if (!content || this.isLikelyStructuredNoise(content)) {
+        return '';
+      }
+
+      return `${role}: ${content}`;
+    }
+
+    const cleaned = this.stripNoisyData(normalized);
+    if (!cleaned || this.isLikelyStructuredNoise(cleaned)) {
+      return '';
+    }
+
+    return cleaned;
+  }
+
+  private normalizeMessageRole(role: string): string {
+    return role.trim().toLowerCase();
+  }
+
+  private shouldDropMessageRole(role: string): boolean {
+    const normalized = role.replace(/[\s_-]+/g, '');
+    if (!normalized) {
+      return false;
+    }
+    if (normalized === 'system' || normalized === 'developer' || normalized === 'metadata') {
+      return true;
+    }
+    return normalized.startsWith('tool');
+  }
+
+  private stripNoisyData(value: string): string {
+    return value
+      .replace(BASE64_DATA_URI_RE, ' ')
+      .replace(LONG_BASE64_TOKEN_RE, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private isLikelyStructuredNoise(value: string): boolean {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return true;
+    }
+    if (NOISE_PREFIX_RE.test(trimmed)) {
+      return true;
+    }
+
+    const looksStructured = trimmed.startsWith('{') || trimmed.startsWith('[');
+    if (looksStructured && STRUCTURED_NOISE_MARKER_RE.test(trimmed) && trimmed.length >= 40) {
+      return true;
+    }
+
+    return false;
   }
 
   private resolveProvider(): ResolvedCompressionBackend | null {

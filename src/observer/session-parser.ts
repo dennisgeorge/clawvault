@@ -6,14 +6,110 @@ type SessionFormat = 'plain' | 'jsonl' | 'markdown';
 const JSONL_SAMPLE_LIMIT = 20;
 const MARKDOWN_SIGNAL_RE = /^(#{1,6}\s|[-*+]\s|>\s)/;
 const MARKDOWN_INLINE_RE = /(\[[^\]]+\]\([^)]+\)|[*_`~])/;
+const BASE64_DATA_URI_RE = /\bdata:[^;\s]+;base64,[A-Za-z0-9+/=]{24,}\b/gi;
+const LONG_BASE64_TOKEN_RE = /\b[A-Za-z0-9+/]{80,}={0,2}\b/g;
+const STRUCTURED_NOISE_MARKER_RE =
+  /\b(?:tool[_-]?result|tool[_-]?use|toolcallid|tooluseid|function[_-]?(?:call|result)|stdout|stderr|exitcode|recordedat|trace(?:_|-)?id|parent(?:_|-)?id|session(?:_|-)?id|metadata|base64|mime(?:type)?)\b/i;
+const NOISY_PREFIX_RE = /^(?:metadata|system metadata|session metadata)\s*:/i;
+
+function normalizeToken(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s_-]+/g, '');
+}
 
 function normalizeText(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
+function shouldDropRole(role: string): boolean {
+  const normalized = normalizeToken(role);
+  if (!normalized) {
+    return false;
+  }
+  if (normalized === 'system' || normalized === 'developer' || normalized === 'metadata') {
+    return true;
+  }
+  return normalized.startsWith('tool');
+}
+
+function isNoisyBlockType(value: unknown): boolean {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  const normalized = normalizeToken(value);
+  if (!normalized || normalized === 'text' || normalized === 'markdown') {
+    return false;
+  }
+
+  return normalized.includes('tool')
+    || normalized.includes('functioncall')
+    || normalized.includes('functionresult')
+    || normalized.includes('thinking')
+    || normalized.includes('reason')
+    || normalized.includes('metadata');
+}
+
+function stripNoisyData(value: string): string {
+  return normalizeText(
+    value
+      .replace(BASE64_DATA_URI_RE, ' ')
+      .replace(LONG_BASE64_TOKEN_RE, ' ')
+  );
+}
+
+function isLikelyStructuredNoise(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return true;
+  }
+  if (NOISY_PREFIX_RE.test(trimmed)) {
+    return true;
+  }
+
+  const looksStructured = trimmed.startsWith('{') || trimmed.startsWith('[');
+  if (looksStructured && STRUCTURED_NOISE_MARKER_RE.test(trimmed) && trimmed.length >= 40) {
+    return true;
+  }
+
+  return false;
+}
+
+function sanitizeExtractedText(value: string): string {
+  const stripped = stripNoisyData(value);
+  if (!stripped) {
+    return '';
+  }
+  if (isLikelyStructuredNoise(stripped)) {
+    return '';
+  }
+  return stripped;
+}
+
+function sanitizeParsedMessage(message: string): string {
+  const normalized = normalizeText(message);
+  if (!normalized) {
+    return '';
+  }
+
+  const roleMatch = /^([a-z][a-z0-9_-]{1,31})\s*:\s*(.+)$/i.exec(normalized);
+  if (roleMatch) {
+    const role = normalizeRole(roleMatch[1]);
+    if (shouldDropRole(role)) {
+      return '';
+    }
+    const content = sanitizeExtractedText(roleMatch[2]);
+    if (!content) {
+      return '';
+    }
+    return role ? `${role}: ${content}` : content;
+  }
+
+  return sanitizeExtractedText(normalized);
+}
+
 function extractText(value: unknown): string {
   if (typeof value === 'string') {
-    return normalizeText(value);
+    return sanitizeExtractedText(value);
   }
 
   if (Array.isArray(value)) {
@@ -32,11 +128,18 @@ function extractText(value: unknown): string {
   }
 
   const record = value as Record<string, unknown>;
+  if (isNoisyBlockType(record.type)) {
+    return '';
+  }
+
   if (typeof record.text === 'string') {
-    return normalizeText(record.text);
+    return sanitizeExtractedText(record.text);
   }
   if (typeof record.content === 'string') {
-    return normalizeText(record.content);
+    return sanitizeExtractedText(record.content);
+  }
+  if (record.content !== undefined) {
+    return extractText(record.content);
   }
 
   return '';
@@ -86,17 +189,19 @@ function parseJsonLine(line: string): string {
 
   if ('role' in entry && 'content' in entry) {
     const role = normalizeRole(entry.role);
+    if (shouldDropRole(role)) return '';
     const content = extractText(entry.content);
     if (!content) return '';
-    return role ? `${role}: ${content}` : content;
+    return sanitizeParsedMessage(role ? `${role}: ${content}` : content);
   }
 
   if (entry.type === 'message' && entry.message && typeof entry.message === 'object') {
     const message = entry.message as Record<string, unknown>;
     const role = normalizeRole(message.role);
+    if (shouldDropRole(role)) return '';
     const content = extractText(message.content);
     if (!content) return '';
-    return role ? `${role}: ${content}` : content;
+    return sanitizeParsedMessage(role ? `${role}: ${content}` : content);
   }
 
   return '';
@@ -158,13 +263,17 @@ function parseMarkdown(raw: string): string[] {
     if (roleMatch) {
       const role = normalizeRole(roleMatch[1]);
       const content = normalizeText(roleMatch[2]);
-      if (content) {
-        messages.push(`${role}: ${content}`);
+      const parsed = sanitizeParsedMessage(`${role}: ${content}`);
+      if (parsed) {
+        messages.push(parsed);
       }
       continue;
     }
 
-    messages.push(joined);
+    const parsed = sanitizeParsedMessage(joined);
+    if (parsed) {
+      messages.push(parsed);
+    }
   }
 
   return messages;
@@ -173,7 +282,7 @@ function parseMarkdown(raw: string): string[] {
 function parsePlainText(raw: string): string[] {
   return raw
     .split(/\r?\n/)
-    .map((line) => normalizeText(line))
+    .map((line) => sanitizeParsedMessage(line))
     .filter(Boolean);
 }
 
@@ -216,10 +325,7 @@ export function parseSessionFile(filePath: string): string[] {
   const format = detectSessionFormat(raw, resolved);
 
   if (format === 'jsonl') {
-    const parsed = parseJsonLines(raw);
-    if (parsed.length > 0) {
-      return parsed;
-    }
+    return parseJsonLines(raw);
   }
 
   if (format === 'markdown') {
