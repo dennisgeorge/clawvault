@@ -153,11 +153,12 @@ describe('createFactExtractionAdapter', () => {
     expect(adapter.getProvider()).toBe('gemini');
   });
 
-  it('falls back to default provider when Gemini unavailable', () => {
+  it('falls back to Ollama when Gemini unavailable', () => {
     process.env.ANTHROPIC_API_KEY = 'anthropic-key';
     const adapter = createFactExtractionAdapter();
     expect(adapter.isAvailable()).toBe(true);
-    expect(adapter.getProvider()).toBe('anthropic');
+    // Ollama adapter intercepts before default provider (getProvider returns null for Ollama)
+    expect(adapter.getProvider()).toBe(null);
   });
 
   it('uses explicit provider when specified', () => {

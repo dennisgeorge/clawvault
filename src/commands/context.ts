@@ -4,6 +4,8 @@ import { ClawVault } from '../lib/vault.js';
 import { parseObservationLines, readObservations } from '../lib/observation-reader.js';
 import { estimateTokens, fitWithinBudget } from '../lib/token-counter.js';
 import { getMemoryGraph, type MemoryGraph, type MemoryGraphEdge } from '../lib/memory-graph.js';
+import { FactStore } from '../lib/fact-store.js';
+import type { ExtractedFact } from '../lib/fact-extractor.js';
 import {
   resolveContextProfile,
   normalizeContextProfileInput,
@@ -104,25 +106,25 @@ interface PrioritizedContextItem {
 }
 
 interface ContextProfileOrdering {
-  order: Array<'structural' | 'daily' | 'search' | 'graph' | 'potential' | 'contextual'>;
+  order: Array<'structural' | 'daily' | 'search' | 'fact' | 'graph' | 'potential' | 'contextual'>;
   caps: Partial<Record<ContextEntry['source'], number>>;
 }
 
 const PROFILE_ORDERING: Record<ContextProfile, ContextProfileOrdering> = {
   default: {
-    order: ['structural', 'daily', 'search', 'graph', 'potential', 'contextual'],
+    order: ['structural', 'fact', 'daily', 'search', 'graph', 'potential', 'contextual'],
     caps: {}
   },
   planning: {
-    order: ['search', 'graph', 'structural', 'potential', 'daily', 'contextual'],
+    order: ['fact', 'search', 'graph', 'structural', 'potential', 'daily', 'contextual'],
     caps: { observation: 12, graph: 12 }
   },
   incident: {
-    order: ['structural', 'search', 'potential', 'daily', 'graph', 'contextual'],
+    order: ['structural', 'fact', 'search', 'potential', 'daily', 'graph', 'contextual'],
     caps: { observation: 20, graph: 8 }
   },
   handoff: {
-    order: ['daily', 'structural', 'potential', 'search', 'graph', 'contextual'],
+    order: ['daily', 'structural', 'fact', 'potential', 'search', 'graph', 'contextual'],
     caps: { 'daily-note': 2, observation: 15 }
   }
 };
@@ -328,6 +330,92 @@ function buildObservationContextItems(vaultPath: string, queryKeywords: string[]
         signals: ['observation_importance', `type:${observation.type}`, 'keyword_overlap'],
         rationale: `Observation type ${observation.type} with importance ${observation.importance.toFixed(2)} matched task keywords.`
       }
+    });
+  }
+
+  return items;
+}
+
+// ─── Preference / temporal query detection ─────────────────────────────────
+
+const PREFERENCE_PATTERNS = /\b(prefer|like|favorite|favourit|enjoy|habit|allergy|allergic|diet|dislike|want|love|hate|routine)\b/i;
+const TEMPORAL_PATTERNS = /\b(yesterday|today|last\s+(?:week|month|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|in\s+\d{4}|on\s+\w+\s+\d{1,2}|\d{4}-\d{2}-\d{2}|january|february|march|april|may|june|july|august|september|october|november|december)\b/i;
+
+function isPreferenceQuery(query: string): boolean {
+  return PREFERENCE_PATTERNS.test(query);
+}
+
+function isTemporalQuery(query: string): boolean {
+  return TEMPORAL_PATTERNS.test(query);
+}
+
+/**
+ * Build context items from the fact store.
+ * Facts are formatted as concise statements and injected as high-priority context.
+ */
+function buildFactContextItems(
+  vaultPath: string,
+  query: string,
+  _queryKeywords: string[]
+): PrioritizedContextItem[] {
+  const factStore = new FactStore(vaultPath);
+  try {
+    factStore.load();
+  } catch {
+    return [];
+  }
+
+  const stats = factStore.stats();
+  if (stats.activeFacts === 0) return [];
+
+  const items: PrioritizedContextItem[] = [];
+  const preferenceQuery = isPreferenceQuery(query);
+  const temporalQuery = isTemporalQuery(query);
+
+  // Search facts by query keywords
+  const matchingFacts = factStore.searchFacts(query);
+
+  // If preference query, also pull all preferences
+  if (preferenceQuery) {
+    const prefs = factStore.getPreferences();
+    for (const pref of prefs) {
+      if (!matchingFacts.find(f => f.id === pref.id)) {
+        matchingFacts.push(pref);
+      }
+    }
+  }
+
+  // Score and convert facts to context items
+  for (const fact of matchingFacts.slice(0, 10)) {
+    const factText = `${fact.entity} ${fact.relation} ${fact.value}`;
+    let score = fact.confidence * 0.8;
+
+    // Boost preferences when query is about preferences
+    if (preferenceQuery && fact.category === 'preference') {
+      score *= 1.5;
+    }
+
+    // Boost temporal facts when query has time references
+    if (temporalQuery && (fact.relation.includes('_on') || fact.relation.includes('date') || fact.relation.includes('time'))) {
+      score *= 1.3;
+    }
+
+    const entry: ContextEntry = {
+      title: `Fact: ${fact.entity} → ${fact.relation}`,
+      path: fact.source,
+      category: fact.category,
+      score: Math.min(1.0, score),
+      snippet: factText,
+      modified: fact.validFrom,
+      age: formatRelativeAge(new Date(fact.validFrom)),
+      source: 'observation',  // Use 'observation' since ContextSource doesn't include 'fact'
+      signals: ['fact_store', fact.category],
+      rationale: `Extracted fact (${fact.category}, confidence: ${fact.confidence.toFixed(2)})`
+    };
+
+    items.push({
+      priority: preferenceQuery && fact.category === 'preference' ? 1 : 2,
+      entry
     });
   }
 
@@ -616,6 +704,7 @@ export async function buildContext(task: string, options: ContextOptions): Promi
 
   const searchItems = buildSearchContextItems(vault, searchResults);
   const dailyItems = buildDailyContextItems(vault.getPath(), allDocuments);
+  const factItems = buildFactContextItems(vault.getPath(), normalizedTask, queryKeywords);
   const observationItems = includeObservations
     ? buildObservationContextItems(vault.getPath(), queryKeywords)
     : [];
@@ -637,11 +726,13 @@ export async function buildContext(task: string, options: ContextOptions): Promi
   const contextualObservations = observationItems.filter((item) => item.priority === 5).sort(byScoreDesc);
   const sortedDailyItems = [...dailyItems].sort(byScoreDesc);
   const sortedSearchItems = [...searchItems].sort(byScoreDesc);
+  const sortedFactItems = [...factItems].sort(byScoreDesc);
   const sortedGraphItems = [...graphItems].sort(byScoreDesc);
-  const grouped: Record<'structural' | 'daily' | 'search' | 'graph' | 'potential' | 'contextual', PrioritizedContextItem[]> = {
+  const grouped: Record<'structural' | 'daily' | 'search' | 'fact' | 'graph' | 'potential' | 'contextual', PrioritizedContextItem[]> = {
     structural: structuralObservations,
     daily: sortedDailyItems,
     search: sortedSearchItems,
+    fact: sortedFactItems,
     graph: sortedGraphItems,
     potential: potentialObservations,
     contextual: contextualObservations

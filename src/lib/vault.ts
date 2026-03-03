@@ -37,6 +37,9 @@ export class ClawVault {
   private initialized: boolean = false;
 
   constructor(vaultPath: string) {
+    if (typeof vaultPath !== 'string' || !vaultPath.trim()) {
+      throw new Error(`Invalid vault path: expected a non-empty string, received ${typeof vaultPath}`);
+    }
     if (!hasQmd()) {
       const error = new QmdUnavailableError('NOT_INSTALLED');
       console.error(error.toUserMessage());
@@ -193,10 +196,10 @@ export class ClawVault {
     }
 
     const meta: VaultMeta = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    this.config.name = meta.name;
-    this.config.categories = meta.categories;
-    this.config.qmdCollection = meta.qmdCollection;
-    this.config.qmdRoot = meta.qmdRoot;
+    this.config.name = typeof meta.name === 'string' ? meta.name : this.config.name;
+    this.config.categories = Array.isArray(meta.categories) ? meta.categories : this.config.categories;
+    this.config.qmdCollection = typeof meta.qmdCollection === 'string' ? meta.qmdCollection : undefined;
+    this.config.qmdRoot = typeof meta.qmdRoot === 'string' ? meta.qmdRoot : undefined;
 
     if (!meta.qmdCollection || !meta.qmdRoot) {
       meta.qmdCollection = meta.qmdCollection || meta.name;
@@ -820,7 +823,7 @@ export class ClawVault {
 
     const qmdConfig = loadVaultQmdConfig(this.config.path);
     const collection = explicitCollection || qmdConfig.qmdCollection || this.config.name;
-    const root = explicitRoot || qmdConfig.qmdRoot;
+    const root = (typeof explicitRoot === 'string' ? explicitRoot : undefined) || qmdConfig.qmdRoot || this.config.path;
 
     if (qmdConfig.autoDetected) {
       console.warn(`[clawvault] Auto-detected qmd collection: ${collection}`);

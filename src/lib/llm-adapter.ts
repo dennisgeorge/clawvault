@@ -36,6 +36,8 @@ export interface LlmAdapter {
 }
 
 const GEMINI_FLASH_MODEL = 'gemini-2.0-flash';
+const OLLAMA_DEFAULT_MODEL = 'llama3.1:8b';
+const OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
 
 /**
  * Create a Gemini Flash adapter for fact extraction.
@@ -68,6 +70,65 @@ export function createGeminiFlashAdapter(options: LlmAdapterOptions = {}): LlmAd
       return apiKey ? 'gemini' : null;
     }
   };
+}
+
+/**
+ * Create an Ollama adapter for fact extraction.
+ * Uses local Ollama instance — always free, no API key needed.
+ */
+export function createOllamaAdapter(options: LlmAdapterOptions = {}): LlmAdapter {
+  let _available: boolean | null = null;
+  const fetchFn = options.fetchImpl ?? globalThis.fetch;
+
+  return {
+    async call(prompt: string): Promise<string> {
+      const resp = await fetchFn(`${OLLAMA_BASE_URL}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: options.model ?? OLLAMA_DEFAULT_MODEL,
+          prompt,
+          stream: false,
+          options: {
+            temperature: options.temperature ?? 0.1,
+            num_predict: options.maxTokens ?? 2000
+          }
+        })
+      });
+      if (!resp.ok) return '';
+      const data = await resp.json() as { response?: string };
+      return data.response ?? '';
+    },
+
+    isAvailable(): boolean {
+      if (_available !== null) return _available;
+      // Synchronous check — optimistic. Actual availability confirmed on first call.
+      // We check by attempting a sync XMLHttpRequest-style probe, but since we're
+      // in Node with only async fetch, we optimistically return true and let call() fail gracefully.
+      // For real check, use checkOllamaAvailable() async function.
+      _available = true;
+      return true;
+    },
+
+    getProvider(): LlmProvider | null {
+      return null; // Ollama isn't a standard LlmProvider
+    }
+  };
+}
+
+/**
+ * Async check if Ollama is running locally.
+ */
+export async function checkOllamaAvailable(fetchFn?: typeof fetch): Promise<boolean> {
+  try {
+    const f = fetchFn ?? globalThis.fetch;
+    const resp = await f(`${OLLAMA_BASE_URL}/api/tags`, {
+      signal: AbortSignal.timeout(2000)
+    });
+    return resp.ok;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -111,7 +172,8 @@ export function createDefaultAdapter(options: LlmAdapterOptions = {}): LlmAdapte
  * Priority:
  * 1. If provider is explicitly specified, use that
  * 2. If Gemini API key is available, prefer Gemini Flash for speed
- * 3. Fall back to default provider resolution
+ * 3. If Ollama is running locally, use Ollama (free, always available)
+ * 4. Fall back to default provider resolution
  */
 export function createFactExtractionAdapter(options: LlmAdapterOptions = {}): LlmAdapter {
   if (options.provider) {
@@ -121,6 +183,13 @@ export function createFactExtractionAdapter(options: LlmAdapterOptions = {}): Ll
   const geminiAdapter = createGeminiFlashAdapter(options);
   if (geminiAdapter.isAvailable()) {
     return geminiAdapter;
+  }
+
+  // Ollama is always "available" optimistically — it fails gracefully on call()
+  // and extractFactsLlm falls back to rule-based extraction
+  const ollamaAdapter = createOllamaAdapter(options);
+  if (ollamaAdapter.isAvailable()) {
+    return ollamaAdapter;
   }
 
   return createDefaultAdapter(options);

@@ -249,19 +249,57 @@ export function extractFactsRuleBased(
 
 // ─── LLM-based extraction ───────────────────────────────────────────────────
 
-const EXTRACTION_PROMPT = `Extract structured facts from the following text. Return a JSON array of objects with these fields:
-- entity: the subject (person, place, thing, or "user" for the speaker)
-- relation: the relationship type (e.g., "prefers", "works_at", "lives_in", "bought", "spent_on", "age", "decided", "allergic_to")
+const EXTRACTION_PROMPT = `Extract structured facts from the following text. Return ONLY a JSON array of objects with these fields:
+- entity: the subject (person, place, thing, or "user" for the speaker/first person)
+- relation: the relationship type (see examples below)
 - value: the object of the relation
 - category: one of "preference", "fact", "decision", "entity", "event"
 - confidence: 0.0 to 1.0
 
+PREFERENCE EXTRACTION (critical — extract ALL of these):
+- Likes, dislikes, preferences, favorites: "prefers", "likes", "dislikes", "favorite"
+- Food/dietary: "allergic_to", "dietary_restriction", "favorite_food", "dislikes_food"
+- Habits/routines: "habit", "routine", "schedule"
+- Communication style: "prefers_communication", "timezone", "language"
+- Tools/tech: "uses_tool", "prefers_editor", "prefers_language"
+
+TEMPORAL FACTS (include dates when present):
+- Include specific dates, times, relative references ("last Tuesday" = resolve if possible)
+- Events: "happened_on", "started_on", "ended_on", "deadline"
+- Use ISO format for dates when possible
+
+OTHER RELATIONS:
+- Identity: "works_at", "lives_in", "age", "role", "email", "phone"
+- Actions: "bought", "spent_on", "created", "visited", "completed"
+- Decisions: "decided", "chose", "rejected", "approved"
+- Knowledge: "knows_about", "studied", "expertise"
+
+Examples:
+
+Input: "I really love Thai food, especially pad thai. I'm allergic to shellfish though."
+Output: [
+  {"entity": "user", "relation": "favorite_food", "value": "Thai food, especially pad thai", "category": "preference", "confidence": 0.95},
+  {"entity": "user", "relation": "allergic_to", "value": "shellfish", "category": "preference", "confidence": 0.99}
+]
+
+Input: "We decided on Tuesday to use PostgreSQL for the new project. John will lead the backend team."
+Output: [
+  {"entity": "team", "relation": "decided", "value": "use PostgreSQL for the new project", "category": "decision", "confidence": 0.95},
+  {"entity": "John", "relation": "role", "value": "backend team lead", "category": "fact", "confidence": 0.9}
+]
+
+Input: "My morning routine is: wake up at 6am, coffee, then gym. I prefer working out before work."
+Output: [
+  {"entity": "user", "relation": "routine", "value": "wake up at 6am, coffee, then gym", "category": "preference", "confidence": 0.9},
+  {"entity": "user", "relation": "prefers", "value": "working out before work", "category": "preference", "confidence": 0.9}
+]
+
 Rules:
-- Extract ALL facts, preferences, decisions, and events
-- For preferences, use "user" as entity
-- For monetary amounts, include the dollar sign
-- Be precise — only extract what's explicitly stated
-- Return empty array [] if no facts found
+- Extract ALL facts, preferences, decisions, and events — err on the side of extracting more
+- For preferences, use "user" as entity unless a specific person is named
+- For monetary amounts, include the currency symbol
+- Be precise — only extract what is explicitly stated or strongly implied
+- Return empty array [] if no extractable facts found
 
 Text:
 `;
