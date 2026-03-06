@@ -131,7 +131,13 @@ export class Compressor {
       return '';
     }
 
-    const roleMatch = ROLE_PREFIX_RE.exec(normalized);
+    // OpenClaw observer tags messages with a source prefix like: "[main] assistant: ...".
+    // Keep the tag for attribution, but strip it for role parsing so we can drop tool messages.
+    const sourceTagMatch = /^\[[^\]]+\]\s+/.exec(normalized);
+    const sourceTag = sourceTagMatch ? sourceTagMatch[0] : '';
+    const payload = sourceTag ? normalized.slice(sourceTag.length).trimStart() : normalized;
+
+    const roleMatch = ROLE_PREFIX_RE.exec(payload);
     if (roleMatch && this.isConversationRolePrefix(roleMatch[1])) {
       const role = this.normalizeMessageRole(roleMatch[1]);
       if (this.shouldDropMessageRole(role)) {
@@ -143,15 +149,16 @@ export class Compressor {
         return '';
       }
 
-      return `${role}: ${content}`;
+      const cleaned = `${role}: ${content}`;
+      return sourceTag ? `${sourceTag}${cleaned}` : cleaned;
     }
 
-    const cleaned = this.stripNoisyData(normalized);
+    const cleaned = this.stripNoisyData(payload);
     if (!cleaned || this.isLikelyStructuredNoise(cleaned)) {
       return '';
     }
 
-    return cleaned;
+    return sourceTag ? `${sourceTag}${cleaned}` : cleaned;
   }
 
   private normalizeMessageRole(role: string): string {
