@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -48,8 +48,8 @@ function makeTempDir(): string {
 
 describe('vault core', () => {
   let tempDir: string;
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-  let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+  let consoleErrorSpy: MockInstance<[message?: any, ...optionalParams: any[]], void>;
+  let consoleWarnSpy: MockInstance<[message?: any, ...optionalParams: any[]], void>;
 
   beforeEach(() => {
     tempDir = makeTempDir();

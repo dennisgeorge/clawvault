@@ -109,7 +109,7 @@ describe('rebuildEmbeddingsForVault', () => {
     writeMarkdown(vaultPath, 'docs/b.md', 'This document is long enough to embed (B).');
     writeMarkdown(vaultPath, 'docs/c.md', 'short');
 
-    const progress = vi.fn<(current: number, total: number) => void>();
+    const progress = vi.fn<[number, number], void>();
     const result = await rebuildEmbeddingsForVault(vaultPath, { onProgress: progress });
 
     expect(result.added).toBe(2);
