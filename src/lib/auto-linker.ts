@@ -19,6 +19,7 @@ interface PlannedLink {
  * - Inline code (`)
  * - Existing wiki links ([[...]])
  * - URLs
+ * - Filesystem paths
  */
 function findProtectedRanges(content: string): ProtectedRange[] {
   const ranges: ProtectedRange[] = [];
@@ -52,6 +53,15 @@ function findProtectedRanges(content: string): ProtectedRange[] {
   const urlRegex = /https?:\/\/[^\s)>\]]+/g;
   while ((match = urlRegex.exec(content)) !== null) {
     ranges.push({ start: match.index, end: match.index + match[0].length });
+  }
+
+  // Filesystem-like paths. Protect whole path tokens so linking does not corrupt them.
+  const filePathRegex = /(?:^|[\s([{"'])((?:~|\/)[^\s`<>\])}"']+|[A-Za-z]:\\[^\s`<>\])}"']+)/g;
+  while ((match = filePathRegex.exec(content)) !== null) {
+    const fullMatch = match[0];
+    const pathValue = match[1];
+    const start = match.index + fullMatch.indexOf(pathValue);
+    ranges.push({ start, end: start + pathValue.length });
   }
   
   return ranges;
