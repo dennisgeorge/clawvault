@@ -4,7 +4,7 @@ const QMD_INDEX_ENV_VAR = 'CLAWVAULT_QMD_INDEX';
 const DEFAULT_TEST_QMD_INDEX = 'clawvault-test';
 
 function hasQmdBinary(): boolean {
-  const probe = spawnSync('qmd', ['--version'], { stdio: 'ignore' });
+  const probe = spawnSync('qmd', ['--version'], { stdio: 'ignore', shell: process.platform === 'win32' });
   return !probe.error;
 }
 
@@ -24,7 +24,8 @@ function listCollections(indexName: string): string[] {
   try {
     const output = execFileSync('qmd', ['--index', indexName, 'collection', 'list'], {
       encoding: 'utf-8',
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: process.platform === 'win32'
     });
     return parseCollectionNames(output);
   } catch {
@@ -41,7 +42,7 @@ function removeCollection(indexName: string, name: string): void {
 
   for (const args of removalVariants) {
     try {
-      execFileSync('qmd', ['--index', indexName, ...args], { stdio: 'ignore' });
+      execFileSync('qmd', ['--index', indexName, ...args], { stdio: 'ignore', shell: process.platform === 'win32' });
       return;
     } catch {
       // Try alternate subcommand names for different qmd versions.

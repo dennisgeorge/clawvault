@@ -135,7 +135,19 @@ interface QmdIndexResult {
 }
 
 function getQmdIndexStatus(collection: string, root: string, indexName?: string): QmdIndexResult {
-  const output = execFileSync('qmd', withQmdIndexArgs(['collection', 'list'], indexName), { encoding: 'utf-8' });
+  let output: string;
+  try {
+    output = execFileSync('qmd', withQmdIndexArgs(['collection', 'list'], indexName), {
+      encoding: 'utf-8',
+      shell: process.platform === 'win32'
+    });
+  } catch (err: any) {
+    if (err?.status === 1 && err?.stdout) {
+      output = err.stdout;
+    } else {
+      throw err;
+    }
+  }
   const collections = parseQmdCollectionList(output);
   
   const collectionInfo = collections.find(c => c.name === collection);

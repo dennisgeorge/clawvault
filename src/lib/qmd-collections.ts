@@ -122,17 +122,18 @@ export function parseQmdCollectionList(raw: string): QmdCollectionInfo[] {
 
 export function listQmdCollections(indexName?: string): QmdCollectionInfo[] {
   const output = execFileSync('qmd', withQmdIndexArgs(['collection', 'list'], indexName), {
-    encoding: 'utf-8'
+    encoding: 'utf-8',
+    shell: process.platform === 'win32'
   });
   return parseQmdCollectionList(output);
 }
 
 export function removeQmdCollection(name: string, indexName?: string): void {
   try {
-    execFileSync('qmd', withQmdIndexArgs(['collection', 'remove', name], indexName), { stdio: 'ignore' });
+    execFileSync('qmd', withQmdIndexArgs(['collection', 'remove', name], indexName), { stdio: 'ignore', shell: process.platform === 'win32' });
     return;
   } catch {
-    execFileSync('qmd', withQmdIndexArgs(['collection', 'rm', name], indexName), { stdio: 'ignore' });
+    execFileSync('qmd', withQmdIndexArgs(['collection', 'rm', name], indexName), { stdio: 'ignore', shell: process.platform === 'win32' });
   }
 }
 
