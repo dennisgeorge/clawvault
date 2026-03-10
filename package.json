@@ -35,8 +35,8 @@
     "dev": "tsup src/index.ts src/commands/*.ts src/lib/*.ts --format esm --dts --watch",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "ci": "npm run typecheck && npm test && npm run build",
+    "test": "npm run build && vitest run",
+    "ci": "npm run typecheck && npm test",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
