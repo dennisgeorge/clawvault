@@ -26,6 +26,10 @@ describe('OpenClaw provider integration', () => {
     fs.writeFileSync(path.join(dir, 'models.json'), JSON.stringify({ providers }));
   }
 
+  function writeOpenClawConfig(config: Record<string, unknown>) {
+    fs.writeFileSync(path.join(tmpDir, 'openclaw.json'), JSON.stringify(config));
+  }
+
   describe('resolveOpenClawProvider', () => {
     it('returns null when no models.json exists', () => {
       expect(resolveOpenClawProvider()).toBeNull();
@@ -51,6 +55,43 @@ describe('OpenClaw provider integration', () => {
       expect(result!.apiKey).toBe('sk-test-123');
       expect(result!.defaultModel).toBe('claude-opus-4-6');
     });
+
+    it('prefers local OpenClaw gateway when chat completions are enabled', () => {
+      writeOpenClawConfig({
+        agents: {
+          defaults: {
+            model: 'openai-codex/gpt-5.2'
+          }
+        },
+        gateway: {
+          port: 18789,
+          bind: 'loopback',
+          auth: {
+            token: 'gateway-secret'
+          },
+          http: {
+            endpoints: {
+              chatCompletions: {
+                enabled: true
+              }
+            }
+          }
+        }
+      });
+      writeModelsJson({
+        myProxy: {
+          baseUrl: 'http://proxy.local:8317/v1/',
+          apiKey: 'sk-test-123',
+          api: 'openai-completions',
+          models: [{ id: 'claude-opus-4-6' }]
+        }
+      });
+      const result = resolveOpenClawProvider();
+      expect(result).not.toBeNull();
+      expect(result!.baseUrl).toBe('http://127.0.0.1:18789/v1');
+      expect(result!.apiKey).toBe('gateway-secret');
+      expect(result!.defaultModel).toBe('openai-codex/gpt-5.2');
+    });
   });
 
   describe('resolveLlmProvider', () => {
@@ -75,13 +116,33 @@ describe('OpenClaw provider integration', () => {
 
   describe('requestLlmCompletion with openclaw', () => {
     it('calls OpenAI-compatible endpoint and returns content', async () => {
-      writeModelsJson({
-        p: { baseUrl: 'http://mock/v1', apiKey: 'test-key', models: [{ id: 'test-model' }] }
+      writeOpenClawConfig({
+        agents: {
+          defaults: {
+            model: 'test-model'
+          }
+        },
+        gateway: {
+          port: 18789,
+          bind: 'loopback',
+          auth: {
+            token: 'test-key'
+          },
+          http: {
+            endpoints: {
+              chatCompletions: {
+                enabled: true
+              }
+            }
+          }
+        }
       });
 
       const fetchImpl: typeof fetch = async (input, init) => {
         const url = typeof input === 'string' ? input : (input as Request).url;
-        expect(url).toBe('http://mock/v1/chat/completions');
+        expect(url).toBe('http://127.0.0.1:18789/v1/chat/completions');
+        const headers = init?.headers as Record<string, string>;
+        expect(headers.authorization).toBe('Bearer test-key');
         const body = JSON.parse(init?.body as string);
         expect(body.model).toBe('test-model');
         expect(body.messages).toHaveLength(2); // system + user

@@ -21,6 +21,28 @@ export interface OpenClawProviderConfig {
   defaultModel: string;
 }
 
+type OpenClawConfigFile = {
+  agents?: {
+    defaults?: {
+      model?: string;
+    };
+  };
+  gateway?: {
+    port?: number;
+    bind?: string;
+    auth?: {
+      token?: string;
+    };
+    http?: {
+      endpoints?: {
+        chatCompletions?: {
+          enabled?: boolean;
+        };
+      };
+    };
+  };
+};
+
 export interface LlmCompletionOptions {
   prompt: string;
   provider?: LlmProvider | null;
@@ -32,14 +54,60 @@ export interface LlmCompletionOptions {
 }
 
 /**
- * Resolve an OpenClaw model provider from ~/.openclaw/agents/main/agent/models.json.
- * Returns the first provider with a baseUrl and apiKey, or null if none found.
+ * Resolve the local OpenClaw home directory.
+ */
+function resolveOpenClawHome(): string {
+  return process.env.OPENCLAW_HOME?.trim()
+    || path.join(os.homedir(), '.openclaw');
+}
+
+/**
+ * Resolve an OpenClaw provider via the local gateway's OpenAI-compatible
+ * `/v1/chat/completions` endpoint when it is enabled.
+ */
+function resolveOpenClawGatewayProvider(): OpenClawProviderConfig | null {
+  try {
+    const configPath = path.join(resolveOpenClawHome(), 'openclaw.json');
+    if (!fs.existsSync(configPath)) {
+      return null;
+    }
+
+    const raw = JSON.parse(fs.readFileSync(configPath, 'utf-8')) as OpenClawConfigFile;
+    const enabled = raw.gateway?.http?.endpoints?.chatCompletions?.enabled === true;
+    const apiKey = raw.gateway?.auth?.token?.trim();
+    const port = raw.gateway?.port;
+    if (!enabled || !apiKey || typeof port !== 'number' || !Number.isFinite(port) || port <= 0) {
+      return null;
+    }
+
+    const defaultModel = raw.agents?.defaults?.model?.trim() || DEFAULT_MODELS.openclaw;
+    const host = raw.gateway?.bind === 'loopback' ? '127.0.0.1' : '127.0.0.1';
+    return {
+      baseUrl: `http://${host}:${port}/v1`,
+      apiKey,
+      api: 'openai-completions',
+      defaultModel
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve an OpenClaw model provider.
+ *
+ * Priority:
+ * 1. Local OpenClaw gateway `/v1/chat/completions` when enabled
+ * 2. `~/.openclaw/agents/main/agent/models.json` custom provider config
  */
 export function resolveOpenClawProvider(): OpenClawProviderConfig | null {
+  const gatewayProvider = resolveOpenClawGatewayProvider();
+  if (gatewayProvider) {
+    return gatewayProvider;
+  }
+
   try {
-    const openclawHome = process.env.OPENCLAW_HOME?.trim()
-      || path.join(os.homedir(), '.openclaw');
-    const modelsPath = path.join(openclawHome, 'agents', 'main', 'agent', 'models.json');
+    const modelsPath = path.join(resolveOpenClawHome(), 'agents', 'main', 'agent', 'models.json');
 
     if (!fs.existsSync(modelsPath)) {
       return null;
