@@ -31,7 +31,7 @@ export interface MigrateResult {
 }
 
 function addQmdCollection(name: string, rootPath: string): void {
-  execFileSync('qmd', ['collection', 'add', name, rootPath], { stdio: 'ignore' });
+  execFileSync('qmd', ['collection', 'add', name, rootPath], { stdio: 'ignore', shell: process.platform === 'win32' });
 }
 
 function updateVaultConfig(

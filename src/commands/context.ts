@@ -18,7 +18,11 @@ const OBSERVATION_LOOKBACK_DAYS = 7;
 const STOP_WORDS = new Set([
   'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'how', 'in', 'is',
   'it', 'of', 'on', 'or', 'that', 'the', 'this', 'to', 'was', 'were', 'what', 'when',
-  'where', 'who', 'why', 'with', 'you', 'your'
+  'where', 'who', 'why', 'with', 'you', 'your',
+  'и', 'в', 'во', 'на', 'по', 'с', 'со', 'к', 'ко', 'у', 'о', 'об', 'от', 'до',
+  'за', 'из', 'под', 'над', 'не', 'но', 'а', 'или', 'что', 'как', 'это', 'то',
+  'же', 'ли', 'для', 'при', 'про', 'мы', 'вы', 'они', 'он', 'она', 'оно', 'я',
+  'ты', 'мой', 'моя', 'моё', 'мои', 'твой', 'твоя', 'твои', 'наш', 'наша', 'их'
 ]);
 
 export type ContextFormat = 'markdown' | 'json';
@@ -128,7 +132,7 @@ const PROFILE_ORDERING: Record<ContextProfile, ContextProfileOrdering> = {
 };
 
 function extractKeywords(text: string): string[] {
-  const raw = text.toLowerCase().match(/[a-z0-9]+/g) ?? [];
+  const raw = text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
   const seen = new Set<string>();
   const keywords: string[] = [];
 

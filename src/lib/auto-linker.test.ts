@@ -151,4 +151,22 @@ Another Justin mention.
     expect(output).toContain('const user = "Alice";');
     expect(output).toContain('Use `Core API` helper and then call [[projects/core-api|Core API]] for [[people/alice]].');
   });
+
+  it('does not link mentions inside filesystem paths', () => {
+    const index = createIndex([
+      ['openclaw', 'decisions/openclaw'],
+      ['alice', 'people/alice'],
+    ]);
+
+    const input = [
+      'Path /home/dadgo/.openclaw/media/inbound/file.jpg should stay plain.',
+      'Alice can still be linked in prose.',
+    ].join('\n');
+
+    const output = autoLink(input, index);
+
+    expect(output).toContain('/home/dadgo/.openclaw/media/inbound/file.jpg');
+    expect(output).not.toContain('/home/dadgo/.[[decisions/openclaw]]/media');
+    expect(output).toContain('[[people/alice]] can still be linked in prose.');
+  });
 });

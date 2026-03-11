@@ -238,13 +238,18 @@ function execQmd(args: string[], indexName?: string): QmdResult[] {
     const result = execFileSync('qmd', finalArgs, {
       encoding: 'utf-8',
       stdio: ['ignore', 'pipe', 'pipe'],
-      maxBuffer: 10 * 1024 * 1024 // 10MB
+      maxBuffer: 10 * 1024 * 1024, // 10MB
+      shell: process.platform === 'win32'
     });
 
     return parseQmdOutput(result);
   } catch (err: any) {
     if (err?.code === 'ENOENT') {
       throw new QmdUnavailableError('NOT_INSTALLED');
+    }
+
+    if (err?.status === 1 && err?.stdout) {
+      return parseQmdOutput(err.stdout);
     }
 
     const output = [err?.stdout, err?.stderr].filter(Boolean).join('\n');
@@ -275,8 +280,8 @@ function execQmd(args: string[], indexName?: string): QmdResult[] {
  * Check if qmd is available
  */
 export function hasQmd(): boolean {
-  const result = spawnSync('qmd', ['--version'], { stdio: 'ignore' });
-  return !result.error;
+  const result = spawnSync('qmd', ['--version'], { stdio: 'ignore', shell: process.platform === 'win32' });
+  return !result.error && (result.status === 0 || result.status === 1);
 }
 
 /**
@@ -288,7 +293,7 @@ export function qmdUpdate(collection?: string, indexName?: string): void {
   if (collection) {
     args.push('-c', collection);
   }
-  execFileSync('qmd', withQmdIndexArgs(args, indexName), { stdio: 'inherit' });
+  execFileSync('qmd', withQmdIndexArgs(args, indexName), { stdio: 'inherit', shell: process.platform === 'win32' });
 }
 
 /**
@@ -300,7 +305,7 @@ export function qmdEmbed(collection?: string, indexName?: string): void {
   if (collection) {
     args.push('-c', collection);
   }
-  execFileSync('qmd', withQmdIndexArgs(args, indexName), { stdio: 'inherit' });
+  execFileSync('qmd', withQmdIndexArgs(args, indexName), { stdio: 'inherit', shell: process.platform === 'win32' });
 }
 
 /**

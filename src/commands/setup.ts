@@ -380,7 +380,8 @@ export async function setupCommand(options: SetupOptions = {}): Promise<void> {
     const { collection, root } = getQmdConfig(target.vaultPath);
     try {
       execFileSync('qmd', withQmdIndexArgs(['collection', 'add', root, '--name', collection, '--mask', '**/*.md'], options.qmdIndexName), {
-        stdio: 'ignore'
+        stdio: 'ignore',
+        shell: process.platform === 'win32'
       });
       console.log(`✓ qmd collection ready: ${collection}`);
     } catch {

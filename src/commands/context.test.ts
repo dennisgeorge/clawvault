@@ -155,6 +155,43 @@ describe('buildContext observation scoring', () => {
     expect(observations[0].score).toBeGreaterThan(observations[1].score);
     expect(observations[1].score).toBe(0.1);
   });
+
+  it('extracts Cyrillic keywords so Russian queries do not rank unrelated observations first', async () => {
+    loadMock.mockResolvedValue(undefined);
+    listMock.mockResolvedValue([]);
+    vsearchMock.mockResolvedValue([]);
+    readObservationsMock.mockReturnValue('## 2026-02-11');
+    parseObservationLinesMock.mockReturnValue([
+      {
+        type: 'project',
+        confidence: 0.9,
+        importance: 0.9,
+        content: 'Переключение профиля в Kayla Hub и failover OpenClaw',
+        date: '2026-02-11',
+        format: 'scored'
+      },
+      {
+        type: 'fact',
+        confidence: 0.9,
+        importance: 0.9,
+        content: 'Недельная рефлексия и форматирование markdown',
+        date: '2026-02-11',
+        format: 'scored'
+      }
+    ]);
+    getMemoryGraphMock.mockResolvedValue({ nodes: [], edges: [] });
+
+    const result = await buildContext('kayla hub profile switching', {
+      vaultPath: '/vault',
+      includeObservations: true
+    });
+
+    const observations = result.context.filter((item) => item.source === 'observation');
+    expect(observations).toHaveLength(2);
+    expect(observations[0]?.snippet).toContain('Переключение профиля');
+    expect(observations[0]?.score).toBeGreaterThan(observations[1]?.score ?? 0);
+    expect(observations[1]?.score).toBe(0.1);
+  });
 });
 
 describe('buildContext graph-aware retrieval', () => {

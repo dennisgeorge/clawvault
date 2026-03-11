@@ -231,4 +231,13 @@ fields:
     const readBack = readProject(tempDir, 'my-big-project-v2');
     expect(readBack?.title).toBe('My Big Project: V2');
   });
+
+  it('falls back to a stable slug when title is non-ascii', () => {
+    const project = createProject(tempDir, 'схлопывается');
+    expect(project.slug).toMatch(/^project-/);
+
+    const projectPath = path.join(tempDir, 'projects', `${project.slug}.md`);
+    expect(fs.existsSync(projectPath)).toBe(true);
+    expect(fs.existsSync(path.join(tempDir, 'projects', '.md'))).toBe(false);
+  });
 });

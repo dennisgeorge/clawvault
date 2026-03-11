@@ -86,6 +86,20 @@ function isDateSlug(slug: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(slug);
 }
 
+function buildProjectSlug(title: string): string {
+  const direct = slugify(title);
+  if (direct) {
+    return direct;
+  }
+
+  let hash = 0;
+  for (const char of title) {
+    hash = ((hash << 5) - hash) + char.charCodeAt(0);
+    hash |= 0;
+  }
+  return `project-${Math.abs(hash).toString(36)}`;
+}
+
 function normalizeStringArray(value: string[]): string[] {
   return value
     .map((item) => item.trim())
@@ -366,7 +380,7 @@ export function createProject(
   options: CreateProjectOptions = {}
 ): Project {
   ensureProjectsDir(vaultPath);
-  const slug = slugify(title);
+  const slug = buildProjectSlug(title);
   const projectPath = getProjectPath(vaultPath, slug);
 
   if (fs.existsSync(projectPath)) {

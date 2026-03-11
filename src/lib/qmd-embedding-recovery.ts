@@ -62,7 +62,7 @@ function writeJsonAtomic(filePath: string, value: unknown): void {
 }
 
 function runQmdCommand(args: string[], indexName?: string): void {
-  execFileSync('qmd', withQmdIndexArgs(args, indexName), { stdio: 'inherit' });
+  execFileSync('qmd', withQmdIndexArgs(args, indexName), { stdio: 'inherit', shell: process.platform === 'win32' });
 }
 
 function runQmdEmbedForce(collection: string, indexName?: string): void {
