@@ -133,11 +133,12 @@ export function parseCuratorRoutes(raw: string): Map<string, string> {
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
       continue;
     }
-    const hash = typeof (entry as Record<string, unknown>).hash === 'string'
-      ? (entry as Record<string, unknown>).hash.trim()
+    const record = entry as Record<string, unknown>;
+    const hash = typeof record.hash === 'string'
+      ? record.hash.trim()
       : '';
-    const category = typeof (entry as Record<string, unknown>).category === 'string'
-      ? (entry as Record<string, unknown>).category.trim()
+    const category = typeof record.category === 'string'
+      ? record.category.trim()
       : '';
     if (!hash || !category || !CURATOR_ALLOWED_CATEGORIES.has(category)) {
       continue;

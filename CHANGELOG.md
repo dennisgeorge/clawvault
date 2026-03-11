@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.3.0] — 2026-03-11
+
+### Added
+- feat: In-process hybrid search engine — BM25 + hosted semantic embeddings + cross-encoder reranking. `qmd` is now optional. (PR #152, Issue #146)
+- feat: Python SDK (clawvault-py) — Python package for PyPI with Vault class, BM25 search, checkpoint/wake lifecycle. (PR #149)
+- feat: Inbox + background workers — `clawvault inbox add` and `clawvault maintain` commands with Curator, Janitor, Distiller, Surveyor workers. (PR #151, Issue #127)
+
+### Security
+- security: SECURITY.md, exec hardening, opt-in privilege flags for the OpenClaw plugin. (PR #150, Issue #128)
+
+### Community
+- Community contributors: @smart-tinker, @ukr-coder, @G9Pedro
+
+---
+
 ## [3.2.0] — 2026-03-10
 
 ### Added

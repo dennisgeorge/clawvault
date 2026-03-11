@@ -59,7 +59,7 @@ Unlike vector databases or cloud-based memory solutions, ClawVault is:
 │        ▼                                    ▼                               │
 │   ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐             │
 │   │  wake    │◀──▶│ context  │◀──▶│  Graph   │◀──▶│  Search  │             │
-│   │  sleep   │    │ profiles │    │ Traversal│    │(qmd/vec) │             │
+│   │  sleep   │    │ profiles │    │ Traversal│    │(hybrid)  │             │
 │   │checkpoint│    └──────────┘    └──────────┘    └──────────┘             │
 │   └──────────┘                                                              │
 │                                                                             │
@@ -97,7 +97,7 @@ These primitives map directly to CLI commands and vault structure, creating a co
 # Install ClawVault CLI
 npm install -g clawvault
 
-# Optional: install qmd for backward-compatible fallback
+# Optional: install qmd for backward-compatible fallback paths
 npm install -g github:tobi/qmd
 
 # Quick verification
@@ -134,10 +134,10 @@ clawvault sleep "finished auth rollout" --next "implement migration"
 ### Search and Context
 
 ```bash
-# Keyword search
+# In-process hybrid search (BM25 + semantic reranking)
 clawvault search "postgresql"
 
-# Semantic search (requires hosted embeddings configured)
+# Semantic/vector search commands (requires hosted embeddings configured)
 clawvault vsearch "what did we decide about storage"
 
 # Configure hosted embeddings (OpenAI/Gemini/Ollama)
@@ -171,6 +171,12 @@ ClawVault v3 adds **write-time fact extraction** and **entity graphs** to the co
 ---
 
 ## Features
+
+### v3.3 Highlights
+
+- **In-process hybrid search engine** — BM25 + hosted semantic embeddings + cross-encoder reranking, with `qmd` now optional.
+- **Python SDK (`clawvault-py`)** — PyPI package with a `Vault` class, BM25 search, and checkpoint/wake lifecycle helpers.
+- **Inbox + background workers** — `clawvault inbox add` and `clawvault maintain` with Curator, Janitor, Distiller, and Surveyor workers.
 
 ### Memory Graph
 
@@ -222,6 +228,20 @@ Pull relevant decisions and preferences into agent context automatically:
 ```bash
 clawvault inject "How should we handle the deployment?"
 clawvault inject --enable-llm "What's our pricing strategy?"
+```
+
+### Python SDK (clawvault-py)
+
+```bash
+pip install clawvault-py
+```
+
+```python
+from clawvault import Vault
+
+vault = Vault("~/memory")
+results = vault.search_bm25("postgresql decision")
+vault.checkpoint("working on auth rollout")
 ```
 
 ---
@@ -283,7 +303,7 @@ See [docs/openclaw-plugin-usage.md](docs/openclaw-plugin-usage.md) for detailed 
 - Node.js 18+ (22+ recommended)
 - npm 9+
 - Linux, macOS, Windows, or WSL
-- `qmd` is optional (used only for backward-compatible fallback paths)
+- `qmd` is optional (used only for backward-compatible fallback paths; in-process search is built in)
 
 For Linux-specific install and PATH guidance, see [docs/getting-started/installation.md](docs/getting-started/installation.md).
 
