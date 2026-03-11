@@ -1,0 +1,360 @@
+{
+  "generatedAt": "2026-03-11T04:19:11.182Z",
+  "fixturesDir": "/workspace/testdata/observer-benchmark",
+  "provider": "mock",
+  "fixtureCount": 3,
+  "aggregate": {
+    "precision": 0.5555,
+    "noiseRatio": 0.4445,
+    "recall": 0.6667,
+    "typeAccuracy": 0.3472,
+    "keywordPreservation": 1,
+    "overall": 0.6521
+  },
+  "fixtures": [
+    {
+      "fixtureId": "client-meeting-commitments",
+      "transcriptPath": "/workspace/testdata/observer-benchmark/client-meeting-commitments/transcript.md",
+      "expectedPath": "/workspace/testdata/observer-benchmark/client-meeting-commitments/expected.md",
+      "provider": "mock",
+      "outputObservations": "## 2026-03-10\n\n- [relationship|c=0.72|i=0.45] 14:06 user: Client meeting recap for Northwind Health starts now.\n- [commitment|c=0.83|i=0.55] 14:06 assistant: Northwind committed to sign the annual contract by March 28 if we include SOC2 evidence.\n- [fact|c=0.84|i=0.90] 14:06 user: We agreed on pricing at $48K setup plus $4K monthly support.\n- [todo|c=0.78|i=0.65] 16:00 assistant: TODO: send revised proposal PDF to Elena and Marco by tomorrow 16:00.\n- [task|c=0.78|i=0.65] 14:06 user: I will coordinate legal review and share redlines in the #northwind-deal channel.\n- [decision|c=0.90|i=0.90] 14:06 assistant: Decision: move onboarding kickoff to April 2 so security can finish approvals.",
+      "expectedCount": 5,
+      "actualCount": 6,
+      "expectedTypes": [
+        "commitment",
+        "decision",
+        "todo"
+      ],
+      "actualTypes": [
+        "relationship",
+        "commitment",
+        "fact",
+        "todo",
+        "task",
+        "decision"
+      ],
+      "scoring": {
+        "metrics": {
+          "precision": 0.8333,
+          "noiseRatio": 0.1667,
+          "recall": 1,
+          "typeAccuracy": 0.608,
+          "keywordPreservation": 1,
+          "overall": 0.8912
+        },
+        "matches": [
+          {
+            "expectedIndex": 0,
+            "actualIndex": 1,
+            "similarity": 0.8182
+          },
+          {
+            "expectedIndex": 1,
+            "actualIndex": 2,
+            "similarity": 0.7778
+          },
+          {
+            "expectedIndex": 2,
+            "actualIndex": 3,
+            "similarity": 1
+          },
+          {
+            "expectedIndex": 3,
+            "actualIndex": 4,
+            "similarity": 0.6667
+          },
+          {
+            "expectedIndex": 4,
+            "actualIndex": 5,
+            "similarity": 1
+          }
+        ],
+        "missedImportant": [],
+        "noiseObservations": [
+          {
+            "date": "2026-03-10",
+            "type": "relationship",
+            "confidence": 0.72,
+            "importance": 0.45,
+            "content": "14:06 user: Client meeting recap for Northwind Health starts now.",
+            "format": "scored",
+            "rawLine": "- [relationship|c=0.72|i=0.45] 14:06 user: Client meeting recap for Northwind Health starts now."
+          }
+        ],
+        "keywordSet": [
+          "Northwind",
+          "SOC2",
+          "#northwind-deal",
+          "$48K",
+          "northwind-deal",
+          "approvals.",
+          "coordinate",
+          "onboarding",
+          "committed",
+          "evidence.",
+          "channel.",
+          "contract",
+          "Decision",
+          "proposal",
+          "redlines",
+          "security",
+          "support.",
+          "Client",
+          "Health",
+          "April",
+          "Elena",
+          "March",
+          "Marco",
+          "now.",
+          "TODO"
+        ],
+        "missingKeywords": [],
+        "keywordRewriteFlags": [
+          {
+            "expected": "14:00 [COMMITMENT] Northwind committed to sign the annual contract by March 28 pending SOC2 evidence",
+            "actual": "14:06 assistant: Northwind committed to sign the annual contract by March 28 if we include SOC2 evidence.",
+            "missingTerms": [
+              "COMMITMENT"
+            ]
+          },
+          {
+            "expected": "14:02 Pricing agreement reached at $48K setup plus $4K monthly support",
+            "actual": "14:06 user: We agreed on pricing at $48K setup plus $4K monthly support.",
+            "missingTerms": [
+              "agreement"
+            ]
+          },
+          {
+            "expected": "14:04 [COMMITMENT] legal review redlines will be shared in #northwind-deal",
+            "actual": "14:06 user: I will coordinate legal review and share redlines in the #northwind-deal channel.",
+            "missingTerms": [
+              "COMMITMENT"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fixtureId": "coding-session-decisions",
+      "transcriptPath": "/workspace/testdata/observer-benchmark/coding-session-decisions/transcript.md",
+      "expectedPath": "/workspace/testdata/observer-benchmark/coding-session-decisions/expected.md",
+      "provider": "mock",
+      "outputObservations": "## 2026-03-10\n\n- [todo|c=0.78|i=0.65] 10:10 user: We need to finalize the persistence layer for the observer benchmark harness.\n- [decision|c=0.90|i=0.90] 10:10 assistant: Decision: use PostgreSQL for durable event storage and Redis for short-lived queue state.\n- [task|c=0.78|i=0.65] 10:10 user: Great, and we should keep search terms like \"Compressor\", \"keyword preservation\", and \"Project Atlas\" untouched.\n- [todo|c=0.78|i=0.65] 10:10 assistant: TODO: add regression test that fails when PostgreSQL or Redis terms disappear from observations.\n- [task|c=0.90|i=0.90] 10:10 user: I will publish v3.4.0 after CI passes and update the changelog.\n- [project|c=0.72|i=0.45] 10:10 assistant: I talked with Maya and she approved shipping behind the benchmark feature flag.",
+      "expectedCount": 5,
+      "actualCount": 6,
+      "expectedTypes": [
+        "decision",
+        "fact",
+        "todo",
+        "commitment",
+        "relationship"
+      ],
+      "actualTypes": [
+        "todo",
+        "decision",
+        "task",
+        "project"
+      ],
+      "scoring": {
+        "metrics": {
+          "precision": 0.8333,
+          "noiseRatio": 0.1667,
+          "recall": 1,
+          "typeAccuracy": 0.4337,
+          "keywordPreservation": 1,
+          "overall": 0.8651
+        },
+        "matches": [
+          {
+            "expectedIndex": 0,
+            "actualIndex": 1,
+            "similarity": 1
+          },
+          {
+            "expectedIndex": 1,
+            "actualIndex": 2,
+            "similarity": 0.75
+          },
+          {
+            "expectedIndex": 2,
+            "actualIndex": 3,
+            "similarity": 1
+          },
+          {
+            "expectedIndex": 3,
+            "actualIndex": 4,
+            "similarity": 0.7143
+          },
+          {
+            "expectedIndex": 4,
+            "actualIndex": 5,
+            "similarity": 1
+          }
+        ],
+        "missedImportant": [],
+        "noiseObservations": [
+          {
+            "date": "2026-03-10",
+            "type": "todo",
+            "confidence": 0.78,
+            "importance": 0.65,
+            "content": "10:10 user: We need to finalize the persistence layer for the observer benchmark harness.",
+            "format": "scored",
+            "rawLine": "- [todo|c=0.78|i=0.65] 10:10 user: We need to finalize the persistence layer for the observer benchmark harness."
+          }
+        ],
+        "keywordSet": [
+          "Compressor",
+          "PostgreSQL",
+          "Redis",
+          "Project Atlas",
+          "observations.",
+          "preservation",
+          "persistence",
+          "short-lived",
+          "changelog.",
+          "regression",
+          "untouched.",
+          "benchmark",
+          "disappear",
+          "approved",
+          "Decision",
+          "finalize",
+          "harness.",
+          "observer",
+          "shipping",
+          "Project",
+          "state.",
+          "v3.4.0",
+          "Atlas",
+          "flag.",
+          "Great"
+        ],
+        "missingKeywords": [],
+        "keywordRewriteFlags": [
+          {
+            "expected": "10:03 Preserve searchable terms \"Compressor\", \"keyword preservation\", and \"Project Atlas\"",
+            "actual": "10:10 user: Great, and we should keep search terms like \"Compressor\", \"keyword preservation\", and \"Project Atlas\" untouched.",
+            "missingTerms": [
+              "Preserve",
+              "searchable"
+            ]
+          },
+          {
+            "expected": "10:07 [COMMITMENT] assistant committed to publish v3.4.0 after CI passes and update changelog",
+            "actual": "10:10 user: I will publish v3.4.0 after CI passes and update the changelog.",
+            "missingTerms": [
+              "COMMITMENT",
+              "committed"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fixtureId": "routine-maintenance-low-signal",
+      "transcriptPath": "/workspace/testdata/observer-benchmark/routine-maintenance-low-signal/transcript.md",
+      "expectedPath": "/workspace/testdata/observer-benchmark/routine-maintenance-low-signal/expected.md",
+      "provider": "mock",
+      "outputObservations": "## 2026-03-10\n\n- [fact|c=0.72|i=0.20] 09:30 user: Starting routine maintenance window.\n- [fact|c=0.72|i=0.20] 09:30 assistant: Rotated weekly logs, confirmed backups completed, and cleaned temp directories.\n- [fact|c=0.72|i=0.20] 09:30 user: All health checks stayed green and no incidents were reported.\n- [fact|c=0.72|i=0.20] 09:30 assistant: Completed dependency cache prune and restarted workers with no alerts.\n- [fact|c=0.72|i=0.20] 09:30 user: Thanks, no follow-up tasks needed this round.",
+      "expectedCount": 1,
+      "actualCount": 5,
+      "expectedTypes": [
+        "fact"
+      ],
+      "actualTypes": [
+        "fact"
+      ],
+      "scoring": {
+        "metrics": {
+          "precision": 0,
+          "noiseRatio": 1,
+          "recall": 0,
+          "typeAccuracy": 0,
+          "keywordPreservation": 1,
+          "overall": 0.2
+        },
+        "matches": [],
+        "missedImportant": [
+          {
+            "date": "2026-03-10",
+            "type": "fact",
+            "confidence": 0.74,
+            "importance": 0.28,
+            "content": "09:30 Routine maintenance completed without incidents or follow-up actions",
+            "format": "scored",
+            "rawLine": "- [fact|c=0.74|i=0.28] 09:30 Routine maintenance completed without incidents or follow-up actions"
+          }
+        ],
+        "noiseObservations": [
+          {
+            "date": "2026-03-10",
+            "type": "fact",
+            "confidence": 0.72,
+            "importance": 0.2,
+            "content": "09:30 user: Starting routine maintenance window.",
+            "format": "scored",
+            "rawLine": "- [fact|c=0.72|i=0.20] 09:30 user: Starting routine maintenance window."
+          },
+          {
+            "date": "2026-03-10",
+            "type": "fact",
+            "confidence": 0.72,
+            "importance": 0.2,
+            "content": "09:30 assistant: Rotated weekly logs, confirmed backups completed, and cleaned temp directories.",
+            "format": "scored",
+            "rawLine": "- [fact|c=0.72|i=0.20] 09:30 assistant: Rotated weekly logs, confirmed backups completed, and cleaned temp directories."
+          },
+          {
+            "date": "2026-03-10",
+            "type": "fact",
+            "confidence": 0.72,
+            "importance": 0.2,
+            "content": "09:30 user: All health checks stayed green and no incidents were reported.",
+            "format": "scored",
+            "rawLine": "- [fact|c=0.72|i=0.20] 09:30 user: All health checks stayed green and no incidents were reported."
+          },
+          {
+            "date": "2026-03-10",
+            "type": "fact",
+            "confidence": 0.72,
+            "importance": 0.2,
+            "content": "09:30 assistant: Completed dependency cache prune and restarted workers with no alerts.",
+            "format": "scored",
+            "rawLine": "- [fact|c=0.72|i=0.20] 09:30 assistant: Completed dependency cache prune and restarted workers with no alerts."
+          },
+          {
+            "date": "2026-03-10",
+            "type": "fact",
+            "confidence": 0.72,
+            "importance": 0.2,
+            "content": "09:30 user: Thanks, no follow-up tasks needed this round.",
+            "format": "scored",
+            "rawLine": "- [fact|c=0.72|i=0.20] 09:30 user: Thanks, no follow-up tasks needed this round."
+          }
+        ],
+        "keywordSet": [
+          "maintenance window",
+          "health checks",
+          "directories.",
+          "maintenance",
+          "dependency",
+          "completed",
+          "confirmed",
+          "follow-up",
+          "incidents",
+          "reported.",
+          "restarted",
+          "Starting",
+          "alerts.",
+          "Rotated",
+          "window.",
+          "round.",
+          "Thanks"
+        ],
+        "missingKeywords": [],
+        "keywordRewriteFlags": []
+      }
+    }
+  ]
+}

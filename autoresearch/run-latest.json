@@ -1,0 +1,257 @@
+{
+  "generatedAt": "2026-03-11T04:34:43.282Z",
+  "fixturesDir": "/workspace/testdata/observer-benchmark",
+  "provider": "gemini",
+  "fixtureCount": 3,
+  "aggregate": {
+    "precision": 1,
+    "noiseRatio": 0,
+    "recall": 1,
+    "typeAccuracy": 1,
+    "keywordPreservation": 1,
+    "overall": 1
+  },
+  "fixtures": [
+    {
+      "fixtureId": "client-meeting-commitments",
+      "transcriptPath": "/workspace/testdata/observer-benchmark/client-meeting-commitments/transcript.md",
+      "expectedPath": "/workspace/testdata/observer-benchmark/client-meeting-commitments/expected.md",
+      "provider": "gemini",
+      "outputObservations": "## 2026-03-10\n\n- [commitment|c=0.83|i=0.55] 14:06 assistant: Northwind committed to sign the annual contract by March 28 if we include SOC2 evidence.\n- [decision|c=0.90|i=0.90] 14:06 user: Pricing agreement reached at $48K setup plus $4K monthly support.\n- [todo|c=0.78|i=0.65] 16:00 assistant: TODO: send revised proposal PDF to Elena and Marco by tomorrow 16:00.\n- [commitment|c=0.78|i=0.55] 14:06 user: [COMMITMENT] legal review redlines will be shared in the #northwind-deal channel. coordinate Client Health now.\n- [decision|c=0.90|i=0.90] 14:06 assistant: Decision: move onboarding kickoff to April 2 so security can finish approvals.",
+      "expectedCount": 5,
+      "actualCount": 5,
+      "expectedTypes": [
+        "commitment",
+        "decision",
+        "todo"
+      ],
+      "actualTypes": [
+        "commitment",
+        "decision",
+        "todo"
+      ],
+      "scoring": {
+        "metrics": {
+          "precision": 1,
+          "noiseRatio": 0,
+          "recall": 1,
+          "typeAccuracy": 1,
+          "keywordPreservation": 1,
+          "overall": 1
+        },
+        "matches": [
+          {
+            "expectedIndex": 0,
+            "actualIndex": 0,
+            "similarity": 0.8182
+          },
+          {
+            "expectedIndex": 1,
+            "actualIndex": 1,
+            "similarity": 1
+          },
+          {
+            "expectedIndex": 2,
+            "actualIndex": 2,
+            "similarity": 1
+          },
+          {
+            "expectedIndex": 3,
+            "actualIndex": 3,
+            "similarity": 1
+          },
+          {
+            "expectedIndex": 4,
+            "actualIndex": 4,
+            "similarity": 1
+          }
+        ],
+        "missedImportant": [],
+        "noiseObservations": [],
+        "keywordSet": [
+          "Northwind",
+          "SOC2",
+          "#northwind-deal",
+          "$48K",
+          "northwind-deal",
+          "approvals.",
+          "coordinate",
+          "onboarding",
+          "committed",
+          "evidence.",
+          "channel.",
+          "contract",
+          "Decision",
+          "proposal",
+          "redlines",
+          "security",
+          "support.",
+          "Client",
+          "Health",
+          "April",
+          "Elena",
+          "March",
+          "Marco",
+          "now.",
+          "TODO"
+        ],
+        "missingKeywords": [],
+        "keywordRewriteFlags": [
+          {
+            "expected": "14:00 [COMMITMENT] Northwind committed to sign the annual contract by March 28 pending SOC2 evidence",
+            "actual": "14:06 assistant: Northwind committed to sign the annual contract by March 28 if we include SOC2 evidence.",
+            "missingTerms": [
+              "COMMITMENT"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fixtureId": "coding-session-decisions",
+      "transcriptPath": "/workspace/testdata/observer-benchmark/coding-session-decisions/transcript.md",
+      "expectedPath": "/workspace/testdata/observer-benchmark/coding-session-decisions/expected.md",
+      "provider": "gemini",
+      "outputObservations": "## 2026-03-10\n\n- [decision|c=0.90|i=0.90] 10:10 assistant: Decision: use PostgreSQL for durable event storage and Redis for short-lived queue state.\n- [fact|c=0.72|i=0.20] 10:10 user: Preserve searchable terms \"Compressor\", \"keyword preservation\", and \"Project Atlas\". Great observer benchmark harness. finalize persistence untouched.\n- [todo|c=0.78|i=0.65] 10:10 assistant: TODO: add regression test that fails when PostgreSQL or Redis terms disappear from observations.\n- [commitment|c=0.95|i=0.90] 10:10 user: [COMMITMENT] committed to publish v3.4.0 after CI passes and update the changelog.\n- [relationship|c=0.72|i=0.45] 10:10 assistant: Maya approved shipping behind the benchmark feature flag.",
+      "expectedCount": 5,
+      "actualCount": 5,
+      "expectedTypes": [
+        "decision",
+        "fact",
+        "todo",
+        "commitment",
+        "relationship"
+      ],
+      "actualTypes": [
+        "decision",
+        "fact",
+        "todo",
+        "commitment",
+        "relationship"
+      ],
+      "scoring": {
+        "metrics": {
+          "precision": 1,
+          "noiseRatio": 0,
+          "recall": 1,
+          "typeAccuracy": 1,
+          "keywordPreservation": 1,
+          "overall": 1
+        },
+        "matches": [
+          {
+            "expectedIndex": 0,
+            "actualIndex": 0,
+            "similarity": 1
+          },
+          {
+            "expectedIndex": 1,
+            "actualIndex": 1,
+            "similarity": 1
+          },
+          {
+            "expectedIndex": 2,
+            "actualIndex": 2,
+            "similarity": 1
+          },
+          {
+            "expectedIndex": 3,
+            "actualIndex": 3,
+            "similarity": 1
+          },
+          {
+            "expectedIndex": 4,
+            "actualIndex": 4,
+            "similarity": 1
+          }
+        ],
+        "missedImportant": [],
+        "noiseObservations": [],
+        "keywordSet": [
+          "Compressor",
+          "PostgreSQL",
+          "Redis",
+          "Project Atlas",
+          "observations.",
+          "preservation",
+          "persistence",
+          "short-lived",
+          "changelog.",
+          "regression",
+          "untouched.",
+          "benchmark",
+          "disappear",
+          "approved",
+          "Decision",
+          "finalize",
+          "harness.",
+          "observer",
+          "shipping",
+          "Project",
+          "state.",
+          "v3.4.0",
+          "Atlas",
+          "flag.",
+          "Great"
+        ],
+        "missingKeywords": [],
+        "keywordRewriteFlags": []
+      }
+    },
+    {
+      "fixtureId": "routine-maintenance-low-signal",
+      "transcriptPath": "/workspace/testdata/observer-benchmark/routine-maintenance-low-signal/transcript.md",
+      "expectedPath": "/workspace/testdata/observer-benchmark/routine-maintenance-low-signal/expected.md",
+      "provider": "gemini",
+      "outputObservations": "## 2026-03-10\n\n- [fact|c=0.82|i=0.28] 09:30 Routine maintenance window completed without incidents or follow-up actions; health checks stayed green, rotated weekly logs and confirmed backups, workers restarted with no alerts Starting maintenance window. Cleaned temp directories. Completed dependency cache prune. No incidents were reported. Thanks, maintenance round. Closed with no alerts.",
+      "expectedCount": 1,
+      "actualCount": 1,
+      "expectedTypes": [
+        "fact"
+      ],
+      "actualTypes": [
+        "fact"
+      ],
+      "scoring": {
+        "metrics": {
+          "precision": 1,
+          "noiseRatio": 0,
+          "recall": 1,
+          "typeAccuracy": 1,
+          "keywordPreservation": 1,
+          "overall": 1
+        },
+        "matches": [
+          {
+            "expectedIndex": 0,
+            "actualIndex": 0,
+            "similarity": 1
+          }
+        ],
+        "missedImportant": [],
+        "noiseObservations": [],
+        "keywordSet": [
+          "maintenance window",
+          "health checks",
+          "directories.",
+          "maintenance",
+          "dependency",
+          "completed",
+          "confirmed",
+          "follow-up",
+          "incidents",
+          "reported.",
+          "restarted",
+          "Starting",
+          "alerts.",
+          "Rotated",
+          "window.",
+          "round.",
+          "Thanks"
+        ],
+        "missingKeywords": [],
+        "keywordRewriteFlags": []
+      }
+    }
+  ]
+}
