@@ -53,16 +53,20 @@ describe('search qmd dependency', () => {
 
   it('keeps default qmd index when no override is provided', async () => {
     await withQmdIndexEnv(undefined, async () => {
-      spawnSyncMock.mockReturnValue({ error: undefined });
+      spawnSyncMock.mockReturnValue({ error: undefined, status: 0 });
       const { qmdUpdate } = await loadSearchModule();
       qmdUpdate('vault');
 
-      expect(execFileSyncMock).toHaveBeenCalledWith('qmd', ['update', '-c', 'vault'], { stdio: 'inherit' });
+      expect(execFileSyncMock).toHaveBeenCalledWith(
+        'qmd',
+        ['update', '-c', 'vault'],
+        { stdio: 'inherit', shell: process.platform === 'win32' }
+      );
     });
   });
 
   it('passes explicit qmd index to update/embed helpers', async () => {
-    spawnSyncMock.mockReturnValue({ error: undefined });
+    spawnSyncMock.mockReturnValue({ error: undefined, status: 0 });
     const { qmdUpdate, qmdEmbed } = await loadSearchModule();
 
     qmdUpdate('vault', 'clawvault-test');
@@ -72,19 +76,19 @@ describe('search qmd dependency', () => {
       1,
       'qmd',
       ['--index', 'clawvault-test', 'update', '-c', 'vault'],
-      { stdio: 'inherit' }
+      { stdio: 'inherit', shell: process.platform === 'win32' }
     );
     expect(execFileSyncMock).toHaveBeenNthCalledWith(
       2,
       'qmd',
       ['--index', 'clawvault-test', 'embed', '-c', 'vault'],
-      { stdio: 'inherit' }
+      { stdio: 'inherit', shell: process.platform === 'win32' }
     );
   });
 
   it('uses configured qmd index when search engine executes queries', async () => {
     await withQmdIndexEnv('clawvault-test', async () => {
-      spawnSyncMock.mockReturnValue({ error: undefined });
+      spawnSyncMock.mockReturnValue({ error: undefined, status: 0 });
       execFileSyncMock.mockReturnValue(JSON.stringify([]));
 
       const { SearchEngine } = await loadSearchModule();
@@ -103,7 +107,7 @@ describe('search qmd dependency', () => {
   });
 
   it('converts qmd results and applies filters', async () => {
-    spawnSyncMock.mockReturnValue({ error: undefined });
+    spawnSyncMock.mockReturnValue({ error: undefined, status: 0 });
     execFileSyncMock.mockReturnValue(
       JSON.stringify([
         {
@@ -155,7 +159,7 @@ describe('search qmd dependency', () => {
   });
 
   it('parses qmd output from error streams', async () => {
-    spawnSyncMock.mockReturnValue({ error: undefined });
+    spawnSyncMock.mockReturnValue({ error: undefined, status: 0 });
     execFileSyncMock.mockImplementation(() => {
       const err: any = new Error('qmd failed');
       err.stdout =
@@ -174,7 +178,7 @@ describe('search qmd dependency', () => {
   });
 
   it('applies temporal boosting when enabled', async () => {
-    spawnSyncMock.mockReturnValue({ error: undefined });
+    spawnSyncMock.mockReturnValue({ error: undefined, status: 0 });
     execFileSyncMock.mockReturnValue(
       JSON.stringify([
         {

@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.6.6] — 2026-03-10
+## [3.2.0] — 2026-03-10
 
 ### Added
 - Introduced the new `clawvault wg` command group for Workgraph coordination, including thread lifecycle operations, ledger views, dynamic type definition, and terminal board/status dashboards. (PR #141)
