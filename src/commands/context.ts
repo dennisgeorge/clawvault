@@ -5,11 +5,9 @@ import { parseObservationLines, readObservations } from '../lib/observation-read
 import { estimateTokens, fitWithinBudget } from '../lib/token-counter.js';
 import { getMemoryGraph, type MemoryGraph, type MemoryGraphEdge } from '../lib/memory-graph.js';
 import { FactStore } from '../lib/fact-store.js';
-import type { ExtractedFact } from '../lib/fact-extractor.js';
 import {
   resolveContextProfile,
   normalizeContextProfileInput,
-  type ContextProfileInput,
   type ResolvedContextProfile
 } from '../lib/context-profile.js';
 import type { Document, SearchResult } from '../types.js';

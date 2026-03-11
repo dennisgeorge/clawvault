@@ -7,7 +7,6 @@ import {
   type ParsedObservationRecord,
   type ObservationType
 } from '../lib/observation-format.js';
-import { requestLlmCompletion, resolveLlmProvider } from '../lib/llm-provider.js';
 
 export interface CompressorOptions {
   provider?: CompressionProvider;

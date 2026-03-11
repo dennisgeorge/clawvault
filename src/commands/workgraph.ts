@@ -27,8 +27,6 @@ import * as store from '../workgraph/store.js';
 import * as thread from '../workgraph/thread.js';
 import type {
   PrimitiveInstance,
-  PrimitiveTypeDefinition,
-  LedgerEntry,
   ThreadStatus,
   FieldDefinition,
 } from '../workgraph/types.js';
@@ -471,7 +469,7 @@ export async function threadClaimCommand(
   threadPath: string
 ): Promise<void> {
   const agentName = getAgentName();
-  const normalizedPath = normalizeThreadPath(vaultPath, threadPath);
+  const normalizedPath = normalizeThreadPath(threadPath);
 
   try {
     const inst = thread.claim(vaultPath, normalizedPath, agentName);
@@ -522,7 +520,7 @@ export async function threadClaimCommand(
   }
 }
 
-function normalizeThreadPath(vaultPath: string, input: string): string {
+function normalizeThreadPath(input: string): string {
   if (input.startsWith('threads/')) return input;
   if (input.endsWith('.md')) return `threads/${input}`;
   return `threads/${input}.md`;
@@ -545,7 +543,7 @@ export async function threadDoneCommand(
   options: ThreadDoneOptions
 ): Promise<void> {
   const agentName = getAgentName();
-  const normalizedPath = normalizeThreadPath(vaultPath, threadPath);
+  const normalizedPath = normalizeThreadPath(threadPath);
 
   try {
     const inst = thread.done(vaultPath, normalizedPath, agentName, options.output);
@@ -590,7 +588,7 @@ export async function threadBlockCommand(
   options: ThreadBlockOptions
 ): Promise<void> {
   const agentName = getAgentName();
-  const normalizedPath = normalizeThreadPath(vaultPath, threadPath);
+  const normalizedPath = normalizeThreadPath(threadPath);
 
   if (!options.by) {
     console.error(formatError(
@@ -642,7 +640,7 @@ export async function threadReleaseCommand(
   options: ThreadReleaseOptions
 ): Promise<void> {
   const agentName = getAgentName();
-  const normalizedPath = normalizeThreadPath(vaultPath, threadPath);
+  const normalizedPath = normalizeThreadPath(threadPath);
 
   try {
     const inst = thread.release(vaultPath, normalizedPath, agentName, options.reason);
@@ -686,7 +684,7 @@ export async function threadDecomposeCommand(
   options: ThreadDecomposeOptions
 ): Promise<void> {
   const agentName = getAgentName();
-  const normalizedPath = normalizeThreadPath(vaultPath, threadPath);
+  const normalizedPath = normalizeThreadPath(threadPath);
 
   if (!options.into || options.into.length === 0) {
     console.error(formatError(
@@ -1051,7 +1049,7 @@ export async function boardCommand(
   console.log(chalk.dim('─'.repeat(termWidth)));
 
   // Legend
-  const legendParts = Object.entries(PRIORITY_CONFIG).map(([key, cfg]) =>
+  const legendParts = Object.entries(PRIORITY_CONFIG).map(([, cfg]) =>
     `${cfg.symbol} ${cfg.label}`
   );
   console.log(chalk.dim('Priority: ') + legendParts.join(chalk.dim(' · ')));

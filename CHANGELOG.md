@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.6.6] — 2026-03-10
+
+### Added
+- Introduced the new `clawvault wg` command group for Workgraph coordination, including thread lifecycle operations, ledger views, dynamic type definition, and terminal board/status dashboards. (PR #141)
+- Added OpenClaw plugin module export wiring (`src/openclaw-plugin.ts`) so plugin entrypoints are resolved directly from built package output. (PR #140)
+
+### Improved
+- Expanded context assembly with stronger structured retrieval signals (daily notes, observations, fact-store context, graph-neighbor expansion, profile ordering, and token-budget fitting) for more reliable prompt injection. (PR #141)
+- Improved observer compressor handling for OpenClaw message/source prefixes and tool-result noise filtering to avoid low-signal memory pollution. (PR #141)
+- Aligned OpenClaw hook/plugin metadata and docs with current runtime behavior and extension loading flow. (PR #140)
+- Enhanced LLM provider resolution/fallback behavior and corresponding tests for provider-specific routing paths. (PR #139)
+
+### Fixed
+- Resolved CI/typecheck friction by removing dead imports and other low-risk unused code paths touched during the release merge cleanup.
+
+---
+
 ## [2.6.1] — 2026-02-16
 
 ### Fixed
