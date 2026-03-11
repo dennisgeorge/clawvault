@@ -150,6 +150,12 @@ Configure ClawVault behavior via OpenClaw's config system:
 # Set vault path
 openclaw config set plugins.entries.clawvault.config.vaultPath ~/my-vault
 
+# Explicitly opt into privileged features
+openclaw config set plugins.entries.clawvault.config.allowClawvaultExec true
+openclaw config set plugins.entries.clawvault.config.enableStartupRecovery true
+openclaw config set plugins.entries.clawvault.config.enableSessionContextInjection true
+openclaw config set plugins.entries.clawvault.config.enableAutoCheckpoint true
+
 # Adjust context injection
 openclaw config set plugins.entries.clawvault.config.maxContextResults 6
 openclaw config set plugins.entries.clawvault.config.contextProfile planning

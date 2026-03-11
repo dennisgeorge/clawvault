@@ -16,6 +16,11 @@ import { createHash, randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import {
+  resolveExecutablePath,
+  sanitizeExecArgs,
+  verifyExecutableIntegrity
+} from './integrity.js';
 
 const MAX_CONTEXT_RESULTS = 4;
 const MAX_CONTEXT_PROMPT_LENGTH = 500;
@@ -36,6 +41,7 @@ const MAX_FACT_TEXT_LENGTH = 600;
 const FACT_SENTENCE_SPLIT_RE = /[.!?]+\s+|\r?\n+/;
 const EXCLUSIVE_FACT_RELATIONS = new Set(['lives_in', 'works_at', 'age']);
 const ENTITY_TARGET_RELATIONS = new Set(['works_at', 'lives_in', 'partner_name', 'dog_name', 'parent_name']);
+const CLAWVAULT_EXECUTABLE = 'clawvault';
 
 // Sanitize string for safe display (prevent prompt injection via control chars)
 function sanitizeForDisplay(str) {
@@ -107,15 +113,17 @@ function normalizeAbsoluteEnvPath(value) {
   return resolved;
 }
 
-function getOpenClawAgentsDir() {
-  const stateDir = normalizeAbsoluteEnvPath(process.env.OPENCLAW_STATE_DIR);
-  if (stateDir) {
-    return path.join(stateDir, 'agents');
-  }
+function getOpenClawAgentsDir(pluginConfig) {
+  if (allowsEnvAccess(pluginConfig)) {
+    const stateDir = normalizeAbsoluteEnvPath(process.env.OPENCLAW_STATE_DIR);
+    if (stateDir) {
+      return path.join(stateDir, 'agents');
+    }
 
-  const openClawHome = normalizeAbsoluteEnvPath(process.env.OPENCLAW_HOME);
-  if (openClawHome) {
-    return path.join(openClawHome, 'agents');
+    const openClawHome = normalizeAbsoluteEnvPath(process.env.OPENCLAW_HOME);
+    if (openClawHome) {
+      return path.join(openClawHome, 'agents');
+    }
   }
 
   return path.join(os.homedir(), '.openclaw', 'agents');
@@ -155,8 +163,8 @@ function getScaledObservationThresholdBytes(fileSizeBytes) {
   return LARGE_SESSION_THRESHOLD_BYTES;
 }
 
-function parseSessionIndex(agentId) {
-  const sessionsDir = path.join(getOpenClawAgentsDir(), agentId, 'sessions');
+function parseSessionIndex(agentId, pluginConfig) {
+  const sessionsDir = path.join(getOpenClawAgentsDir(pluginConfig), agentId, 'sessions');
   const sessionsJsonPath = path.join(sessionsDir, 'sessions.json');
   if (!fs.existsSync(sessionsJsonPath)) {
     return { sessionsDir, index: {} };
@@ -173,9 +181,9 @@ function parseSessionIndex(agentId) {
   }
 }
 
-function shouldObserveActiveSessions(vaultPath, agentId) {
+function shouldObserveActiveSessions(vaultPath, agentId, pluginConfig) {
   const cursors = loadObserveCursors(vaultPath);
-  const { sessionsDir, index } = parseSessionIndex(agentId);
+  const { sessionsDir, index } = parseSessionIndex(agentId, pluginConfig);
   const entries = Object.entries(index);
   if (entries.length === 0) {
     return false;
@@ -472,6 +480,31 @@ function extractPluginConfig(event) {
   return {};
 }
 
+function isOptInEnabled(pluginConfig, ...keys) {
+  for (const key of keys) {
+    if (pluginConfig?.[key] === true) return true;
+  }
+  return false;
+}
+
+function allowsEnvAccess(pluginConfig) {
+  return isOptInEnabled(pluginConfig, 'allowEnvAccess');
+}
+
+function getConfiguredExecutablePath(pluginConfig) {
+  const value = pluginConfig?.clawvaultBinaryPath;
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
+function getConfiguredExecutableSha256(pluginConfig) {
+  const value = pluginConfig?.clawvaultBinarySha256;
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim().toLowerCase();
+  return trimmed || null;
+}
+
 // Resolve vault path for a specific agent from agentVaults config
 function resolveAgentVaultPath(pluginConfig, agentId) {
   if (!agentId || typeof agentId !== 'string') return null;
@@ -489,11 +522,9 @@ function resolveAgentVaultPath(pluginConfig, agentId) {
 
 // Find vault by walking up directories
 // Supports per-agent vault paths via agentVaults config
-function findVaultPath(event, options = {}) {
-  const pluginConfig = extractPluginConfig(event);
-  
+function findVaultPath(event, pluginConfig, options = {}) {
   // Determine agent ID for per-agent vault resolution
-  const agentId = options.agentId || resolveAgentIdForEvent(event);
+  const agentId = options.agentId || resolveAgentIdForEvent(event, pluginConfig);
   
   // Check agentVaults first (per-agent vault paths)
   if (agentId) {
@@ -510,15 +541,17 @@ function findVaultPath(event, options = {}) {
     if (validated) return validated;
   }
 
-  // Check OPENCLAW_PLUGIN_CLAWVAULT_VAULTPATH env (injected by OpenClaw from plugin config)
-  if (process.env.OPENCLAW_PLUGIN_CLAWVAULT_VAULTPATH) {
-    const validated = validateVaultPath(process.env.OPENCLAW_PLUGIN_CLAWVAULT_VAULTPATH);
-    if (validated) return validated;
-  }
+  if (allowsEnvAccess(pluginConfig)) {
+    // Check OPENCLAW_PLUGIN_CLAWVAULT_VAULTPATH env (injected by OpenClaw from plugin config)
+    if (process.env.OPENCLAW_PLUGIN_CLAWVAULT_VAULTPATH) {
+      const validated = validateVaultPath(process.env.OPENCLAW_PLUGIN_CLAWVAULT_VAULTPATH);
+      if (validated) return validated;
+    }
 
-  // Check CLAWVAULT_PATH env
-  if (process.env.CLAWVAULT_PATH) {
-    return validateVaultPath(process.env.CLAWVAULT_PATH);
+    // Check CLAWVAULT_PATH env
+    if (process.env.CLAWVAULT_PATH) {
+      return validateVaultPath(process.env.CLAWVAULT_PATH);
+    }
   }
 
   // Walk up from cwd
@@ -541,16 +574,54 @@ function findVaultPath(event, options = {}) {
 }
 
 // Run clawvault command safely (no shell)
-function runClawvault(args, options = {}) {
+function runClawvault(args, pluginConfig, options = {}) {
+  if (!isOptInEnabled(pluginConfig, 'allowClawvaultExec')) {
+    return {
+      success: false,
+      skipped: true,
+      output: 'ClawVault CLI execution is disabled. Set allowClawvaultExec=true to enable.',
+      code: 0
+    };
+  }
+
   const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(1000, Number(options.timeoutMs)) : 15000;
+  const executablePath = resolveExecutablePath(CLAWVAULT_EXECUTABLE, {
+    explicitPath: getConfiguredExecutablePath(pluginConfig)
+  });
+  if (!executablePath) {
+    return {
+      success: false,
+      output: 'Unable to resolve clawvault executable path. Set clawvaultBinaryPath to an absolute executable path.',
+      code: 1
+    };
+  }
+
+  const expectedSha256 = getConfiguredExecutableSha256(pluginConfig);
+  const integrityResult = verifyExecutableIntegrity(executablePath, expectedSha256);
+  if (!integrityResult.ok) {
+    return {
+      success: false,
+      output: `Executable integrity verification failed for ${executablePath}.`,
+      code: 1
+    };
+  }
+
+  let sanitizedArgs;
   try {
-    // Use execFileSync to avoid shell injection
-    // Arguments are passed as array, not interpolated into shell
-    const output = execFileSync('clawvault', args, {
+    sanitizedArgs = sanitizeExecArgs(args);
+  } catch (err) {
+    return {
+      success: false,
+      output: err?.message || 'Invalid command arguments',
+      code: 1
+    };
+  }
+
+  try {
+    const output = execFileSync(executablePath, sanitizedArgs, {
       encoding: 'utf-8',
       timeout: timeoutMs,
       stdio: ['pipe', 'pipe', 'pipe'],
-      // Explicitly no shell
       shell: false
     });
     return { success: true, output: output.trim(), code: 0 };
@@ -588,23 +659,29 @@ function parseRecoveryOutput(output) {
   return { hadDeath, workingOn };
 }
 
-function resolveAgentIdForEvent(event) {
+function resolveAgentIdForEvent(event, pluginConfig) {
   const fromSessionKey = extractAgentIdFromSessionKey(extractSessionKey(event));
   if (fromSessionKey) return fromSessionKey;
 
-  const fromEnv = sanitizeAgentId(process.env.OPENCLAW_AGENT_ID);
-  if (fromEnv) return fromEnv;
+  if (allowsEnvAccess(pluginConfig)) {
+    const fromEnv = sanitizeAgentId(process.env.OPENCLAW_AGENT_ID);
+    if (fromEnv) return fromEnv;
+  }
 
   return 'main';
 }
 
-function runObserverCron(vaultPath, agentId, options = {}) {
+function runObserverCron(vaultPath, agentId, pluginConfig, options = {}) {
   const args = ['observe', '--cron', '--agent', agentId, '-v', vaultPath];
   if (Number.isFinite(options.minNewBytes) && Number(options.minNewBytes) > 0) {
     args.push('--min-new', String(Math.floor(Number(options.minNewBytes))));
   }
 
-  const result = runClawvault(args, { timeoutMs: 120000 });
+  const result = runClawvault(args, pluginConfig, { timeoutMs: 120000 });
+  if (result.skipped) {
+    console.log('[clawvault] Observer cron skipped: allowClawvaultExec is disabled');
+    return false;
+  }
   if (!result.success) {
     console.warn(`[clawvault] Observer cron failed (${options.reason || 'unknown reason'})`);
     return false;
@@ -1314,7 +1391,12 @@ function isSundayMidnightUtc(date) {
 }
 
 async function handleWeeklyReflect(event) {
-  const vaultPath = findVaultPath(event);
+  const pluginConfig = extractPluginConfig(event);
+  if (!isOptInEnabled(pluginConfig, 'enableWeeklyReflection', 'weeklyReflection')) {
+    return;
+  }
+
+  const vaultPath = findVaultPath(event, pluginConfig);
   if (!vaultPath) {
     console.log('[clawvault] No vault found, skipping weekly reflection');
     return;
@@ -1326,7 +1408,11 @@ async function handleWeeklyReflect(event) {
     return;
   }
 
-  const result = runClawvault(['reflect', '-v', vaultPath], { timeoutMs: 120000 });
+  const result = runClawvault(['reflect', '-v', vaultPath], pluginConfig, { timeoutMs: 120000 });
+  if (result.skipped) {
+    console.log('[clawvault] Weekly reflection skipped: allowClawvaultExec is disabled');
+    return;
+  }
   if (!result.success) {
     console.warn('[clawvault] Weekly reflection failed');
     return;
@@ -1336,7 +1422,12 @@ async function handleWeeklyReflect(event) {
 
 // Handle gateway startup - check for context death
 async function handleStartup(event) {
-  const vaultPath = findVaultPath(event);
+  const pluginConfig = extractPluginConfig(event);
+  if (!isOptInEnabled(pluginConfig, 'enableStartupRecovery')) {
+    return;
+  }
+
+  const vaultPath = findVaultPath(event, pluginConfig);
   if (!vaultPath) {
     console.log('[clawvault] No vault found, skipping recovery check');
     return;
@@ -1345,7 +1436,11 @@ async function handleStartup(event) {
   console.log(`[clawvault] Checking for context death`);
 
   // Pass vault path as separate argument (not interpolated)
-  const result = runClawvault(['recover', '--clear', '-v', vaultPath]);
+  const result = runClawvault(['recover', '--clear', '-v', vaultPath], pluginConfig);
+  if (result.skipped) {
+    console.log('[clawvault] Recovery check skipped: allowClawvaultExec is disabled');
+    return;
+  }
   
   if (!result.success) {
     console.warn('[clawvault] Recovery check failed');
@@ -1375,7 +1470,15 @@ async function handleStartup(event) {
 
 // Handle /new command - auto-checkpoint before reset
 async function handleNew(event) {
-  const vaultPath = findVaultPath(event);
+  const pluginConfig = extractPluginConfig(event);
+  const autoCheckpointEnabled = isOptInEnabled(pluginConfig, 'enableAutoCheckpoint', 'autoCheckpoint');
+  const observerOnNewEnabled = isOptInEnabled(pluginConfig, 'enableObserveOnNew');
+  const factExtractionEnabled = isOptInEnabled(pluginConfig, 'enableFactExtraction');
+  if (!autoCheckpointEnabled && !observerOnNewEnabled && !factExtractionEnabled) {
+    return;
+  }
+
+  const vaultPath = findVaultPath(event, pluginConfig);
   if (!vaultPath) {
     console.log('[clawvault] No vault found, skipping auto-checkpoint');
     return;
@@ -1389,33 +1492,44 @@ async function handleNew(event) {
     ? event.context.commandSource.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 50)
     : 'cli';
 
-  console.log('[clawvault] Auto-checkpoint before /new');
+  if (autoCheckpointEnabled) {
+    console.log('[clawvault] Auto-checkpoint before /new');
+    const result = runClawvault([
+      'checkpoint',
+      '--working-on', `Session reset via /new from ${source}`,
+      '--focus', `Pre-reset checkpoint, session: ${sessionKey}`,
+      '-v', vaultPath
+    ], pluginConfig);
 
-  // Pass each argument separately (no shell interpolation)
-  const result = runClawvault([
-    'checkpoint',
-    '--working-on', `Session reset via /new from ${source}`,
-    '--focus', `Pre-reset checkpoint, session: ${sessionKey}`,
-    '-v', vaultPath
-  ]);
-
-  if (result.success) {
-    console.log('[clawvault] Auto-checkpoint created');
-  } else {
-    console.warn('[clawvault] Auto-checkpoint failed');
+    if (result.skipped) {
+      console.log('[clawvault] Auto-checkpoint skipped: allowClawvaultExec is disabled');
+    } else if (result.success) {
+      console.log('[clawvault] Auto-checkpoint created');
+    } else {
+      console.warn('[clawvault] Auto-checkpoint failed');
+    }
   }
 
-  const agentId = resolveAgentIdForEvent(event);
-  runObserverCron(vaultPath, agentId, {
-    minNewBytes: 1,
-    reason: 'command:new flush'
-  });
-  runFactExtractionForEvent(vaultPath, event, 'command:new');
+  const agentId = resolveAgentIdForEvent(event, pluginConfig);
+  if (observerOnNewEnabled) {
+    runObserverCron(vaultPath, agentId, pluginConfig, {
+      minNewBytes: 1,
+      reason: 'command:new flush'
+    });
+  }
+  if (factExtractionEnabled) {
+    runFactExtractionForEvent(vaultPath, event, 'command:new');
+  }
 }
 
 // Handle session start - inject dynamic context for first prompt
 async function handleSessionStart(event) {
-  const vaultPath = findVaultPath(event);
+  const pluginConfig = extractPluginConfig(event);
+  if (!isOptInEnabled(pluginConfig, 'enableSessionContextInjection')) {
+    return;
+  }
+
+  const vaultPath = findVaultPath(event, pluginConfig);
   if (!vaultPath) {
     console.log('[clawvault] No vault found, skipping context injection');
     return;
@@ -1434,11 +1548,14 @@ async function handleSessionStart(event) {
       recapArgs.push('--agent', agentId);
     }
 
-    const recapResult = runClawvault(recapArgs);
-    if (!recapResult.success) {
-      console.warn('[clawvault] Session recap lookup failed');
-    } else {
+    const recapResult = runClawvault(recapArgs, pluginConfig);
+    if (recapResult.skipped) {
+      console.log('[clawvault] Session recap skipped: allowClawvaultExec is disabled');
+    }
+    if (recapResult.success) {
       recapEntries = parseSessionRecapJson(recapResult.output);
+    } else if (!recapResult.skipped) {
+      console.warn('[clawvault] Session recap lookup failed');
     }
   } else {
     console.log('[clawvault] No session key found, skipping session recap');
@@ -1452,12 +1569,14 @@ async function handleSessionStart(event) {
       '--format', 'json',
       '--profile', 'auto',
       '-v', vaultPath
-    ]);
+    ], pluginConfig);
 
-    if (!contextResult.success) {
-      console.warn('[clawvault] Context lookup failed');
-    } else {
+    if (contextResult.success) {
       memoryEntries = parseContextJson(contextResult.output);
+    } else if (contextResult.skipped) {
+      console.log('[clawvault] Context lookup skipped: allowClawvaultExec is disabled');
+    } else {
+      console.warn('[clawvault] Context lookup failed');
     }
   } else {
     console.log('[clawvault] No initial prompt, skipping vault memory lookup');
@@ -1477,35 +1596,51 @@ async function handleSessionStart(event) {
 
 // Handle heartbeat events - cheap stat-based trigger for active observation
 async function handleHeartbeat(event) {
-  const vaultPath = findVaultPath(event);
+  const pluginConfig = extractPluginConfig(event);
+  if (!isOptInEnabled(pluginConfig, 'enableHeartbeatObservation', 'observeOnHeartbeat')) {
+    return;
+  }
+
+  const vaultPath = findVaultPath(event, pluginConfig);
   if (!vaultPath) {
     console.log('[clawvault] No vault found, skipping heartbeat observation check');
     return;
   }
 
-  const agentId = resolveAgentIdForEvent(event);
-  if (!shouldObserveActiveSessions(vaultPath, agentId)) {
+  const agentId = resolveAgentIdForEvent(event, pluginConfig);
+  if (!shouldObserveActiveSessions(vaultPath, agentId, pluginConfig)) {
     console.log('[clawvault] Heartbeat: no sessions crossed active-observe threshold');
     return;
   }
 
-  runObserverCron(vaultPath, agentId, { reason: 'heartbeat threshold crossed' });
+  runObserverCron(vaultPath, agentId, pluginConfig, { reason: 'heartbeat threshold crossed' });
 }
 
 // Handle context compaction - force flush any pending session deltas
 async function handleContextCompaction(event) {
-  const vaultPath = findVaultPath(event);
+  const pluginConfig = extractPluginConfig(event);
+  const compactionObserveEnabled = isOptInEnabled(pluginConfig, 'enableCompactionObservation');
+  const factExtractionEnabled = isOptInEnabled(pluginConfig, 'enableFactExtraction');
+  if (!compactionObserveEnabled && !factExtractionEnabled) {
+    return;
+  }
+
+  const vaultPath = findVaultPath(event, pluginConfig);
   if (!vaultPath) {
     console.log('[clawvault] No vault found, skipping compaction observation');
     return;
   }
 
-  const agentId = resolveAgentIdForEvent(event);
-  runObserverCron(vaultPath, agentId, {
-    minNewBytes: 1,
-    reason: 'context compaction'
-  });
-  runFactExtractionForEvent(vaultPath, event, 'compaction:memoryFlush');
+  const agentId = resolveAgentIdForEvent(event, pluginConfig);
+  if (compactionObserveEnabled) {
+    runObserverCron(vaultPath, agentId, pluginConfig, {
+      minNewBytes: 1,
+      reason: 'context compaction'
+    });
+  }
+  if (factExtractionEnabled) {
+    runFactExtractionForEvent(vaultPath, event, 'compaction:memoryFlush');
+  }
 }
 
 // Main handler - route events

@@ -5,12 +5,21 @@ import * as path from 'path';
 
 const tempDirs = [];
 
-const { execFileSyncMock } = vi.hoisted(() => ({
-  execFileSyncMock: vi.fn()
+const { execFileSyncMock, resolveExecutablePathMock, verifyExecutableIntegrityMock, sanitizeExecArgsMock } = vi.hoisted(() => ({
+  execFileSyncMock: vi.fn(),
+  resolveExecutablePathMock: vi.fn(),
+  verifyExecutableIntegrityMock: vi.fn(),
+  sanitizeExecArgsMock: vi.fn()
 }));
 
 vi.mock('child_process', () => ({
   execFileSync: execFileSyncMock
+}));
+
+vi.mock('../hooks/clawvault/integrity.js', () => ({
+  resolveExecutablePath: resolveExecutablePathMock,
+  verifyExecutableIntegrity: verifyExecutableIntegrityMock,
+  sanitizeExecArgs: sanitizeExecArgsMock
 }));
 
 async function loadHandler() {
@@ -39,6 +48,12 @@ function readFacts(vaultPath) {
 beforeEach(() => {
   execFileSyncMock.mockReset();
   execFileSyncMock.mockReturnValue('ok');
+  resolveExecutablePathMock.mockReset();
+  resolveExecutablePathMock.mockReturnValue('/usr/local/bin/clawvault');
+  verifyExecutableIntegrityMock.mockReset();
+  verifyExecutableIntegrityMock.mockReturnValue({ ok: true, actualSha256: 'a'.repeat(64) });
+  sanitizeExecArgsMock.mockReset();
+  sanitizeExecArgsMock.mockImplementation((args) => args);
 });
 
 afterEach(() => {
@@ -57,7 +72,13 @@ describe('clawvault hook fact extraction', () => {
       type: 'command',
       action: 'new',
       sessionKey: 'agent:main:session-1',
-      pluginConfig: { vaultPath },
+      pluginConfig: {
+        vaultPath,
+        allowClawvaultExec: true,
+        enableFactExtraction: true,
+        enableAutoCheckpoint: true,
+        enableObserveOnNew: true
+      },
       context: {
         commandSource: 'cli',
         messages: [
@@ -125,7 +146,12 @@ describe('clawvault hook fact extraction', () => {
     await handler({
       type: 'compaction',
       action: 'memoryFlush',
-      pluginConfig: { vaultPath },
+      pluginConfig: {
+        vaultPath,
+        allowClawvaultExec: true,
+        enableFactExtraction: true,
+        enableCompactionObservation: true
+      },
       context: {
         messages: [{ role: 'user', content: 'I live in Lisbon. I prefer tea.' }]
       }
@@ -135,7 +161,13 @@ describe('clawvault hook fact extraction', () => {
       type: 'command',
       action: 'new',
       sessionKey: 'agent:main:session-2',
-      pluginConfig: { vaultPath },
+      pluginConfig: {
+        vaultPath,
+        allowClawvaultExec: true,
+        enableFactExtraction: true,
+        enableAutoCheckpoint: true,
+        enableObserveOnNew: true
+      },
       context: {
         commandSource: 'cli',
         messages: [{ role: 'user', content: 'I live in Porto. I prefer coffee.' }]

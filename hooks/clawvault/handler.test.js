@@ -1,14 +1,23 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-const { execFileSyncMock } = vi.hoisted(() => ({
-  execFileSyncMock: vi.fn()
+const { execFileSyncMock, resolveExecutablePathMock, verifyExecutableIntegrityMock, sanitizeExecArgsMock } = vi.hoisted(() => ({
+  execFileSyncMock: vi.fn(),
+  resolveExecutablePathMock: vi.fn(),
+  verifyExecutableIntegrityMock: vi.fn(),
+  sanitizeExecArgsMock: vi.fn()
 }));
 
 vi.mock('child_process', () => ({
   execFileSync: execFileSyncMock
+}));
+
+vi.mock('./integrity.js', () => ({
+  resolveExecutablePath: resolveExecutablePathMock,
+  verifyExecutableIntegrity: verifyExecutableIntegrityMock,
+  sanitizeExecArgs: sanitizeExecArgsMock
 }));
 
 function makeVaultFixture() {
@@ -45,16 +54,45 @@ async function loadHandler() {
 
 afterEach(() => {
   vi.clearAllMocks();
+  resolveExecutablePathMock.mockReset();
+  verifyExecutableIntegrityMock.mockReset();
+  sanitizeExecArgsMock.mockReset();
   delete process.env.CLAWVAULT_PATH;
   delete process.env.OPENCLAW_STATE_DIR;
   delete process.env.OPENCLAW_HOME;
   delete process.env.OPENCLAW_AGENT_ID;
+  delete process.env.OPENCLAW_PLUGIN_CLAWVAULT_VAULTPATH;
 });
 
+function securePluginConfig(vaultPath, overrides = {}) {
+  return {
+    vaultPath,
+    allowClawvaultExec: true,
+    enableStartupRecovery: true,
+    enableSessionContextInjection: true,
+    enableAutoCheckpoint: true,
+    enableObserveOnNew: true,
+    enableHeartbeatObservation: true,
+    enableCompactionObservation: true,
+    enableWeeklyReflection: true,
+    enableFactExtraction: true,
+    ...overrides
+  };
+}
+
+function setupIntegrityDefaults() {
+  resolveExecutablePathMock.mockReturnValue('/usr/local/bin/clawvault');
+  verifyExecutableIntegrityMock.mockReturnValue({ ok: true, actualSha256: 'a'.repeat(64) });
+  sanitizeExecArgsMock.mockImplementation((args) => args);
+}
+
 describe('clawvault hook handler', () => {
+  beforeEach(() => {
+    setupIntegrityDefaults();
+  });
+
   it('injects recovery warning on gateway startup when death detected', async () => {
     const vaultPath = makeVaultFixture();
-    process.env.CLAWVAULT_PATH = vaultPath;
 
     execFileSyncMock.mockImplementation((_command, args) => {
       if (args[0] === 'recover') {
@@ -67,13 +105,14 @@ describe('clawvault hook handler', () => {
     const event = {
       type: 'gateway',
       action: 'startup',
+      pluginConfig: securePluginConfig(vaultPath),
       messages: [{ role: 'user', content: 'hello' }]
     };
 
     await handler(event);
 
     expect(execFileSyncMock).toHaveBeenCalledWith(
-      'clawvault',
+      '/usr/local/bin/clawvault',
       expect.arrayContaining(['recover', '--clear', '-v', vaultPath]),
       expect.objectContaining({ shell: false })
     );
@@ -84,20 +123,52 @@ describe('clawvault hook handler', () => {
     fs.rmSync(vaultPath, { recursive: true, force: true });
   });
 
+  it('does not execute clawvault commands unless allowClawvaultExec is true', async () => {
+    const vaultPath = makeVaultFixture();
+    const handler = await loadHandler();
+    const event = {
+      type: 'gateway',
+      action: 'startup',
+      pluginConfig: securePluginConfig(vaultPath, { allowClawvaultExec: false }),
+      messages: []
+    };
+
+    await handler(event);
+    expect(execFileSyncMock).not.toHaveBeenCalled();
+    fs.rmSync(vaultPath, { recursive: true, force: true });
+  });
+
+  it('fails closed when configured executable hash does not match', async () => {
+    const vaultPath = makeVaultFixture();
+    verifyExecutableIntegrityMock.mockReturnValue({ ok: false, actualSha256: 'b'.repeat(64) });
+    const handler = await loadHandler();
+    await handler({
+      type: 'gateway',
+      action: 'startup',
+      pluginConfig: securePluginConfig(vaultPath, {
+        clawvaultBinarySha256: 'a'.repeat(64)
+      }),
+      messages: []
+    });
+
+    expect(execFileSyncMock).not.toHaveBeenCalled();
+    fs.rmSync(vaultPath, { recursive: true, force: true });
+  });
+
   it('supports alias event names for command:new', async () => {
     const vaultPath = makeVaultFixture();
-    process.env.CLAWVAULT_PATH = vaultPath;
     execFileSyncMock.mockReturnValue('');
 
     const handler = await loadHandler();
     await handler({
       event: 'command:new',
       sessionKey: 'agent:clawdious:main',
+      pluginConfig: securePluginConfig(vaultPath),
       context: { commandSource: 'cli' }
     });
 
     expect(execFileSyncMock).toHaveBeenCalledWith(
-      'clawvault',
+      '/usr/local/bin/clawvault',
       expect.arrayContaining(['checkpoint', '--working-on']),
       expect.objectContaining({ shell: false })
     );
@@ -107,7 +178,6 @@ describe('clawvault hook handler', () => {
 
   it('injects recap and memory context on session start alias event', async () => {
     const vaultPath = makeVaultFixture();
-    process.env.CLAWVAULT_PATH = vaultPath;
 
     execFileSyncMock.mockImplementation((_command, args) => {
       if (args[0] === 'session-recap') {
@@ -136,6 +206,7 @@ describe('clawvault hook handler', () => {
     const event = {
       eventName: 'session:start',
       sessionKey: 'agent:clawdious:main',
+      pluginConfig: securePluginConfig(vaultPath),
       context: { initialPrompt: 'Need migration plan' },
       messages: [{ role: 'user', content: 'Need migration plan' }]
     };
@@ -156,7 +227,6 @@ describe('clawvault hook handler', () => {
 
   it('delegates profile selection to context auto mode for urgent prompts', async () => {
     const vaultPath = makeVaultFixture();
-    process.env.CLAWVAULT_PATH = vaultPath;
 
     execFileSyncMock.mockImplementation((_command, args) => {
       if (args[0] === 'session-recap') {
@@ -172,6 +242,7 @@ describe('clawvault hook handler', () => {
     await handler({
       eventName: 'session:start',
       sessionKey: 'agent:clawdious:main',
+      pluginConfig: securePluginConfig(vaultPath),
       context: { initialPrompt: 'URGENT outage: rollback failed in production' },
       messages: [{ role: 'user', content: 'URGENT outage: rollback failed in production' }]
     });
@@ -186,7 +257,6 @@ describe('clawvault hook handler', () => {
     const vaultPath = makeVaultFixture();
     const sessionId = 'heartbeat-session-1';
     const openClawFixture = makeOpenClawSessionFixture('main', sessionId, 70 * 1024);
-    process.env.CLAWVAULT_PATH = vaultPath;
     process.env.OPENCLAW_STATE_DIR = openClawFixture.stateRoot;
 
     fs.mkdirSync(path.join(vaultPath, '.clawvault'), { recursive: true });
@@ -208,11 +278,12 @@ describe('clawvault hook handler', () => {
     const handler = await loadHandler();
     await handler({
       type: 'gateway',
-      action: 'heartbeat'
+      action: 'heartbeat',
+      pluginConfig: securePluginConfig(vaultPath, { allowEnvAccess: true })
     });
 
     expect(execFileSyncMock).toHaveBeenCalledWith(
-      'clawvault',
+      '/usr/local/bin/clawvault',
       expect.arrayContaining(['observe', '--cron', '--agent', 'main']),
       expect.objectContaining({ shell: false })
     );
@@ -223,17 +294,17 @@ describe('clawvault hook handler', () => {
 
   it('forces active observation flush on compaction events', async () => {
     const vaultPath = makeVaultFixture();
-    process.env.CLAWVAULT_PATH = vaultPath;
     execFileSyncMock.mockReturnValue('');
 
     const handler = await loadHandler();
     await handler({
       eventName: 'compaction:memoryFlush',
-      sessionKey: 'agent:clawdious:main'
+      sessionKey: 'agent:clawdious:main',
+      pluginConfig: securePluginConfig(vaultPath)
     });
 
     expect(execFileSyncMock).toHaveBeenCalledWith(
-      'clawvault',
+      '/usr/local/bin/clawvault',
       expect.arrayContaining(['observe', '--cron', '--min-new', '1']),
       expect.objectContaining({ shell: false })
     );
@@ -243,17 +314,17 @@ describe('clawvault hook handler', () => {
 
   it('runs weekly reflection on cron.weekly at Sunday midnight', async () => {
     const vaultPath = makeVaultFixture();
-    process.env.CLAWVAULT_PATH = vaultPath;
     execFileSyncMock.mockReturnValue('');
 
     const handler = await loadHandler();
     await handler({
       eventName: 'cron.weekly',
-      timestamp: '2026-02-15T00:00:00.000Z'
+      timestamp: '2026-02-15T00:00:00.000Z',
+      pluginConfig: securePluginConfig(vaultPath)
     });
 
     expect(execFileSyncMock).toHaveBeenCalledWith(
-      'clawvault',
+      '/usr/local/bin/clawvault',
       expect.arrayContaining(['reflect', '-v', vaultPath]),
       expect.objectContaining({ shell: false })
     );
@@ -275,16 +346,14 @@ describe('clawvault hook handler', () => {
     const event = {
       type: 'gateway',
       action: 'startup',
-      pluginConfig: {
-        vaultPath
-      },
+      pluginConfig: securePluginConfig(vaultPath),
       messages: []
     };
 
     await handler(event);
 
     expect(execFileSyncMock).toHaveBeenCalledWith(
-      'clawvault',
+      '/usr/local/bin/clawvault',
       expect.arrayContaining(['recover', '--clear', '-v', vaultPath]),
       expect.objectContaining({ shell: false })
     );
@@ -307,9 +376,7 @@ describe('clawvault hook handler', () => {
       type: 'gateway',
       action: 'startup',
       context: {
-        pluginConfig: {
-          vaultPath
-        }
+        pluginConfig: securePluginConfig(vaultPath)
       },
       messages: []
     };
@@ -317,7 +384,7 @@ describe('clawvault hook handler', () => {
     await handler(event);
 
     expect(execFileSyncMock).toHaveBeenCalledWith(
-      'clawvault',
+      '/usr/local/bin/clawvault',
       expect.arrayContaining(['recover', '--clear', '-v', vaultPath]),
       expect.objectContaining({ shell: false })
     );
@@ -340,13 +407,14 @@ describe('clawvault hook handler', () => {
     const event = {
       type: 'gateway',
       action: 'startup',
+      pluginConfig: securePluginConfig(vaultPath, { allowEnvAccess: true }),
       messages: []
     };
 
     await handler(event);
 
     expect(execFileSyncMock).toHaveBeenCalledWith(
-      'clawvault',
+      '/usr/local/bin/clawvault',
       expect.arrayContaining(['recover', '--clear', '-v', vaultPath]),
       expect.objectContaining({ shell: false })
     );
@@ -372,20 +440,19 @@ describe('clawvault hook handler', () => {
       type: 'gateway',
       action: 'startup',
       sessionKey: 'agent:agent1:main',
-      pluginConfig: {
-        vaultPath: fallbackVault,
+      pluginConfig: securePluginConfig(fallbackVault, {
         agentVaults: {
           agent1: agent1Vault,
           agent2: agent2Vault
         }
-      },
+      }),
       messages: []
     };
 
     await handler(event);
 
     expect(execFileSyncMock).toHaveBeenCalledWith(
-      'clawvault',
+      '/usr/local/bin/clawvault',
       expect.arrayContaining(['recover', '--clear', '-v', agent1Vault]),
       expect.objectContaining({ shell: false })
     );
@@ -411,19 +478,18 @@ describe('clawvault hook handler', () => {
       type: 'gateway',
       action: 'startup',
       sessionKey: 'agent:unknown-agent:main',
-      pluginConfig: {
-        vaultPath: fallbackVault,
+      pluginConfig: securePluginConfig(fallbackVault, {
         agentVaults: {
           agent1: agent1Vault
         }
-      },
+      }),
       messages: []
     };
 
     await handler(event);
 
     expect(execFileSyncMock).toHaveBeenCalledWith(
-      'clawvault',
+      '/usr/local/bin/clawvault',
       expect.arrayContaining(['recover', '--clear', '-v', fallbackVault]),
       expect.objectContaining({ shell: false })
     );
@@ -449,12 +515,11 @@ describe('clawvault hook handler', () => {
       action: 'startup',
       sessionKey: 'agent:agent1:main',
       context: {
-        pluginConfig: {
-          vaultPath: fallbackVault,
+        pluginConfig: securePluginConfig(fallbackVault, {
           agentVaults: {
             agent1: agent1Vault
           }
-        }
+        })
       },
       messages: []
     };
@@ -462,7 +527,7 @@ describe('clawvault hook handler', () => {
     await handler(event);
 
     expect(execFileSyncMock).toHaveBeenCalledWith(
-      'clawvault',
+      '/usr/local/bin/clawvault',
       expect.arrayContaining(['recover', '--clear', '-v', agent1Vault]),
       expect.objectContaining({ shell: false })
     );
@@ -487,19 +552,20 @@ describe('clawvault hook handler', () => {
     const event = {
       type: 'gateway',
       action: 'startup',
-      pluginConfig: {
+      pluginConfig: securePluginConfig(fallbackVault, {
         vaultPath: fallbackVault,
         agentVaults: {
           agent1: agent1Vault
-        }
-      },
+        },
+        allowEnvAccess: true
+      }),
       messages: []
     };
 
     await handler(event);
 
     expect(execFileSyncMock).toHaveBeenCalledWith(
-      'clawvault',
+      '/usr/local/bin/clawvault',
       expect.arrayContaining(['recover', '--clear', '-v', agent1Vault]),
       expect.objectContaining({ shell: false })
     );

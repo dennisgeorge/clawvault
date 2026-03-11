@@ -87,26 +87,43 @@ openclaw config set plugins.entries.clawvault.config.vaultPath ~/my-vault
 openclaw config get plugins.entries.clawvault
 ```
 
-Available configuration options:
+Available configuration options (all privileged actions are opt-in):
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `vaultPath` | string | (auto-detected) | Path to the ClawVault vault directory |
-| `autoCheckpoint` | boolean | `true` | Enable automatic checkpointing on session events |
+| `agentVaults` | object | `{}` | Per-agent vault mapping |
+| `allowClawvaultExec` | boolean | `false` | Required gate for all `child_process` calls |
+| `clawvaultBinaryPath` | string | (PATH lookup) | Optional absolute path to `clawvault` binary |
+| `clawvaultBinarySha256` | string | (unset) | Optional SHA-256 executable integrity check |
+| `allowEnvAccess` | boolean | `false` | Allow env fallbacks (`OPENCLAW_*`, `CLAWVAULT_PATH`) |
+| `enableStartupRecovery` | boolean | `false` | Enable `gateway:startup` recovery check |
+| `enableSessionContextInjection` | boolean | `false` | Enable `session:start` recap/context injection |
+| `enableAutoCheckpoint` | boolean | `false` | Enable checkpoint on `command:new` |
+| `enableObserveOnNew` | boolean | `false` | Enable observer flush on `command:new` |
+| `enableHeartbeatObservation` | boolean | `false` | Enable heartbeat-driven observation |
+| `enableCompactionObservation` | boolean | `false` | Enable observer flush on compaction |
+| `enableWeeklyReflection` | boolean | `false` | Enable weekly reflection cron |
+| `enableFactExtraction` | boolean | `false` | Enable local fact extraction/entity graph updates |
+| `autoCheckpoint` | boolean | `false` | Deprecated alias for `enableAutoCheckpoint` |
 | `contextProfile` | string | `"auto"` | Default context profile (`default`, `planning`, `incident`, `handoff`, `auto`) |
 | `maxContextResults` | integer | `4` | Maximum context results to inject on session start |
-| `observeOnHeartbeat` | boolean | `true` | Enable observation threshold checks on heartbeat |
-| `weeklyReflection` | boolean | `true` | Enable weekly reflection on Sunday midnight UTC |
+| `observeOnHeartbeat` | boolean | `false` | Deprecated alias for `enableHeartbeatObservation` |
+| `weeklyReflection` | boolean | `false` | Deprecated alias for `enableWeeklyReflection` |
+
+Security details and threat model: see [SECURITY.md](../../SECURITY.md).
 
 ### Vault Path Resolution
 
-The hook resolves the vault path in this order:
+When `allowEnvAccess=true`, the hook resolves the vault path in this order:
 
 1. Plugin config (`plugins.entries.clawvault.config.vaultPath` set via `openclaw config`)
 2. `OPENCLAW_PLUGIN_CLAWVAULT_VAULTPATH` environment variable
 3. `CLAWVAULT_PATH` environment variable
 4. Walking up from cwd to find `.clawvault.json`
 5. Checking `memory/` subdirectory (OpenClaw convention)
+
+When `allowEnvAccess=false` (default), steps 2 and 3 are skipped.
 
 ### Troubleshooting
 

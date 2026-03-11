@@ -1,7 +1,7 @@
 {
   "id": "clawvault",
   "name": "ClawVault",
-  "version": "2.6.1",
+  "version": "2.7.0",
   "description": "Structured memory system for AI agents with context death resilience",
   "kind": "memory",
   "configSchema": {
@@ -9,12 +9,78 @@
     "properties": {
       "vaultPath": {
         "type": "string",
-        "description": "Path to the ClawVault vault directory. If not set, auto-discovered from CLAWVAULT_PATH or by walking up from cwd."
+        "description": "Path to the ClawVault vault directory. Used as fallback when agentVaults is not set or agent not found."
+      },
+      "agentVaults": {
+        "type": "object",
+        "description": "Mapping of agent names to vault paths. Allows each agent to have its own vault. Falls back to vaultPath if agent not found.",
+        "additionalProperties": {
+          "type": "string",
+          "description": "Path to the vault directory for this agent"
+        }
+      },
+      "allowClawvaultExec": {
+        "type": "boolean",
+        "description": "Security gate for all child_process execution from the plugin. Must be true to run clawvault CLI commands.",
+        "default": false
+      },
+      "clawvaultBinaryPath": {
+        "type": "string",
+        "description": "Optional absolute path to the clawvault executable. When omitted, the plugin resolves clawvault from PATH."
+      },
+      "clawvaultBinarySha256": {
+        "type": "string",
+        "description": "Optional SHA-256 checksum for clawvaultBinaryPath (or resolved clawvault executable) to enforce binary integrity verification."
+      },
+      "allowEnvAccess": {
+        "type": "boolean",
+        "description": "Allow reading OPENCLAW_* and CLAWVAULT_PATH environment variables for vault and agent discovery.",
+        "default": false
+      },
+      "enableStartupRecovery": {
+        "type": "boolean",
+        "description": "Enable recovery checks on gateway startup.",
+        "default": false
+      },
+      "enableSessionContextInjection": {
+        "type": "boolean",
+        "description": "Enable recap/context injection on session start.",
+        "default": false
+      },
+      "enableAutoCheckpoint": {
+        "type": "boolean",
+        "description": "Enable automatic checkpointing on /new.",
+        "default": false
+      },
+      "enableObserveOnNew": {
+        "type": "boolean",
+        "description": "Enable observer flush on /new.",
+        "default": false
+      },
+      "enableHeartbeatObservation": {
+        "type": "boolean",
+        "description": "Enable observation threshold checks on heartbeat.",
+        "default": false
+      },
+      "enableCompactionObservation": {
+        "type": "boolean",
+        "description": "Enable forced observer flush on compaction events.",
+        "default": false
+      },
+      "enableWeeklyReflection": {
+        "type": "boolean",
+        "description": "Enable weekly reflection on Sunday midnight UTC.",
+        "default": false
+      },
+      "enableFactExtraction": {
+        "type": "boolean",
+        "description": "Enable extraction of structured facts from observed text during hook events.",
+        "default": false
       },
       "autoCheckpoint": {
         "type": "boolean",
-        "description": "Enable automatic checkpointing on session events",
-        "default": true
+        "description": "Deprecated alias for enableAutoCheckpoint.",
+        "default": false
       },
       "contextProfile": {
         "type": "string",
@@ -31,13 +97,13 @@
       },
       "observeOnHeartbeat": {
         "type": "boolean",
-        "description": "Enable observation threshold checks on gateway heartbeat",
-        "default": true
+        "description": "Deprecated alias for enableHeartbeatObservation.",
+        "default": false
       },
       "weeklyReflection": {
         "type": "boolean",
-        "description": "Enable weekly reflection on Sunday midnight UTC",
-        "default": true
+        "description": "Deprecated alias for enableWeeklyReflection.",
+        "default": false
       }
     },
     "additionalProperties": false
@@ -46,11 +112,63 @@
     "vaultPath": {
       "label": "Vault Path",
       "placeholder": "~/my-vault",
-      "description": "Path to your ClawVault memory vault"
+      "description": "Path to your ClawVault memory vault (fallback when agentVaults not set)"
+    },
+    "agentVaults": {
+      "label": "Agent Vaults",
+      "description": "Per-agent vault paths (e.g., {\"agent1\": \"/path/to/vault1\", \"agent2\": \"/path/to/vault2\"})"
+    },
+    "allowClawvaultExec": {
+      "label": "Allow CLI Execution",
+      "description": "Required opt-in to run child_process calls from the plugin."
+    },
+    "clawvaultBinaryPath": {
+      "label": "ClawVault Binary Path",
+      "description": "Absolute path to clawvault executable for stricter execution controls."
+    },
+    "clawvaultBinarySha256": {
+      "label": "ClawVault Binary SHA-256",
+      "description": "Optional checksum to verify executable integrity before execution."
+    },
+    "allowEnvAccess": {
+      "label": "Allow Environment Access",
+      "description": "Allow OPENCLAW_* and CLAWVAULT_PATH reads for fallback discovery."
+    },
+    "enableStartupRecovery": {
+      "label": "Startup Recovery",
+      "description": "Run recovery checks on gateway startup."
+    },
+    "enableSessionContextInjection": {
+      "label": "Session Context Injection",
+      "description": "Inject recap and memory context on session start."
+    },
+    "enableAutoCheckpoint": {
+      "label": "Auto Checkpoint",
+      "description": "Automatically checkpoint before /new."
+    },
+    "enableObserveOnNew": {
+      "label": "Observe On /new",
+      "description": "Run observer flush on /new."
+    },
+    "enableHeartbeatObservation": {
+      "label": "Observe On Heartbeat",
+      "description": "Check observation thresholds during heartbeat events."
+    },
+    "enableCompactionObservation": {
+      "label": "Observe On Compaction",
+      "description": "Force observer flush during compaction events."
+    },
+    "enableWeeklyReflection": {
+      "label": "Weekly Reflection",
+      "description": "Run weekly reflection on Sunday midnight UTC."
+    },
+    "enableFactExtraction": {
+      "label": "Fact Extraction",
+      "description": "Extract structured facts from hook event payloads."
     },
     "autoCheckpoint": {
-      "label": "Auto Checkpoint",
-      "description": "Automatically checkpoint before session resets"
+      "label": "Auto Checkpoint (Legacy Alias)",
+      "description": "Deprecated alias for enableAutoCheckpoint."
     },
     "contextProfile": {
       "label": "Context Profile",
@@ -61,12 +179,12 @@
       "description": "Number of vault memories to inject"
     },
     "observeOnHeartbeat": {
-      "label": "Observe on Heartbeat",
-      "description": "Check observation thresholds during heartbeat events"
+      "label": "Observe on Heartbeat (Legacy Alias)",
+      "description": "Deprecated alias for enableHeartbeatObservation."
     },
     "weeklyReflection": {
-      "label": "Weekly Reflection",
-      "description": "Run weekly reflection on Sunday midnight UTC"
+      "label": "Weekly Reflection (Legacy Alias)",
+      "description": "Deprecated alias for enableWeeklyReflection."
     }
   }
 }
