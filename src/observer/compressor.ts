@@ -667,6 +667,21 @@ export class Compressor {
     return result;
   }
 
+  private static readonly SCENE_SETTER_RE =
+    /\b(?:meeting (?:recap|started|begins)|session (?:started|opened|begins)|kickoff (?:started|begins)|standup (?:started|begins))\b/i;
+  private static readonly ACK_NOISE_RE =
+    /^(?:(?:acknowledged|confirmed|noted|ok(?:ay)?|sounds good|got it|understood|thanks|thank you)\b.*[.!]?\s*$)/i;
+
+  private isNoiseObservation(record: { type: string; content: string; importance: number }): boolean {
+    if (Compressor.SCENE_SETTER_RE.test(record.content) && record.importance < 0.5) {
+      return true;
+    }
+    if (Compressor.ACK_NOISE_RE.test(record.content) && record.importance < 0.4) {
+      return true;
+    }
+    return false;
+  }
+
   private enforceImportanceRules(markdown: string): string {
     const parsed = parseObservationMarkdown(markdown);
     if (parsed.length === 0) {
@@ -682,6 +697,9 @@ export class Compressor {
 
     for (const record of parsed) {
       const adjusted = this.enforceImportanceForRecord(record);
+      if (this.isNoiseObservation(adjusted)) {
+        continue;
+      }
       const bucket = grouped.get(record.date) ?? [];
       bucket.push(adjusted);
       grouped.set(record.date, bucket);
