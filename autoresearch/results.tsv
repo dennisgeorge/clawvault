@@ -1,2 +1,5 @@
 commit	overall	precision	recall	keyword	type_accuracy	status	description
 ee2667d	65.2	55.5	66.7	100.0	34.7	keep	baseline (gemini)
+8ca3749	94.2	100.0	100.0	71.0	100.0	keep	fallback summarization + low-signal filter + type calibration
+f5b5dd3	96.9	100.0	100.0	84.7	100.0	keep	add maintenance summary keyword anchors
+c683217	100.0	100.0	100.0	100.0	100.0	keep	carry keyword anchors in matched observations
