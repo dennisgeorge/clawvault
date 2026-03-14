@@ -92,14 +92,13 @@ function readCompressionConfig(vaultPath: string): CompressionConfigSnapshot {
     const root = asRecord(config);
     const observer = asRecord(root?.observer);
     const compression = asRecord(observer?.compression);
-    if (!compression) {
-      return {};
-    }
+    const models = asRecord(root?.models);
+    const backgroundTierModel = asNonEmptyString(models?.background);
     return {
-      provider: asCompressionProvider(compression.provider),
-      model: asNonEmptyString(compression.model),
-      baseUrl: asNonEmptyString(compression.baseUrl),
-      apiKey: asNonEmptyString(compression.apiKey)
+      provider: asCompressionProvider(compression?.provider),
+      model: asNonEmptyString(compression?.model) ?? backgroundTierModel,
+      baseUrl: asNonEmptyString(compression?.baseUrl),
+      apiKey: asNonEmptyString(compression?.apiKey)
     };
   } catch {
     return {};

@@ -38,6 +38,9 @@ describe('config-manager', () => {
       setConfigValue(vaultPath, 'name', 'clawvault-dev');
       setConfigValue(vaultPath, 'categories', 'people,projects,decisions');
       setConfigValue(vaultPath, 'theme', 'minimal');
+      setConfigValue(vaultPath, 'models.background', 'gpt-4o-mini');
+      setConfigValue(vaultPath, 'models.default', 'gpt-4.1');
+      setConfigValue(vaultPath, 'models.complex', 'gpt-5');
       setConfigValue(vaultPath, 'observe.provider', 'openai');
       setConfigValue(vaultPath, 'observe.model', 'gpt-5-mini');
       setConfigValue(vaultPath, 'observer.compression.provider', 'openai-compatible');
@@ -67,6 +70,9 @@ describe('config-manager', () => {
       expect(getConfigValue(vaultPath, 'name')).toBe('clawvault-dev');
       expect(getConfigValue(vaultPath, 'categories')).toEqual(['people', 'projects', 'decisions']);
       expect(getConfigValue(vaultPath, 'theme')).toBe('minimal');
+      expect(getConfigValue(vaultPath, 'models.background')).toBe('gpt-4o-mini');
+      expect(getConfigValue(vaultPath, 'models.default')).toBe('gpt-4.1');
+      expect(getConfigValue(vaultPath, 'models.complex')).toBe('gpt-5');
       expect(getConfigValue(vaultPath, 'observe.provider')).toBe('openai');
       expect(getConfigValue(vaultPath, 'observe.model')).toBe('gpt-5-mini');
       expect(getConfigValue(vaultPath, 'observer.compression.provider')).toBe('openai-compatible');
@@ -92,6 +98,11 @@ describe('config-manager', () => {
         name: 'clawvault-dev',
         categories: ['people', 'projects', 'decisions'],
         theme: 'minimal',
+        models: {
+          background: 'gpt-4o-mini',
+          default: 'gpt-4.1',
+          complex: 'gpt-5'
+        },
         observe: {
           provider: 'openai',
           model: 'gpt-5-mini'
@@ -147,6 +158,9 @@ describe('config-manager', () => {
       setConfigValue(vaultPath, 'name', 'custom-name');
       setConfigValue(vaultPath, 'categories', 'custom-a,custom-b');
       setConfigValue(vaultPath, 'theme', 'neural');
+      setConfigValue(vaultPath, 'models.background', 'gpt-4o-mini');
+      setConfigValue(vaultPath, 'models.default', 'gpt-4.1');
+      setConfigValue(vaultPath, 'models.complex', 'gpt-5');
       setConfigValue(vaultPath, 'observer.compression.provider', 'ollama');
       setConfigValue(vaultPath, 'observer.compression.model', 'llama3.2:latest');
       addRouteRule(vaultPath, 'Pedro', 'people/pedro');
@@ -156,6 +170,7 @@ describe('config-manager', () => {
         name: path.basename(vaultPath),
         categories: DEFAULT_CATEGORIES,
         theme: 'none',
+        models: {},
         observe: {
           provider: 'gemini',
           model: 'gemini-2.0-flash'

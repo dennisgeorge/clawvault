@@ -21,6 +21,7 @@ const FACT_EXTRACTION_MODES = ['off', 'rule', 'llm', 'hybrid'] as const;
 const SEARCH_BACKENDS = ['in-process', 'qmd'] as const;
 const SEARCH_EMBEDDING_PROVIDERS = ['none', 'openai', 'gemini', 'ollama'] as const;
 const SEARCH_RERANK_PROVIDERS = ['none', 'jina', 'voyage', 'siliconflow', 'pinecone'] as const;
+const MODEL_TIERS = ['background', 'default', 'complex'] as const;
 
 export type ObserveProvider = (typeof OBSERVE_PROVIDERS)[number];
 export type ObserverCompressionProvider = (typeof OBSERVER_COMPRESSION_PROVIDERS)[number];
@@ -30,10 +31,14 @@ export type FactExtractionMode = (typeof FACT_EXTRACTION_MODES)[number];
 export type SearchBackend = (typeof SEARCH_BACKENDS)[number];
 export type SearchEmbeddingProvider = (typeof SEARCH_EMBEDDING_PROVIDERS)[number];
 export type SearchRerankProvider = (typeof SEARCH_RERANK_PROVIDERS)[number];
+export type ModelTier = (typeof MODEL_TIERS)[number];
 export type ManagedConfigKey =
   | 'name'
   | 'categories'
   | 'theme'
+  | 'models.background'
+  | 'models.default'
+  | 'models.complex'
   | 'observe.model'
   | 'observe.provider'
   | 'observer.compression.provider'
@@ -71,6 +76,11 @@ export interface ManagedDefaults {
   name: string;
   categories: string[];
   theme: Theme;
+  models: {
+    background?: string;
+    default?: string;
+    complex?: string;
+  };
   observe: {
     model: string;
     provider: ObserveProvider;
@@ -122,6 +132,9 @@ export const SUPPORTED_CONFIG_KEYS: ManagedConfigKey[] = [
   'name',
   'categories',
   'theme',
+  'models.background',
+  'models.default',
+  'models.complex',
   'observe.model',
   'observe.provider',
   'observer.compression.provider',
@@ -370,6 +383,7 @@ function withDefaults(vaultPath: string, config: Record<string, unknown>): Recor
     name: path.basename(resolvedPath),
     categories: [...DEFAULT_CATEGORIES],
     theme: DEFAULT_THEME,
+    models: {},
     observe: {
       model: DEFAULT_OBSERVE_MODEL,
       provider: DEFAULT_OBSERVE_PROVIDER
@@ -411,6 +425,18 @@ function withDefaults(vaultPath: string, config: Record<string, unknown>): Recor
       ? config.observe
       : {}
   ) as Record<string, unknown>;
+  const modelsRecord = (
+    config.models && typeof config.models === 'object' && !Array.isArray(config.models)
+      ? config.models
+      : {}
+  ) as Record<string, unknown>;
+  const normalizedModels: ManagedDefaults['models'] = {};
+  for (const tier of MODEL_TIERS) {
+    const candidate = modelsRecord[tier];
+    if (typeof candidate === 'string' && candidate.trim()) {
+      normalizedModels[tier] = candidate.trim();
+    }
+  }
   const contextRecord = (
     config.context && typeof config.context === 'object' && !Array.isArray(config.context)
       ? config.context
@@ -483,6 +509,7 @@ function withDefaults(vaultPath: string, config: Record<string, unknown>): Recor
     name: typeof config.name === 'string' && config.name.trim() ? config.name.trim() : defaults.name,
     categories: asStringArray(config.categories) ?? defaults.categories,
     theme: isTheme(config.theme) ? config.theme : defaults.theme,
+    models: normalizedModels,
     observe: {
       ...observeRecord,
       model: typeof observeRecord.model === 'string' && observeRecord.model.trim()
@@ -608,6 +635,13 @@ function coerceManagedValue(key: ManagedConfigKey, value: unknown): unknown {
       throw new Error(`Config key "theme" must be one of: ${THEMES.join(', ')}`);
     }
     return value;
+  }
+
+  if (key === 'models.background' || key === 'models.default' || key === 'models.complex') {
+    if (typeof value !== 'string' || !value.trim()) {
+      throw new Error(`Config key "${key}" must be a non-empty string.`);
+    }
+    return value.trim();
   }
 
   if (key === 'observe.provider') {
@@ -833,6 +867,7 @@ export function resetConfig(vaultPath: string): Record<string, unknown> {
   document.name = defaultName;
   document.categories = [...DEFAULT_CATEGORIES];
   document.theme = DEFAULT_THEME;
+  document.models = {};
   document.observe = {
     model: DEFAULT_OBSERVE_MODEL,
     provider: DEFAULT_OBSERVE_PROVIDER

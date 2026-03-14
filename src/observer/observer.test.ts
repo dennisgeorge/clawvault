@@ -217,6 +217,63 @@ describe('Observer', () => {
     }
   });
 
+  it('uses models.background for compression when compression model is not set', async () => {
+    const vaultPath = makeTempVault();
+    const now = withFixedNow('2026-02-11T16:05:00.000Z');
+    const configPath = path.join(vaultPath, '.clawvault.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8')) as Record<string, unknown>;
+    config.models = {
+      background: 'cheap-background-model',
+      default: 'default-model',
+      complex: 'complex-model'
+    };
+    config.observer = {
+      compression: {
+        provider: 'openai-compatible',
+        baseUrl: 'http://localhost:11434/v1'
+      },
+      factExtractionMode: 'off'
+    };
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+
+    process.env.ANTHROPIC_API_KEY = '';
+    process.env.OPENAI_API_KEY = '';
+    process.env.GEMINI_API_KEY = '';
+
+    const fetchSpy = vi.fn(async (_input: unknown, _init?: RequestInit) => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: '## 2026-02-11\n\n- [fact|c=0.80|i=0.40] 16:05 Background tier selected'
+            }
+          }
+        ]
+      })
+    } as Response));
+    vi.stubGlobal('fetch', fetchSpy as unknown as typeof fetch);
+
+    try {
+      const observer = new Observer(vaultPath, {
+        tokenThreshold: 1,
+        reflectThreshold: 99999,
+        now
+      });
+      await observer.processMessages(['capture state']);
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const [url, request] = fetchSpy.mock.calls[0] as [unknown, RequestInit];
+      const requestUrl = typeof url === 'string' ? url : String(url);
+      const body = JSON.parse(String(request.body)) as { model?: string };
+      expect(requestUrl).toBe('http://localhost:11434/v1/chat/completions');
+      expect(body.model).toBe('cheap-background-model');
+      expect(observer.getObservations()).toContain('Background tier selected');
+    } finally {
+      fs.rmSync(vaultPath, { recursive: true, force: true });
+    }
+  });
+
   it('falls back to env-based provider when configured provider lacks required credentials', async () => {
     const vaultPath = makeTempVault();
     const now = withFixedNow('2026-02-11T16:10:00.000Z');
