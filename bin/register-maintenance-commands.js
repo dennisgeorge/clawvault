@@ -174,11 +174,37 @@ export function registerMaintenanceCommands(program, { chalk }) {
     .command('entities')
     .description('List all linkable entities in the vault')
     .option('-v, --vault <path>', 'Vault path')
+    .option('--refresh', 'Regenerate entity profiles before listing')
     .option('--json', 'Output as JSON')
     .action(async (options) => {
       try {
         const { entitiesCommand } = await import('../dist/commands/entities.js');
-        await entitiesCommand({ json: options.json, vaultPath: options.vault });
+        await entitiesCommand({
+          json: options.json,
+          vaultPath: options.vault,
+          refresh: options.refresh
+        });
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err.message}`));
+        process.exit(1);
+      }
+    });
+
+  // === ENTITY ===
+  program
+    .command('entity <name>')
+    .description('Show synthesized profile for one entity')
+    .option('-v, --vault <path>', 'Vault path')
+    .option('--refresh', 'Regenerate entity profiles before lookup')
+    .option('--json', 'Output as JSON')
+    .action(async (name, options) => {
+      try {
+        const { entityCommand } = await import('../dist/commands/entities.js');
+        await entityCommand(name, {
+          json: options.json,
+          vaultPath: options.vault,
+          refresh: options.refresh
+        });
       } catch (err) {
         console.error(chalk.red(`Error: ${err.message}`));
         process.exit(1);

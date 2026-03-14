@@ -6,6 +6,7 @@ describe('CLI help contract', () => {
     const help = registerAllCommandModules().helpInformation();
     expect(help).toContain('init');
     expect(help).toContain('context');
+    expect(help).toContain('recall');
     expect(help).toContain('inject');
     expect(help).toContain('doctor');
     expect(help).toContain('benchmark');
@@ -22,6 +23,7 @@ describe('CLI help contract', () => {
     expect(help).toContain('template');
     expect(help).toContain('config');
     expect(help).toContain('route');
+    expect(help).toContain('entity');
   });
 
   it('documents context/compat/inject/project help details', () => {

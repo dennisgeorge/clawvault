@@ -204,6 +204,41 @@ export function registerQueryCommands(
 
   // === INJECT ===
   program
+    .command('recall <query>')
+    .description('Recall memory context with strategy classification (quick|entity|temporal|verification|relationship)')
+    .option('-n, --limit <n>', 'Max results (default: 6)', '6')
+    .option('--strategy <strategy>', 'Override strategy (quick|entity|temporal|verification|relationship)')
+    .option('--json', 'Output as JSON')
+    .option('--no-sources', 'Hide source paths in recall context')
+    .option('-v, --vault <path>', 'Vault path')
+    .action(async (query, options) => {
+      try {
+        const parsedLimit = Number.parseInt(options.limit, 10);
+        if (!Number.isFinite(parsedLimit) || parsedLimit <= 0) {
+          throw new Error(`Invalid --limit value: ${options.limit}`);
+        }
+
+        const allowedStrategies = new Set(['quick', 'entity', 'temporal', 'verification', 'relationship']);
+        if (options.strategy && !allowedStrategies.has(options.strategy)) {
+          throw new Error(`Invalid --strategy value: ${options.strategy}`);
+        }
+
+        const { recallCommand } = await import('../dist/commands/recall.js');
+        await recallCommand(query, {
+          vaultPath: resolveVaultPath(options.vault),
+          limit: parsedLimit,
+          strategy: options.strategy,
+          json: options.json,
+          includeSources: options.sources
+        });
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err.message}`));
+        process.exit(1);
+      }
+    });
+
+  // === INJECT ===
+  program
     .command('inject <message>')
     .description('Inject relevant rules, decisions, and preferences into prompt context')
     .option('-n, --max-results <n>', 'Maximum injected items (default: config inject.maxResults, fallback 8)')

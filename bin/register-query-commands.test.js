@@ -20,6 +20,21 @@ function buildProgram() {
 }
 
 describe('register-query-commands', () => {
+  it('registers recall command with strategy options', () => {
+    const program = buildProgram();
+    const recallCommand = program.commands.find((command) => command.name() === 'recall');
+    expect(recallCommand).toBeDefined();
+
+    const flags = recallCommand?.options.map((option) => option.flags) ?? [];
+    expect(flags).toEqual(expect.arrayContaining([
+      '-n, --limit <n>',
+      '--strategy <strategy>',
+      '--json',
+      '--no-sources',
+      '-v, --vault <path>'
+    ]));
+  });
+
   it('documents inject command options and config-backed defaults', () => {
     const program = buildProgram();
     const injectCommand = program.commands.find((command) => command.name() === 'inject');

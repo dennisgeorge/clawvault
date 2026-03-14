@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { entitiesCommand } from './entities.js';
+import { createVault } from '../lib/vault.js';
+import { entitiesCommand, entityCommand } from './entities.js';
 
 const createdTempDirs: string[] = [];
 
@@ -128,5 +129,53 @@ title: Project Phoenix
 
     const payload = JSON.parse(String(logSpy.mock.calls[0][0])) as Record<string, string[]>;
     expect(payload['decisions/cache-policy']).toEqual(['cache-policy']);
+  });
+
+  it('prints synthesized entity profile details in markdown mode', async () => {
+    const vaultPath = makeTempVault();
+    const vault = await createVault(vaultPath, { name: 'entity-command-md' }, { skipGraph: true, skipBases: true });
+    await vault.store({
+      category: 'people',
+      title: 'Alice Johnson',
+      content: '[[Alice Johnson]] works with [[Bob Lee]] on incident response.'
+    });
+    await vault.store({
+      category: 'projects',
+      title: 'Project Orion',
+      content: '[[Project Orion]] is led by [[Alice Johnson]].'
+    });
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    await entityCommand('Alice Johnson', { vaultPath });
+
+    const output = collectLogs(logSpy);
+    expect(output).toContain('Alice Johnson');
+    expect(output).toContain('Relationships:');
+    expect(output).toContain('Bob Lee');
+  });
+
+  it('prints synthesized entity profile as JSON', async () => {
+    const vaultPath = makeTempVault();
+    const vault = await createVault(vaultPath, { name: 'entity-command-json' }, { skipGraph: true, skipBases: true });
+    await vault.store({
+      category: 'people',
+      title: 'Alice',
+      content: '[[Alice]] works with [[Bob]].'
+    });
+    await vault.store({
+      category: 'people',
+      title: 'Bob',
+      content: '[[Bob]] supports [[Alice]].'
+    });
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    await entityCommand('alice', { vaultPath, json: true });
+
+    const payload = JSON.parse(String(logSpy.mock.calls[0][0])) as {
+      name: string;
+      relationships: Array<{ target: string }>;
+    };
+    expect(payload.name.toLowerCase()).toContain('alice');
+    expect(payload.relationships.length).toBeGreaterThan(0);
   });
 });

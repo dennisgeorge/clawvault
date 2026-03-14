@@ -30,6 +30,16 @@ import { registerCliCommands } from './cli/index.js';
 
 // Core exports
 export { ClawVault, createVault, findVault } from './lib/vault.js';
+export { default as openclawHookPlugin, createMemorySlotPlugin } from './openclaw-plugin.js';
+export { createMemorySlot, registerMemorySlot } from './plugin/slot.js';
+export type {
+  MemorySlot,
+  MemorySlotInitOptions,
+  MemorySlotRecallOptions,
+  MemorySlotSearchOptions,
+  MemorySlotStoreOptions,
+  MemoryStoreMetadata
+} from './plugin/slot.js';
 export { setupCommand } from './commands/setup.js';
 export { compatCommand, checkOpenClawCompatibility, compatibilityExitCode } from './commands/compat.js';
 export type { CompatCheck, CompatReport, CompatStatus, CompatCommandOptions } from './commands/compat.js';
@@ -115,6 +125,8 @@ export {
   registerMigrateCommand
 } from './commands/migrate.js';
 export type { MigrateCommandOptions, MigrationAction, MigrateResult } from './commands/migrate.js';
+export { recallCommand } from './commands/recall.js';
+export type { RecallCommandOptions } from './commands/recall.js';
 export { syncBdCommand, registerSyncBdCommand } from './commands/sync-bd.js';
 export type { SyncBdCommandOptions } from './commands/sync-bd.js';
 export {
@@ -294,6 +306,41 @@ export { runReflection } from './observer/reflection-service.js';
 export type { ReflectOptions, ReflectResult } from './observer/reflection-service.js';
 export { archiveObservations } from './observer/archive.js';
 export type { ArchiveObservationsOptions, ArchiveObservationsResult } from './observer/archive.js';
+export {
+  LiveCaptureService,
+  extractMemoriesFromAssistantResponse,
+  extractHeuristicMemories,
+  extractTaggedMemoryNotes,
+  evaluateCandidateQuality,
+  isLikelyJunkMemory,
+  plausibilityScore
+} from './capture/index.js';
+export type {
+  CaptureCandidate,
+  CapturedMemoryType,
+  CaptureMessage,
+  CaptureOptions,
+  CaptureStoreResult,
+  CaptureRejection
+} from './capture/index.js';
+export {
+  classifyRecallQuery,
+  buildRecallResult
+} from './recall/index.js';
+export type {
+  RecallOptions,
+  RecallQueryClassification,
+  RecallResult,
+  RecallSource,
+  RecallStrategy
+} from './recall/index.js';
+export {
+  synthesizeEntityProfiles,
+  readEntityProfiles,
+  readEntityProfile,
+  ensureEntityProfiles
+} from './entities/index.js';
+export type { EntityKind, EntityProfile, EntityRelationship } from './entities/index.js';
 
 // Tailscale networking exports
 export {
