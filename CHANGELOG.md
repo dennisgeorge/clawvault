@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- Docs: deprecated ClawVault for new deployments in favor of OpenClaw's first-party memory stack, and redirected readers to the official builtin memory and QMD memory docs.
+
+---
+
 ## [3.5.0] — 2026-03-16
 
 ### Changed

@@ -1,225 +1,69 @@
-# OpenClaw Plugin Usage Guide
+# OpenClaw Migration Guide
 
-This guide covers best practices for using ClawVault as an OpenClaw plugin, including configuration, workflow patterns, and common integration scenarios.
+ClawVault is deprecated as the recommended memory path for OpenClaw.
 
-## Installation
+OpenClaw now has a first-party memory stack with official docs, builtin memory, and a maintained QMD backend. For new deployments, use OpenClaw native memory instead of installing ClawVault as a plugin.
 
-See the [README](../README.md#openclaw-integration) for canonical installation steps:
+- [Memory Overview](https://docs.openclaw.ai/concepts/memory)
+- [Builtin Memory Engine](https://docs.openclaw.ai/concepts/memory-builtin)
+- [QMD Memory Engine](https://docs.openclaw.ai/concepts/memory-qmd)
 
-```bash
-# Install ClawVault
-npm install clawvault
+## Why this changed
 
-# Register plugin and memory slot in openclaw.json
-openclaw config set plugins.entries.clawvault.package clawvault
-openclaw config set plugins.slots.memory clawvault
-
-# Configure vault path
-openclaw config set plugins.entries.clawvault.config.vaultPath ~/my-vault
+ClawVault got to this shape early.
 
-# Verify
-clawvault compat
-```
+It helped prove that markdown-native structured memory could work well in practice, especially with:
 
-> **Legacy note:** The older `openclaw hooks install` / `openclaw hooks enable` flow is no longer recommended. Use the plugin model above.
+- local, human-readable memory files
+- Obsidian-friendly workflows
+- QMD-style local retrieval for stronger recall
 
-## MEMORY.md vs Vault: Understanding the Relationship
+Those ideas are now part of OpenClaw's official, maintained memory story. OpenClaw's memory docs and QMD backend are the path that should move forward.
 
-When using ClawVault as an OpenClaw plugin, you may have both a `MEMORY.md` file in your workspace and a ClawVault vault. Understanding their distinct roles prevents confusion and drift.
+## Recommendation
 
-### The Two Memory Layers
+### New deployments
 
-| Layer | Purpose | When Agent Sees It | Update Frequency |
-|-------|---------|-------------------|------------------|
-| **MEMORY.md** | Boot context — immediate, curated summary | Instantly on startup (no commands needed) | Periodically (e.g., daily or weekly) |
-| **Vault** | Full knowledge store — searchable, structured, versioned | Via `wake`, `context`, `search`, or auto-injection | Continuously during work |
+Choose OpenClaw native memory.
 
-### Mental Model
+Do not start a new OpenClaw install by wiring in ClawVault unless you are deliberately maintaining an older setup.
 
-Think of these as complementary layers:
+### Existing ClawVault users
 
-- **MEMORY.md** is the **executive summary** — a curated snapshot the agent sees immediately without running any commands. It contains high-level identity, key decisions, and current focus.
+If your current setup works, you do not need to panic-migrate immediately. But you should treat ClawVault as legacy integration and plan to move onto OpenClaw's first-party memory stack.
 
-- **The vault** is the **full filing cabinet** — the complete, searchable, versioned knowledge store. It contains everything: tasks, decisions, lessons, observations, checkpoints, and more.
+## Migration direction
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Agent Context                             │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│   ┌──────────────────┐         ┌──────────────────────────────┐ │
-│   │   MEMORY.md      │         │         ClawVault            │ │
-│   │   (Boot Context) │         │      (Full Knowledge)        │ │
-│   │                  │         │                              │ │
-│   │ • Identity       │         │ • decisions/                 │ │
-│   │ • Key decisions  │◀────────│ • lessons/                   │ │
-│   │ • Current focus  │ periodic│ • tasks/                     │ │
-│   │ • Active project │  sync   │ • projects/                  │ │
-│   │                  │         │ • handoffs/                  │ │
-│   │ Instant access   │         │ • observations/              │ │
-│   │ (no commands)    │         │                              │ │
-│   └──────────────────┘         │ Searchable via:              │ │
-│                                │ wake, context, search, inject│ │
-│                                └──────────────────────────────┘ │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
+The usual mapping is straightforward:
 
-### Recommended Pattern
+| ClawVault concept | OpenClaw path |
+|---|---|
+| ClawVault plugin as memory layer | OpenClaw builtin memory or QMD backend |
+| Vault-backed memory workflow | `MEMORY.md`, `memory/YYYY-MM-DD.md`, and OpenClaw memory tooling |
+| QMD-style retrieval via ClawVault-era setup | OpenClaw's maintained [QMD Memory Engine](https://docs.openclaw.ai/concepts/memory-qmd) |
+| OpenClaw memory entrypoint questions | [Memory Overview](https://docs.openclaw.ai/concepts/memory) |
 
-1. **MEMORY.md contains:**
-   - Project/agent identity and purpose
-   - Key architectural decisions (summaries, not full reasoning)
-   - Current focus and active work
-   - Critical constraints or preferences
-   - Links to vault for deeper context
+## What to read now
 
-2. **Vault contains:**
-   - Full decision records with reasoning
-   - All lessons learned
-   - Task history and backlog
-   - Session handoffs and checkpoints
-   - Observations and reflections
-   - People, projects, and relationships
+Start with the official OpenClaw docs:
 
-3. **Update cadence:**
-   - Vault: Updated continuously during work via `remember`, `checkpoint`, `sleep`, etc.
-   - MEMORY.md: Updated periodically (daily or weekly) to reflect vault state
+1. [Memory Overview](https://docs.openclaw.ai/concepts/memory)
+2. [Builtin Memory Engine](https://docs.openclaw.ai/concepts/memory-builtin)
+3. [QMD Memory Engine](https://docs.openclaw.ai/concepts/memory-qmd)
 
-### Example MEMORY.md Structure
+Use builtin memory when you want the default, supported path with no extra sidecar.
 
-```markdown
-# Project Memory
+Use QMD when you want local-first retrieval with reranking, query expansion, transcript indexing, or extra indexed paths.
 
-## Identity
-AI assistant for the Acme Dashboard project. Primary focus: React frontend with TypeScript.
+## Practical migration notes
 
-## Key Decisions
-- Using PostgreSQL for persistence (see vault: decisions/use-postgresql.md)
-- Tailwind CSS for styling
-- React Query for server state
+- Prefer OpenClaw's native memory files and tools as the source of truth going forward.
+- Move any new setup or documentation toward OpenClaw memory concepts, not ClawVault plugin registration.
+- If you relied on ClawVault mainly for markdown-native memory plus local retrieval, OpenClaw now covers that directly.
+- If you relied on Obsidian-friendly file workflows, keep the file-oriented workflow, but migrate the runtime integration to OpenClaw's memory stack.
 
-## Current Focus
-- Shipping v2 onboarding flow
-- Blocked on: API rate limiting design
+## Historical note
 
-## Working Agreements
-- Always run tests before committing
-- Use conventional commits
-- Check `clawvault wake` output at session start
+ClawVault was useful because it arrived before the official path existed. It helped establish the shape of markdown-native structured memory in the OpenClaw ecosystem.
 
-## Quick Links
-- Active tasks: `clawvault task list --status active`
-- Recent decisions: `clawvault list decisions --limit 5`
-- Project context: `clawvault context "onboarding"`
-```
-
-### Avoiding Drift
-
-The issue of "dual source of truth" arises when MEMORY.md and the vault diverge. To prevent this:
-
-1. **Vault is authoritative** — When in doubt, the vault is the source of truth. MEMORY.md is a convenience layer.
-
-2. **Periodic sync** — Update MEMORY.md periodically to reflect vault state. This can be:
-   - Manual: Review and update at the start of each day/week
-   - Semi-automated: Use `clawvault recap` output to inform updates
-
-3. **Keep MEMORY.md lean** — Don't try to mirror the vault. Include only what the agent needs immediately on boot.
-
-4. **Reference, don't duplicate** — Instead of copying full decision reasoning into MEMORY.md, reference the vault file.
-
-5. **Trust the wake recap** — The `clawvault wake` command provides accurate vault state. If MEMORY.md conflicts with wake output, trust wake.
-
-### When to Use Each
-
-| Scenario | Use MEMORY.md | Use Vault |
-|----------|---------------|-----------|
-| Agent needs identity/purpose immediately | ✓ | |
-| Storing a new decision | | ✓ |
-| Quick reference to current focus | ✓ | |
-| Searching past decisions | | ✓ |
-| Session handoff | | ✓ |
-| Checkpoint during work | | ✓ |
-| High-level project constraints | ✓ | |
-| Detailed task tracking | | ✓ |
-
-### Alternative Approaches
-
-Depending on your workflow, you might choose:
-
-1. **Vault-only** — Delete MEMORY.md entirely and rely solely on `wake` + auto-injection. Works well if you always run `clawvault wake` at session start.
-
-2. **Generated MEMORY.md** — Auto-generate MEMORY.md from vault state at `sleep`/`wake`. The vault remains the single source of truth, and MEMORY.md becomes a cached summary.
-
-3. **Hybrid (recommended)** — Keep both, with MEMORY.md as a manually-curated executive summary that's updated periodically. This provides instant boot context while the vault handles everything else.
-
-## Plugin Configuration
-
-Configure ClawVault behavior via OpenClaw's config system:
-
-```bash
-# Set vault path
-openclaw config set plugins.entries.clawvault.config.vaultPath ~/my-vault
-
-# Explicitly opt into privileged features
-openclaw config set plugins.entries.clawvault.config.allowClawvaultExec true
-openclaw config set plugins.entries.clawvault.config.enableStartupRecovery true
-openclaw config set plugins.entries.clawvault.config.enableSessionContextInjection true
-openclaw config set plugins.entries.clawvault.config.enableAutoCheckpoint true
-
-# Adjust context injection
-openclaw config set plugins.entries.clawvault.config.maxContextResults 6
-openclaw config set plugins.entries.clawvault.config.contextProfile planning
-```
-
-See [HOOK.md](../hooks/clawvault/HOOK.md) for all configuration options.
-
-## Workflow Integration
-
-### Session Lifecycle
-
-```bash
-# Start of session (hook auto-injects context, but explicit wake is recommended)
-clawvault wake
-
-# During work
-clawvault checkpoint --working-on "feature X" --focus "edge cases"
-clawvault remember decision "Use approach Y" --content "Reasoning..."
-
-# End of session
-clawvault sleep "completed feature X" --next "write tests" --blocked "waiting on API"
-```
-
-### Context Retrieval
-
-```bash
-# Get relevant context for a task
-clawvault context "database migration"
-
-# Use profiles for different scenarios
-clawvault context --profile planning "Q1 roadmap"
-clawvault context --profile incident "production issue"
-```
-
-## Troubleshooting
-
-### MEMORY.md shows stale information
-
-The vault is authoritative. Run `clawvault wake` to see current state, then update MEMORY.md to match.
-
-### Agent confused by conflicting information
-
-If MEMORY.md and vault conflict, instruct the agent to trust `clawvault wake` output over MEMORY.md content.
-
-### Context injection not working
-
-1. Verify plugin is registered: `openclaw config get plugins.entries.clawvault`
-2. Verify memory slot: `openclaw config get plugins.slots.memory`
-3. Check vault path: `openclaw config get plugins.entries.clawvault.config.vaultPath`
-4. Run compatibility check: `clawvault compat`
-
-## Related Documentation
-
-- [README: OpenClaw Integration](../README.md#openclaw-integration)
-- [HOOK.md: Hook Configuration](../hooks/clawvault/HOOK.md)
-- [SKILL.md: Skill Documentation](../SKILL.md)
+That is worth preserving. It is also why this repository now points new users to OpenClaw first.

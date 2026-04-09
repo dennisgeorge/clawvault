@@ -18,9 +18,22 @@
 
 ---
 
+> [!WARNING]
+> **ClawVault is deprecated for new OpenClaw deployments.**
+> OpenClaw now ships the official, maintained memory path directly, including
+> builtin memory and QMD-backed local retrieval. If you are starting fresh, use
+> OpenClaw native memory instead of ClawVault.
+>
+> Start here:
+> - [OpenClaw Memory Overview](https://docs.openclaw.ai/concepts/memory)
+> - [Builtin Memory Engine](https://docs.openclaw.ai/concepts/memory-builtin)
+> - [QMD Memory Engine](https://docs.openclaw.ai/concepts/memory-qmd)
+
 ## What is ClawVault?
 
-ClawVault is a **structured memory system** for AI agents that uses **markdown as the storage primitive**. It solves the fundamental problem of AI agents losing context between sessions — what we call "context death."
+ClawVault is a **structured memory system** for AI agents that uses **markdown as the storage primitive**. It solved the early problem of AI agents losing context between sessions, what we called "context death."
+
+ClawVault mattered because it got there early. It helped prove that markdown-native structured memory could be practical, local-first, and pleasant to work with, especially with Obsidian-friendly workflows and QMD-style retrieval patterns. Those ideas now have an official, maintained home in OpenClaw's first-party memory stack.
 
 Unlike vector databases or cloud-based memory solutions, ClawVault is:
 
@@ -67,6 +80,31 @@ Unlike vector databases or cloud-based memory solutions, ClawVault is:
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Why this project still matters
+
+ClawVault was an early exploration of a shape that turned out to be right:
+
+- **Markdown-native memory** that stays human-readable and git-friendly.
+- **Structured knowledge on local files** instead of opaque hosted storage.
+- **Obsidian-friendly workflows** for browsing, editing, and linking memory.
+- **QMD-style local retrieval** for better recall without giving up local control.
+
+That is the position now: ClawVault was early, and useful because it was early. But OpenClaw now ships the official maintained path for these ideas, with first-party memory docs, built-in memory tooling, and a supported QMD backend.
+
+## What to use now
+
+For new deployments, choose **OpenClaw native memory** instead of ClawVault.
+
+Recommended docs:
+
+- [Memory Overview](https://docs.openclaw.ai/concepts/memory)
+- [Builtin Memory Engine](https://docs.openclaw.ai/concepts/memory-builtin)
+- [QMD Memory Engine](https://docs.openclaw.ai/concepts/memory-qmd)
+
+If you are already running ClawVault, treat this repository as historical context plus migration help, not the default path for new setups.
 
 ---
 
@@ -267,40 +305,17 @@ clawvault setup --theme neural --canvas --bases
 
 ## OpenClaw Integration
 
-ClawVault integrates with OpenClaw as a plugin. Install the npm package, then configure it in your OpenClaw config:
+ClawVault is no longer the recommended way to add memory to OpenClaw.
 
-```bash
-# 1. Install the ClawVault package
-npm install clawvault
+OpenClaw now includes the official maintained path directly:
 
-# 2. Register the plugin and memory slot in openclaw.json
-openclaw config set plugins.entries.clawvault.package clawvault
-openclaw config set plugins.slots.memory clawvault
+- [Memory Overview](https://docs.openclaw.ai/concepts/memory)
+- [Builtin Memory Engine](https://docs.openclaw.ai/concepts/memory-builtin)
+- [QMD Memory Engine](https://docs.openclaw.ai/concepts/memory-qmd)
 
-# 3. Configure your vault path
-openclaw config set plugins.entries.clawvault.config.vaultPath ~/my-vault
+If you are evaluating memory for a new OpenClaw deployment, use OpenClaw native memory rather than installing ClawVault as a plugin.
 
-# 4. Verify
-clawvault compat
-```
-
-The plugin automatically:
-- Detects context death and injects recovery alerts
-- Auto-checkpoints before session resets
-- Provides `--profile auto` for context queries
-
-> **Legacy note:** The older `openclaw hooks install` / `openclaw hooks enable` flow is no longer the recommended path. Use the plugin model above.
-
-### MEMORY.md vs Vault
-
-If you use both a `MEMORY.md` workspace file and a ClawVault vault, understand their roles:
-
-- **MEMORY.md** = Boot context (executive summary the agent sees instantly)
-- **Vault** = Full knowledge store (searchable, structured, versioned)
-
-MEMORY.md should contain high-level identity, key decisions, and current focus. The vault stores everything else. Update MEMORY.md periodically to reflect vault state, but it doesn't need to mirror it.
-
-See [docs/openclaw-plugin-usage.md](docs/openclaw-plugin-usage.md) for detailed guidance on this pattern.
+If you already run ClawVault in production, see [docs/openclaw-plugin-usage.md](docs/openclaw-plugin-usage.md) for deprecation notes and migration guidance.
 
 ---
 
@@ -355,31 +370,17 @@ clawvault setup --theme neural --canvas
 clawvault compat
 ```
 
-## OpenClaw Setup (Canonical)
+## OpenClaw Setup (Legacy)
 
-ClawVault integrates with OpenClaw as a plugin. Use this sequence:
+This repository no longer recommends ClawVault plugin setup as the default OpenClaw memory path.
 
-```bash
-# Install ClawVault
-npm install clawvault
+For new deployments, use OpenClaw native memory instead:
 
-# Register plugin and memory slot
-openclaw config set plugins.entries.clawvault.package clawvault
-openclaw config set plugins.slots.memory clawvault
+- [Memory Overview](https://docs.openclaw.ai/concepts/memory)
+- [Builtin Memory Engine](https://docs.openclaw.ai/concepts/memory-builtin)
+- [QMD Memory Engine](https://docs.openclaw.ai/concepts/memory-qmd)
 
-# Configure vault path and desired features
-openclaw config set plugins.entries.clawvault.config.vaultPath ~/my-vault
-openclaw config set plugins.entries.clawvault.config.enableStartupRecovery true
-openclaw config set plugins.entries.clawvault.config.enableSessionContextInjection true
-
-# Verify
-clawvault compat
-```
-
-Important:
-
-- `clawhub install clawvault` installs skill guidance, but does not replace plugin configuration.
-- After changing plugin config, restart the OpenClaw gateway process so plugin registration reloads.
+If you are maintaining an older ClawVault-based OpenClaw install, keep that setup stable while you plan migration. See [docs/openclaw-plugin-usage.md](docs/openclaw-plugin-usage.md) for the deprecation and migration guide.
 
 ## Minimal AGENTS.md Additions
 
@@ -496,11 +497,10 @@ vault/
 - `qmd` fallback errors:
   - `qmd` is optional; in-process BM25 search is available without it
   - if you want fallback compatibility, ensure `qmd --version` works in the same shell
-- Plugin not active in OpenClaw:
-  - run `openclaw config set plugins.entries.clawvault.package clawvault`
-  - run `openclaw config set plugins.slots.memory clawvault`
-  - restart the OpenClaw gateway process
-- OpenClaw integration drift:
+- Legacy ClawVault plugin install not active in OpenClaw:
+  - if this is a new deployment, stop and use OpenClaw native memory docs instead
+  - if this is an existing legacy install, verify the old plugin wiring and plan migration to OpenClaw first-party memory
+- OpenClaw integration drift in a legacy ClawVault setup:
   - run `clawvault compat`
 - Session transcript corruption:
   - run `clawvault repair-session --dry-run` then `clawvault repair-session`
